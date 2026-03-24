@@ -1,9 +1,9 @@
 package fr.axl.lvy.documentline;
 
+import fr.axl.lvy.order.OrderA;
+import fr.axl.lvy.order.OrderB;
 import fr.axl.lvy.product.Product;
-import fr.axl.lvy.purchaseorder.PurchaseOrder;
 import fr.axl.lvy.quote.Quote;
-import fr.axl.lvy.salesorder.SalesOrder;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -47,12 +47,12 @@ public class DocumentLine {
   @Nullable
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "document_id", insertable = false, updatable = false)
-  private SalesOrder salesOrder;
+  private OrderA orderA;
 
   @Nullable
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "document_id", insertable = false, updatable = false)
-  private PurchaseOrder purchaseOrder;
+  private OrderB orderB;
 
   @Nullable
   @ManyToOne(fetch = FetchType.LAZY)
@@ -174,9 +174,9 @@ public class DocumentLine {
 
   public enum DocumentType {
     QUOTE,
-    SALES_ORDER,
-    PURCHASE_ORDER,
-    SALES_INVOICE,
-    PURCHASE_INVOICE
+    ORDER_A,
+    ORDER_B,
+    INVOICE_A,
+    INVOICE_B
   }
 }

@@ -1,7 +1,7 @@
 package fr.axl.lvy.invoice;
 
 import fr.axl.lvy.client.Client;
-import fr.axl.lvy.purchaseorder.PurchaseOrder;
+import fr.axl.lvy.order.OrderB;
 import fr.axl.lvy.user.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -15,11 +15,11 @@ import lombok.Setter;
 import org.jspecify.annotations.Nullable;
 
 @Entity
-@Table(name = "purchase_invoices")
+@Table(name = "invoices_b")
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseInvoice {
+public class InvoiceB {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,8 +36,8 @@ public class PurchaseInvoice {
 
   @Nullable
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "purchase_order_id")
-  private PurchaseOrder purchaseOrder;
+  @JoinColumn(name = "order_b_id")
+  private OrderB orderB;
 
   @NotNull
   @Enumerated(EnumType.STRING)
@@ -56,7 +56,7 @@ public class PurchaseInvoice {
   @NotNull
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private PurchaseInvoiceStatus status = PurchaseInvoiceStatus.RECEIVED;
+  private InvoiceBStatus status = InvoiceBStatus.RECEIVED;
 
   @NotNull
   @Column(name = "invoice_date", nullable = false)
@@ -120,7 +120,7 @@ public class PurchaseInvoice {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
-  public PurchaseInvoice(
+  public InvoiceB(
       String internalInvoiceNumber,
       RecipientType recipientType,
       Client recipient,
@@ -158,7 +158,7 @@ public class PurchaseInvoice {
   public boolean equals(Object obj) {
     if (this == obj) return true;
     if (obj == null || !getClass().isAssignableFrom(obj.getClass())) return false;
-    PurchaseInvoice other = (PurchaseInvoice) obj;
+    InvoiceB other = (InvoiceB) obj;
     return id != null && id.equals(other.id);
   }
 
@@ -177,7 +177,7 @@ public class PurchaseInvoice {
     STANDALONE
   }
 
-  public enum PurchaseInvoiceStatus {
+  public enum InvoiceBStatus {
     RECEIVED,
     VERIFIED,
     PAID,

@@ -1,7 +1,7 @@
 package fr.axl.lvy.delivery;
 
 import fr.axl.lvy.client.Client;
-import fr.axl.lvy.salesorder.SalesOrder;
+import fr.axl.lvy.order.OrderA;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,11 +13,11 @@ import lombok.Setter;
 import org.jspecify.annotations.Nullable;
 
 @Entity
-@Table(name = "sales_delivery_notes")
+@Table(name = "delivery_notes_a")
 @Getter
 @Setter
 @NoArgsConstructor
-public class SalesDeliveryNote {
+public class DeliveryNoteA {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,8 +29,8 @@ public class SalesDeliveryNote {
   private String deliveryNoteNumber;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "sales_order_id", nullable = false)
-  private SalesOrder salesOrder;
+  @JoinColumn(name = "order_a_id", nullable = false)
+  private OrderA orderA;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "client_id", nullable = false)
@@ -39,7 +39,7 @@ public class SalesDeliveryNote {
   @NotNull
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private SalesDeliveryStatus status = SalesDeliveryStatus.PREPARED;
+  private DeliveryNoteAStatus status = DeliveryNoteAStatus.PREPARED;
 
   @Nullable
   @Column(name = "shipping_date")
@@ -90,9 +90,9 @@ public class SalesDeliveryNote {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
-  public SalesDeliveryNote(String deliveryNoteNumber, SalesOrder salesOrder, Client client) {
+  public DeliveryNoteA(String deliveryNoteNumber, OrderA orderA, Client client) {
     this.deliveryNoteNumber = deliveryNoteNumber;
-    this.salesOrder = salesOrder;
+    this.orderA = orderA;
     this.client = client;
   }
 
@@ -123,7 +123,7 @@ public class SalesDeliveryNote {
   public boolean equals(Object obj) {
     if (this == obj) return true;
     if (obj == null || !getClass().isAssignableFrom(obj.getClass())) return false;
-    SalesDeliveryNote other = (SalesDeliveryNote) obj;
+    DeliveryNoteA other = (DeliveryNoteA) obj;
     return id != null && id.equals(other.id);
   }
 
@@ -132,7 +132,7 @@ public class SalesDeliveryNote {
     return getClass().hashCode();
   }
 
-  public enum SalesDeliveryStatus {
+  public enum DeliveryNoteAStatus {
     PREPARED,
     SHIPPED,
     DELIVERED,

@@ -1,10 +1,9 @@
-package fr.axl.lvy.salesorder;
+package fr.axl.lvy.order;
 
 import fr.axl.lvy.client.Client;
-import fr.axl.lvy.delivery.SalesDeliveryNote;
+import fr.axl.lvy.delivery.DeliveryNoteA;
 import fr.axl.lvy.documentline.DocumentLine;
-import fr.axl.lvy.invoice.SalesInvoice;
-import fr.axl.lvy.purchaseorder.PurchaseOrder;
+import fr.axl.lvy.invoice.InvoiceA;
 import fr.axl.lvy.quote.Quote;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -21,14 +20,14 @@ import lombok.Setter;
 import org.jspecify.annotations.Nullable;
 
 @Entity
-@Table(name = "sales_orders")
+@Table(name = "orders_a")
 @Getter
 @Setter
 @NoArgsConstructor
-public class SalesOrder {
+public class OrderA {
 
-  private static final Set<SalesOrderStatus> EDITABLE =
-      Set.of(SalesOrderStatus.CONFIRMED, SalesOrderStatus.IN_PRODUCTION, SalesOrderStatus.READY);
+  private static final Set<OrderAStatus> EDITABLE =
+      Set.of(OrderAStatus.CONFIRMED, OrderAStatus.IN_PRODUCTION, OrderAStatus.READY);
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,7 +50,7 @@ public class SalesOrder {
   @Nullable
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "source_order_id")
-  private SalesOrder sourceOrder;
+  private OrderA sourceOrder;
 
   @Nullable
   @Column(name = "client_reference", length = 100)
@@ -62,7 +61,7 @@ public class SalesOrder {
   @NotNull
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private SalesOrderStatus status = SalesOrderStatus.CONFIRMED;
+  private OrderAStatus status = OrderAStatus.CONFIRMED;
 
   @NotNull
   @Column(name = "order_date", nullable = false)
@@ -119,20 +118,20 @@ public class SalesOrder {
 
   @Nullable
   @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "purchase_order_id")
-  private PurchaseOrder purchaseOrder;
+  @JoinColumn(name = "order_b_id")
+  private OrderB orderB;
 
   @Nullable
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "delivery_note_id")
-  private SalesDeliveryNote deliveryNote;
+  private DeliveryNoteA deliveryNote;
 
   @Nullable
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "invoice_id")
-  private SalesInvoice invoice;
+  private InvoiceA invoice;
 
-  @OneToMany(mappedBy = "salesOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "orderA", cascade = CascadeType.ALL, orphanRemoval = true)
   @OrderBy("position")
   private List<DocumentLine> lines = new ArrayList<>();
 
@@ -149,7 +148,7 @@ public class SalesOrder {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
-  public SalesOrder(String orderNumber, Client client, LocalDate orderDate) {
+  public OrderA(String orderNumber, Client client, LocalDate orderDate) {
     this.orderNumber = orderNumber;
     this.client = client;
     this.orderDate = orderDate;
@@ -197,7 +196,7 @@ public class SalesOrder {
   public boolean equals(Object obj) {
     if (this == obj) return true;
     if (obj == null || !getClass().isAssignableFrom(obj.getClass())) return false;
-    SalesOrder other = (SalesOrder) obj;
+    OrderA other = (OrderA) obj;
     return id != null && id.equals(other.id);
   }
 
@@ -206,7 +205,7 @@ public class SalesOrder {
     return getClass().hashCode();
   }
 
-  public enum SalesOrderStatus {
+  public enum OrderAStatus {
     CONFIRMED,
     IN_PRODUCTION,
     READY,

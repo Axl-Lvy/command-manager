@@ -1,6 +1,6 @@
 package fr.axl.lvy.delivery;
 
-import fr.axl.lvy.purchaseorder.PurchaseOrder;
+import fr.axl.lvy.order.OrderB;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,11 +12,11 @@ import lombok.Setter;
 import org.jspecify.annotations.Nullable;
 
 @Entity
-@Table(name = "purchase_delivery_notes")
+@Table(name = "delivery_notes_b")
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseDeliveryNote {
+public class DeliveryNoteB {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,13 +28,13 @@ public class PurchaseDeliveryNote {
   private String deliveryNoteNumber;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "purchase_order_id", nullable = false)
-  private PurchaseOrder purchaseOrder;
+  @JoinColumn(name = "order_b_id", nullable = false)
+  private OrderB orderB;
 
   @NotNull
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private PurchaseDeliveryStatus status = PurchaseDeliveryStatus.IN_TRANSIT;
+  private DeliveryNoteBStatus status = DeliveryNoteBStatus.IN_TRANSIT;
 
   @Nullable
   @Column(name = "shipping_date")
@@ -77,9 +77,9 @@ public class PurchaseDeliveryNote {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
-  public PurchaseDeliveryNote(String deliveryNoteNumber, PurchaseOrder purchaseOrder) {
+  public DeliveryNoteB(String deliveryNoteNumber, OrderB orderB) {
     this.deliveryNoteNumber = deliveryNoteNumber;
-    this.purchaseOrder = purchaseOrder;
+    this.orderB = orderB;
   }
 
   @PrePersist
@@ -109,7 +109,7 @@ public class PurchaseDeliveryNote {
   public boolean equals(Object obj) {
     if (this == obj) return true;
     if (obj == null || !getClass().isAssignableFrom(obj.getClass())) return false;
-    PurchaseDeliveryNote other = (PurchaseDeliveryNote) obj;
+    DeliveryNoteB other = (DeliveryNoteB) obj;
     return id != null && id.equals(other.id);
   }
 
@@ -118,7 +118,7 @@ public class PurchaseDeliveryNote {
     return getClass().hashCode();
   }
 
-  public enum PurchaseDeliveryStatus {
+  public enum DeliveryNoteBStatus {
     IN_TRANSIT,
     ARRIVED,
     INSPECTED,

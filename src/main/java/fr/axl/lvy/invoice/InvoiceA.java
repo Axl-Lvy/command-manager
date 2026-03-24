@@ -1,27 +1,25 @@
-package fr.axl.lvy.purchaseorder;
+package fr.axl.lvy.invoice;
 
-import fr.axl.lvy.documentline.DocumentLine;
-import fr.axl.lvy.invoice.PurchaseInvoice;
-import fr.axl.lvy.salesorder.SalesOrder;
+import fr.axl.lvy.client.Client;
+import fr.axl.lvy.delivery.DeliveryNoteA;
+import fr.axl.lvy.order.OrderA;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.jspecify.annotations.Nullable;
 
 @Entity
-@Table(name = "purchase_orders")
+@Table(name = "invoices_a")
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseOrder {
+public class InvoiceA {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,37 +27,58 @@ public class PurchaseOrder {
   private Long id;
 
   @NotBlank
-  @Column(name = "order_number", nullable = false, unique = true, length = 20)
-  private String orderNumber;
+  @Column(name = "invoice_number", nullable = false, unique = true, length = 20)
+  private String invoiceNumber;
+
+  @Nullable
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "order_a_id")
+  private OrderA orderA;
+
+  @Nullable
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "delivery_note_id")
+  private DeliveryNoteA deliveryNote;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "sales_order_id", nullable = false)
-  private SalesOrder salesOrder;
+  @JoinColumn(name = "client_id", nullable = false)
+  private Client client;
+
+  @Nullable
+  @Column(name = "client_name")
+  private String clientName;
+
+  @Nullable
+  @Column(name = "client_address", columnDefinition = "TEXT")
+  private String clientAddress;
+
+  @Nullable
+  @Column(name = "client_siret", length = 20)
+  private String clientSiret;
+
+  @Nullable
+  @Column(name = "client_vat_number", length = 20)
+  private String clientVatNumber;
 
   @NotNull
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private PurchaseOrderStatus status = PurchaseOrderStatus.SENT;
+  private InvoiceAStatus status = InvoiceAStatus.DRAFT;
+
+  @NotNull
+  @Column(name = "invoice_date", nullable = false)
+  private LocalDate invoiceDate;
 
   @Nullable
-  @Column(name = "order_date")
-  private LocalDate orderDate;
+  @Column(name = "due_date")
+  private LocalDate dueDate;
 
   @Nullable
-  @Column(name = "expected_delivery_date")
-  private LocalDate expectedDeliveryDate;
+  @Column(name = "payment_date")
+  private LocalDate paymentDate;
 
-  @Nullable
-  @Column(name = "reception_date")
-  private LocalDate receptionDate;
-
-  @Nullable
-  @Column(name = "reception_conforming")
-  private Boolean receptionConforming;
-
-  @Nullable
-  @Column(name = "reception_reserve", columnDefinition = "TEXT")
-  private String receptionReserve;
+  @Column(name = "amount_paid", nullable = false, precision = 12, scale = 2)
+  private BigDecimal amountPaid = BigDecimal.ZERO;
 
   @Setter(lombok.AccessLevel.NONE)
   @Column(name = "total_excl_tax", nullable = false, precision = 12, scale = 2)
@@ -73,18 +92,29 @@ public class PurchaseOrder {
   @Column(name = "total_incl_tax", nullable = false, precision = 12, scale = 2)
   private BigDecimal totalInclTax = BigDecimal.ZERO;
 
+  @Column(nullable = false, length = 5)
+  private String currency = "EUR";
+
+  @Nullable
+  @Column(length = 10)
+  private String incoterms;
+
+  @Nullable
+  @Column(name = "legal_notice", columnDefinition = "TEXT")
+  private String legalNotice;
+
+  @Nullable
+  @Column(name = "late_penalties", columnDefinition = "TEXT")
+  private String latePenalties;
+
   @Nullable
   @Column(columnDefinition = "TEXT")
   private String notes;
 
   @Nullable
-  @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "purchase_invoice_id")
-  private PurchaseInvoice purchaseInvoice;
-
-  @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OrderBy("position")
-  private List<DocumentLine> lines = new ArrayList<>();
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "credit_note_id")
+  private InvoiceA creditNote;
 
   @Setter(lombok.AccessLevel.NONE)
   @Column(name = "created_at", nullable = false, updatable = false)
@@ -99,9 +129,10 @@ public class PurchaseOrder {
   @Column(name = "deleted_at")
   private Instant deletedAt;
 
-  public PurchaseOrder(String orderNumber, SalesOrder salesOrder) {
-    this.orderNumber = orderNumber;
-    this.salesOrder = salesOrder;
+  public InvoiceA(String invoiceNumber, Client client, LocalDate invoiceDate) {
+    this.invoiceNumber = invoiceNumber;
+    this.client = client;
+    this.invoiceDate = invoiceDate;
   }
 
   @PrePersist
@@ -113,16 +144,6 @@ public class PurchaseOrder {
   @PreUpdate
   void preUpdate() {
     updatedAt = Instant.now();
-  }
-
-  public void recalculateTotals() {
-    totalExclTax =
-        lines.stream()
-            .map(DocumentLine::getLineTotalExclTax)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    totalVat =
-        lines.stream().map(DocumentLine::getVatAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-    totalInclTax = totalExclTax.add(totalVat);
   }
 
   public boolean isDeleted() {
@@ -141,7 +162,7 @@ public class PurchaseOrder {
   public boolean equals(Object obj) {
     if (this == obj) return true;
     if (obj == null || !getClass().isAssignableFrom(obj.getClass())) return false;
-    PurchaseOrder other = (PurchaseOrder) obj;
+    InvoiceA other = (InvoiceA) obj;
     return id != null && id.equals(other.id);
   }
 
@@ -150,11 +171,12 @@ public class PurchaseOrder {
     return getClass().hashCode();
   }
 
-  public enum PurchaseOrderStatus {
-    SENT,
-    CONFIRMED,
-    IN_PRODUCTION,
-    RECEIVED,
-    CANCELLED
+  public enum InvoiceAStatus {
+    DRAFT,
+    ISSUED,
+    OVERDUE,
+    PAID,
+    CANCELLED,
+    CREDIT_NOTE
   }
 }
