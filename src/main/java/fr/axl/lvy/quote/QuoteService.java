@@ -90,7 +90,10 @@ public class QuoteService {
     quote.setStatus(Quote.QuoteStatus.ACCEPTED);
     quoteRepository.save(quote);
 
-    order.recalculateTotals();
+    var orderLines =
+        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+            DocumentLine.DocumentType.ORDER_A, order.getId());
+    order.recalculateTotals(orderLines);
     return orderARepository.save(order);
   }
 }

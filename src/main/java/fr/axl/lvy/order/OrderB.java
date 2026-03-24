@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -81,10 +80,6 @@ public class OrderB {
   @JoinColumn(name = "invoice_b_id")
   private InvoiceB invoiceB;
 
-  @OneToMany(mappedBy = "orderB", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OrderBy("position")
-  private List<DocumentLine> lines = new ArrayList<>();
-
   @Setter(lombok.AccessLevel.NONE)
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -114,7 +109,7 @@ public class OrderB {
     updatedAt = Instant.now();
   }
 
-  public void recalculateTotals() {
+  public void recalculateTotals(List<DocumentLine> lines) {
     totalExclTax =
         lines.stream()
             .map(DocumentLine::getLineTotalExclTax)

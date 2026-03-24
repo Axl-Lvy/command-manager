@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -92,10 +91,6 @@ public class Quote {
   @Column(columnDefinition = "TEXT")
   private String conditions;
 
-  @OneToMany(mappedBy = "quote", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OrderBy("position")
-  private List<DocumentLine> lines = new ArrayList<>();
-
   @Setter(lombok.AccessLevel.NONE)
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -130,7 +125,7 @@ public class Quote {
     return status == QuoteStatus.DRAFT || status == QuoteStatus.SENT;
   }
 
-  public void recalculateTotals() {
+  public void recalculateTotals(List<DocumentLine> lines) {
     totalExclTax =
         lines.stream()
             .map(DocumentLine::getLineTotalExclTax)

@@ -11,7 +11,6 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import lombok.Getter;
@@ -131,10 +130,6 @@ public class OrderA {
   @JoinColumn(name = "invoice_id")
   private InvoiceA invoice;
 
-  @OneToMany(mappedBy = "orderA", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OrderBy("position")
-  private List<DocumentLine> lines = new ArrayList<>();
-
   @Setter(lombok.AccessLevel.NONE)
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -169,7 +164,7 @@ public class OrderA {
     return EDITABLE.contains(status);
   }
 
-  public void recalculateTotals() {
+  public void recalculateTotals(List<DocumentLine> lines) {
     totalExclTax =
         lines.stream()
             .map(DocumentLine::getLineTotalExclTax)

@@ -1,9 +1,6 @@
 package fr.axl.lvy.documentline;
 
-import fr.axl.lvy.order.OrderA;
-import fr.axl.lvy.order.OrderB;
 import fr.axl.lvy.product.Product;
-import fr.axl.lvy.quote.Quote;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -38,21 +35,6 @@ public class DocumentLine {
 
   @Column(name = "document_id", nullable = false)
   private Long documentId;
-
-  @Nullable
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "document_id", insertable = false, updatable = false)
-  private Quote quote;
-
-  @Nullable
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "document_id", insertable = false, updatable = false)
-  private OrderA orderA;
-
-  @Nullable
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "document_id", insertable = false, updatable = false)
-  private OrderB orderB;
 
   @Nullable
   @ManyToOne(fetch = FetchType.LAZY)

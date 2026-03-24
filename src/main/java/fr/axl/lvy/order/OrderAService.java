@@ -101,7 +101,10 @@ public class OrderAService {
       documentLineRepository.save(newLine);
     }
 
-    copy.recalculateTotals();
+    var copyLines =
+        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+            DocumentLine.DocumentType.ORDER_A, copy.getId());
+    copy.recalculateTotals(copyLines);
     return orderARepository.save(copy);
   }
 
@@ -140,7 +143,10 @@ public class OrderAService {
       documentLineRepository.save(newLine);
     }
 
-    orderB.recalculateTotals();
+    var orderBLines =
+        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+            DocumentLine.DocumentType.ORDER_B, orderB.getId());
+    orderB.recalculateTotals(orderBLines);
     orderB = orderBRepository.save(orderB);
 
     order.setOrderB(orderB);
