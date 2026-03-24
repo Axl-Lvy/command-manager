@@ -56,7 +56,9 @@ class ProductServiceTest {
     productService.save(inactive);
 
     var activeProducts = productService.findActive();
-    assertThat(activeProducts).anyMatch(p -> p.getReference().equals("REF-ACT")).noneMatch(p -> p.getReference().equals("REF-INA"));
+    assertThat(activeProducts)
+        .anyMatch(p -> p.getReference().equals("REF-ACT"))
+        .noneMatch(p -> p.getReference().equals("REF-INA"));
   }
 
   @Test
