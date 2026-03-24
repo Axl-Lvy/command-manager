@@ -19,37 +19,37 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 @Layout
 public final class MainLayout extends AppLayout {
 
-    MainLayout() {
-        setPrimarySection(Section.DRAWER);
-        addToDrawer(createHeader(), new Scroller(createSideNav()));
+  MainLayout() {
+    setPrimarySection(Section.DRAWER);
+    addToDrawer(createHeader(), new Scroller(createSideNav()));
+  }
+
+  private Component createHeader() {
+    // TODO Replace with real application logo and name
+    var appLogo = VaadinIcon.CUBES.create();
+    appLogo.setSize("48px");
+    appLogo.setColor("green");
+
+    var appName = new Span("My Application");
+    appName.getStyle().setFontWeight(Style.FontWeight.BOLD);
+
+    var header = new VerticalLayout(appLogo, appName);
+    header.setAlignItems(FlexComponent.Alignment.CENTER);
+    return header;
+  }
+
+  private SideNav createSideNav() {
+    var nav = new SideNav();
+    nav.addClassNames(LumoUtility.Margin.Horizontal.MEDIUM);
+    MenuConfiguration.getMenuEntries().forEach(entry -> nav.addItem(createSideNavItem(entry)));
+    return nav;
+  }
+
+  private SideNavItem createSideNavItem(MenuEntry menuEntry) {
+    if (menuEntry.icon() != null) {
+      return new SideNavItem(menuEntry.title(), menuEntry.path(), new Icon(menuEntry.icon()));
+    } else {
+      return new SideNavItem(menuEntry.title(), menuEntry.path());
     }
-
-    private Component createHeader() {
-        // TODO Replace with real application logo and name
-        var appLogo = VaadinIcon.CUBES.create();
-        appLogo.setSize("48px");
-        appLogo.setColor("green");
-
-        var appName = new Span("My Application");
-        appName.getStyle().setFontWeight(Style.FontWeight.BOLD);
-
-        var header = new VerticalLayout(appLogo, appName);
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
-        return header;
-    }
-
-    private SideNav createSideNav() {
-        var nav = new SideNav();
-        nav.addClassNames(LumoUtility.Margin.Horizontal.MEDIUM);
-        MenuConfiguration.getMenuEntries().forEach(entry -> nav.addItem(createSideNavItem(entry)));
-        return nav;
-    }
-
-    private SideNavItem createSideNavItem(MenuEntry menuEntry) {
-        if (menuEntry.icon() != null) {
-            return new SideNavItem(menuEntry.title(), menuEntry.path(), new Icon(menuEntry.icon()));
-        } else {
-            return new SideNavItem(menuEntry.title(), menuEntry.path());
-        }
-    }
+  }
 }

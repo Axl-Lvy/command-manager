@@ -1,80 +1,87 @@
-# My Application README
+# Command Manager
 
-- [ ] TODO Replace or update this README with instructions relevant to your application
+Order/quote management system built with Vaadin + Spring Boot.
 
-## Project Structure
+## Tech Stack
 
-This project has the following structure:
+- Java 25, Spring Boot 4, Vaadin 25
+- Spring Data JPA + MySQL
+- Lombok
+- Flyway (for production migrations)
+- Maven
 
-```
-src
-├── main/java
-│   └── [application package]
-│       ├── base
-│       │   └── ui
-│       │       ├── ViewToolbar.java
-│       │       └── MainLayout.java
-│       ├── examplefeature
-│       │   ├── ui
-│       │   │   └── TaskListView.java
-│       │   ├── Task.java
-│       │   ├── TaskRepository.java
-│       │   └── TaskService.java                
-│       └── Application.java     
-├── main/resources
-│   ├── META-INF
-│   │   └── resources
-│   │       └── styles.css
-│   └── application.properties 
-└── test/java
-    └── [application package]
-        └── examplefeature
-           └── TaskServiceTest.java                 
+## Getting Started
+
+### Prerequisites
+
+- Java 25
+- MySQL 8+
+
+### Database Setup
+
+```bash
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS command_manager;"
 ```
 
-The main entry point into the application is `Application.java`. This class contains the `main()` method that starts up 
-the Spring Boot application.
+### Local Credentials
 
-The project follows a *feature-based package structure*, organizing code by *functional units* rather than traditional 
-architectural layers. It includes two feature packages: `base` and `examplefeature`.
+Create `src/main/resources/application-local.properties` (gitignored):
 
-* The `base` package contains classes meant for reuse across different features, either through composition or 
-  inheritance. You can use them as-is, tweak them to your needs, or remove them.
-* The `examplefeature` package is an example feature package that demonstrates the structure. It represents a 
-  *self-contained unit of functionality*, including UI components, business logic, data access, and an integration test.
-  Once you create your own features, *you'll remove this package*.
+```properties
+spring.datasource.password=yourpassword
+```
 
-
-## Starting in Development Mode
-
-To start the application in development mode, import it into your IDE and run the `Application` class. 
-You can also start the application from the command line by running: 
+### Run
 
 ```bash
 ./mvnw
 ```
 
+The app starts at http://localhost:8080.
+
+## Database Migrations
+
+### During Development
+
+Hibernate manages the schema automatically (`ddl-auto=update`). No migration files needed — just modify your JPA entities and restart.
+
+### Preparing for Production
+
+Before the first production deployment:
+
+1. Export the current schema:
+   ```bash
+   mysqldump --no-data command_manager > src/main/resources/db/migration/V1__initial_schema.sql
+   ```
+2. In `application.properties`, switch:
+   ```properties
+   spring.jpa.hibernate.ddl-auto=validate
+   ```
+
+### After Production Deployment
+
+For every schema change, write a new Flyway migration file:
+
+```
+src/main/resources/db/migration/V2__add_column_x.sql
+src/main/resources/db/migration/V3__create_table_y.sql
+```
+
+Flyway runs them automatically on startup. Never use `ddl-auto=update` in production.
+
 ## Building for Production
 
-To build the application in production mode, run:
-
 ```bash
-./mvnw package
+./mvnw -Pproduction package
+java -jar target/command-manager-1.0-SNAPSHOT.jar
 ```
 
-To build a Docker image, run:
+Pass database credentials via environment variables:
 
 ```bash
-docker build -t my-application:latest .
+SPRING_PROFILES_ACTIVE=prod \
+SPRING_DATASOURCE_URL=jdbc:mysql://db-host:3306/command_manager \
+SPRING_DATASOURCE_USERNAME=app_user \
+SPRING_DATASOURCE_PASSWORD=s3cur3pass \
+java -jar target/command-manager-1.0-SNAPSHOT.jar
 ```
-
-If you use commercial components, pass the license key as a build secret:
-
-```bash
-docker build --secret id=proKey,src=$HOME/.vaadin/proKey .
-```
-
-## Next Steps
-
-The [Building Apps](https://vaadin.com/docs/v25/building-apps) guides contain hands-on advice for adding features to 
-your application.
