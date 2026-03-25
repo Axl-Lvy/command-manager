@@ -4,7 +4,7 @@ Order/quote management system built with Vaadin + Spring Boot.
 
 ## Tech Stack
 
-- Java 24, Spring Boot 4, Vaadin 25
+- Java 25, Spring Boot 4, Vaadin 25
 - Spring Data JPA + MySQL
 - Lombok
 - Maven
