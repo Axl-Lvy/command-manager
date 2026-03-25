@@ -13,7 +13,7 @@ Order/quote management system built with Vaadin + Spring Boot.
 
 ### Prerequisites
 
-- Java 24+
+- Java 25+
 - MySQL 8+
 
 ### Database Setup
