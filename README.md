@@ -4,17 +4,16 @@ Order/quote management system built with Vaadin + Spring Boot.
 
 ## Tech Stack
 
-- Java 25, Spring Boot 4, Vaadin 25
+- Java 24, Spring Boot 4, Vaadin 25
 - Spring Data JPA + MySQL
 - Lombok
-- Flyway (for production migrations)
 - Maven
 
 ## Getting Started
 
 ### Prerequisites
 
-- Java 25
+- Java 24+
 - MySQL 8+
 
 ### Database Setup
@@ -39,35 +38,25 @@ spring.datasource.password=yourpassword
 
 The app starts at http://localhost:8080.
 
-## Database Migrations
+### Run Tests
 
-### During Development
-
-Hibernate manages the schema automatically (`ddl-auto=update`). No migration files needed — just modify your JPA entities and restart.
-
-### Preparing for Production
-
-Before the first production deployment:
-
-1. Export the current schema:
-   ```bash
-   mysqldump --no-data command_manager > src/main/resources/db/migration/V1__initial_schema.sql
-   ```
-2. In `application.properties`, switch:
-   ```properties
-   spring.jpa.hibernate.ddl-auto=validate
-   ```
-
-### After Production Deployment
-
-For every schema change, write a new Flyway migration file:
-
-```
-src/main/resources/db/migration/V2__add_column_x.sql
-src/main/resources/db/migration/V3__create_table_y.sql
+```bash
+./mvnw test
 ```
 
-Flyway runs them automatically on startup. Never use `ddl-auto=update` in production.
+Tests run against the same MySQL database. Make sure it exists before running.
+
+## Database Schema
+
+Hibernate manages the schema automatically (`ddl-auto=update`). Just modify JPA entities and restart.
+
+To reset the schema from scratch (e.g. after renaming tables/columns):
+
+```bash
+mysql -u root -p -e "DROP DATABASE command_manager; CREATE DATABASE command_manager;"
+```
+
+Then temporarily set `spring.jpa.hibernate.ddl-auto=create` in `application.properties`, start the app, and switch back to `update`.
 
 ## Building for Production
 
@@ -79,7 +68,6 @@ java -jar target/command-manager-1.0-SNAPSHOT.jar
 Pass database credentials via environment variables:
 
 ```bash
-SPRING_PROFILES_ACTIVE=prod \
 SPRING_DATASOURCE_URL=jdbc:mysql://db-host:3306/command_manager \
 SPRING_DATASOURCE_USERNAME=app_user \
 SPRING_DATASOURCE_PASSWORD=s3cur3pass \
