@@ -4,7 +4,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.dom.Style;
 import com.vaadin.flow.router.Menu;
@@ -22,11 +21,10 @@ class ClientListView extends VerticalLayout {
   private final ClientService clientService;
   private final Grid<Client> grid;
 
-  ClientListView(ClientService clientService) {
+  ClientListView(final ClientService clientService) {
     this.clientService = clientService;
 
-    var addBtn =
-        new Button("Nouveau client", event -> Notification.show("TODO: formulaire client"));
+    final var addBtn = new Button("Nouveau client", event -> openForm(null));
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
     grid = new Grid<>();
@@ -40,6 +38,7 @@ class ClientListView extends VerticalLayout {
     grid.setEmptyStateText("Aucun client");
     grid.setSizeFull();
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+    grid.addItemDoubleClickListener(event -> openForm(event.getItem()));
 
     refreshGrid();
 
@@ -50,6 +49,10 @@ class ClientListView extends VerticalLayout {
 
     add(new ViewToolbar("Clients", addBtn));
     add(grid);
+  }
+
+  private void openForm(final Client client) {
+    new ClientFormDialog(clientService, client, this::refreshGrid).open();
   }
 
   private void refreshGrid() {

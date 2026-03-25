@@ -4,7 +4,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.dom.Style;
 import com.vaadin.flow.router.Menu;
@@ -22,11 +21,10 @@ class ProductListView extends VerticalLayout {
   private final ProductService productService;
   private final Grid<Product> grid;
 
-  ProductListView(ProductService productService) {
+  ProductListView(final ProductService productService) {
     this.productService = productService;
 
-    var addBtn =
-        new Button("Nouveau produit", event -> Notification.show("TODO: formulaire produit"));
+    final var addBtn = new Button("Nouveau produit", event -> openForm(null));
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
     grid = new Grid<>();
@@ -41,6 +39,7 @@ class ProductListView extends VerticalLayout {
     grid.setEmptyStateText("Aucun produit");
     grid.setSizeFull();
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+    grid.addItemDoubleClickListener(event -> openForm(event.getItem()));
 
     refreshGrid();
 
@@ -51,6 +50,10 @@ class ProductListView extends VerticalLayout {
 
     add(new ViewToolbar("Produits", addBtn));
     add(grid);
+  }
+
+  private void openForm(final Product product) {
+    new ProductFormDialog(productService, product, this::refreshGrid).open();
   }
 
   private void refreshGrid() {

@@ -4,13 +4,15 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.dom.Style;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import fr.axl.lvy.base.ui.ViewToolbar;
+import fr.axl.lvy.client.ClientService;
+import fr.axl.lvy.documentline.DocumentLineRepository;
+import fr.axl.lvy.product.ProductService;
 import fr.axl.lvy.quote.Quote;
 import fr.axl.lvy.quote.QuoteService;
 import java.util.Optional;
@@ -21,12 +23,22 @@ import java.util.Optional;
 class QuoteListView extends VerticalLayout {
 
   private final QuoteService quoteService;
+  private final ClientService clientService;
+  private final ProductService productService;
+  private final DocumentLineRepository documentLineRepository;
   private final Grid<Quote> grid;
 
-  QuoteListView(QuoteService quoteService) {
+  QuoteListView(
+      final QuoteService quoteService,
+      final ClientService clientService,
+      final ProductService productService,
+      final DocumentLineRepository documentLineRepository) {
     this.quoteService = quoteService;
+    this.clientService = clientService;
+    this.productService = productService;
+    this.documentLineRepository = documentLineRepository;
 
-    var addBtn = new Button("Nouveau devis", event -> Notification.show("TODO: formulaire devis"));
+    final var addBtn = new Button("Nouveau devis", event -> openForm(null));
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
     grid = new Grid<>();
@@ -42,6 +54,7 @@ class QuoteListView extends VerticalLayout {
     grid.setEmptyStateText("Aucun devis");
     grid.setSizeFull();
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+    grid.addItemDoubleClickListener(event -> openForm(event.getItem()));
 
     refreshGrid();
 
@@ -52,6 +65,17 @@ class QuoteListView extends VerticalLayout {
 
     add(new ViewToolbar("Devis", addBtn));
     add(grid);
+  }
+
+  private void openForm(final Quote quote) {
+    new QuoteFormDialog(
+            quoteService,
+            clientService,
+            productService,
+            documentLineRepository,
+            quote,
+            this::refreshGrid)
+        .open();
   }
 
   private void refreshGrid() {
