@@ -4,7 +4,7 @@ spring-boot = "4.0.3"
 spring-dependency-management = "1.1.7"
 vaadin = "25.0.7"
 ktfmt = "0.22.0"
-sonarqube = "6.0.1.5171"
+sonarqube = "7.2.3.7755"
 
 [libraries]
 vaadin = { group = "com.vaadin", name = "vaadin" }
