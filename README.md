@@ -4,16 +4,16 @@ Order/quote management system built with Vaadin + Spring Boot.
 
 ## Tech Stack
 
-- Java 25, Spring Boot 4, Vaadin 25
-- Spring Data JPA + MySQL
-- Lombok
-- Maven
+- Kotlin, Java 21
+- Spring Boot, Vaadin
+- Spring Data JPA + MySQL (H2 for tests)
+- Gradle
 
 ## Getting Started
 
 ### Prerequisites
 
-- Java 25+
+- Java 21+
 - MySQL 8+
 
 ### Database Setup
@@ -33,7 +33,7 @@ spring.datasource.password=yourpassword
 ### Run
 
 ```bash
-./mvnw
+./gradlew bootRun
 ```
 
 The app starts at http://localhost:8080.
@@ -41,10 +41,10 @@ The app starts at http://localhost:8080.
 ### Run Tests
 
 ```bash
-./mvnw test
+./gradlew test
 ```
 
-Tests run against the same MySQL database. Make sure it exists before running.
+Tests run against an in-memory H2 database.
 
 ## ER Diagram
 
@@ -343,7 +343,7 @@ erDiagram
 
 ## Database Schema
 
-Hibernate manages the schema automatically (`ddl-auto=update`). Just modify JPA entities and restart.
+Hibernate manages the schema automatically (`ddl-auto=update`). Modify JPA entities and restart.
 
 To reset the schema from scratch (e.g. after renaming tables/columns):
 
@@ -356,8 +356,14 @@ Then temporarily set `spring.jpa.hibernate.ddl-auto=create` in `application.prop
 ## Building for Production
 
 ```bash
-./mvnw -Pproduction package
-java -jar target/command-manager-1.0-SNAPSHOT.jar
+./gradlew bootJar -Pvaadin.productionMode=true
+java -jar build/libs/command-manager-0.1.0.jar
+```
+
+Or build a Docker image:
+
+```bash
+docker build -t command-manager:latest .
 ```
 
 Pass database credentials via environment variables:
@@ -366,5 +372,5 @@ Pass database credentials via environment variables:
 SPRING_DATASOURCE_URL=jdbc:mysql://db-host:3306/command_manager \
 SPRING_DATASOURCE_USERNAME=app_user \
 SPRING_DATASOURCE_PASSWORD=s3cur3pass \
-java -jar target/command-manager-1.0-SNAPSHOT.jar
+java -jar build/libs/command-manager-0.1.0.jar
 ```
