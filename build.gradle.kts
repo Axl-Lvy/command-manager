@@ -7,13 +7,14 @@ plugins {
   alias(libs.plugins.vaadin)
   alias(libs.plugins.ktfmt)
   alias(libs.plugins.sonarqube)
+  jacoco
 }
 
 group = "fr.axl.lvy"
 
 version = "0.1.0"
 
-kotlin { jvmToolchain(25) }
+kotlin { jvmToolchain(21) }
 
 repositories {
   mavenCentral()
@@ -34,6 +35,10 @@ dependencies {
   testImplementation(libs.spring.boot.starter.test)
   testRuntimeOnly(libs.h2)
 }
+
+tasks.test { finalizedBy(tasks.jacocoTestReport) }
+
+tasks.jacocoTestReport { reports { xml.required = true } }
 
 ktfmt { googleStyle() }
 
