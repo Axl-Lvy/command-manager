@@ -1,11 +1,11 @@
 package fr.axl.lvy.client
 
+import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.contact.Contact
 import fr.axl.lvy.user.User
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
-import java.time.Instant
 
 @Entity
 @Table(name = "clients")
@@ -14,12 +14,7 @@ class Client(
   @Column(name = "client_code", nullable = false, unique = true, length = 20)
   var clientCode: String,
   @NotBlank @Column(nullable = false) var name: String,
-) {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  var id: Long? = null
-    private set
-
+) : SoftDeletableEntity() {
   @Enumerated(EnumType.STRING) @Column(nullable = false) var type: ClientType = ClientType.COMPANY
 
   @Enumerated(EnumType.STRING) @Column(nullable = false) var role: ClientRole = ClientRole.CLIENT
@@ -56,51 +51,9 @@ class Client(
   @OneToMany(mappedBy = "client", cascade = [CascadeType.ALL], orphanRemoval = true)
   var contacts: MutableList<Contact> = mutableListOf()
 
-  @Column(name = "created_at", nullable = false, updatable = false)
-  var createdAt: Instant? = null
-    private set
-
-  @Column(name = "updated_at", nullable = false)
-  var updatedAt: Instant? = null
-    private set
-
-  @Column(name = "deleted_at")
-  var deletedAt: Instant? = null
-    private set
-
-  @PrePersist
-  fun prePersist() {
-    createdAt = Instant.now()
-    updatedAt = Instant.now()
-  }
-
-  @PreUpdate
-  fun preUpdate() {
-    updatedAt = Instant.now()
-  }
-
-  fun isDeleted(): Boolean = deletedAt != null
-
-  fun softDelete() {
-    deletedAt = Instant.now()
-  }
-
-  fun restore() {
-    deletedAt = null
-  }
-
   fun isClient(): Boolean = role == ClientRole.CLIENT || role == ClientRole.BOTH
 
   fun isProducer(): Boolean = role == ClientRole.PRODUCER || role == ClientRole.BOTH
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other == null || !javaClass.isAssignableFrom(other.javaClass)) return false
-    other as Client
-    return id != null && id == other.id
-  }
-
-  override fun hashCode(): Int = javaClass.hashCode()
 
   enum class ClientType {
     COMPANY,

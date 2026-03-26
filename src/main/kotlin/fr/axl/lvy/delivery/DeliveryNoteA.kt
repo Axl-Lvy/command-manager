@@ -1,10 +1,10 @@
 package fr.axl.lvy.delivery
 
+import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.order.OrderA
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
-import java.time.Instant
 import java.time.LocalDate
 
 @Entity
@@ -19,12 +19,7 @@ class DeliveryNoteA(
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "client_id", nullable = false)
   var client: Client,
-) {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  var id: Long? = null
-    private set
-
+) : SoftDeletableEntity() {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   var status: DeliveryNoteAStatus = DeliveryNoteAStatus.PREPARED
@@ -46,48 +41,6 @@ class DeliveryNoteA(
   @Column(name = "signature_date") var signatureDate: LocalDate? = null
 
   @Column(columnDefinition = "TEXT") var observations: String? = null
-
-  @Column(name = "created_at", nullable = false, updatable = false)
-  var createdAt: Instant? = null
-    private set
-
-  @Column(name = "updated_at", nullable = false)
-  var updatedAt: Instant? = null
-    private set
-
-  @Column(name = "deleted_at")
-  var deletedAt: Instant? = null
-    private set
-
-  @PrePersist
-  fun prePersist() {
-    createdAt = Instant.now()
-    updatedAt = Instant.now()
-  }
-
-  @PreUpdate
-  fun preUpdate() {
-    updatedAt = Instant.now()
-  }
-
-  fun isDeleted(): Boolean = deletedAt != null
-
-  fun softDelete() {
-    deletedAt = Instant.now()
-  }
-
-  fun restore() {
-    deletedAt = null
-  }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other == null || !javaClass.isAssignableFrom(other.javaClass)) return false
-    other as DeliveryNoteA
-    return id != null && id == other.id
-  }
-
-  override fun hashCode(): Int = javaClass.hashCode()
 
   enum class DeliveryNoteAStatus {
     PREPARED,
