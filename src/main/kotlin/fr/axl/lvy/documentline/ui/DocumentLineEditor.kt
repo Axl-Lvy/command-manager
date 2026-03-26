@@ -4,6 +4,7 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.grid.Grid
+import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import fr.axl.lvy.documentline.DocumentLine
@@ -12,8 +13,8 @@ import fr.axl.lvy.product.ProductService
 import java.math.BigDecimal
 
 class DocumentLineEditor(
-  private val productService: ProductService,
-  private val documentType: DocumentLine.DocumentType,
+    private val productService: ProductService,
+    private val documentType: DocumentLine.DocumentType,
 ) : VerticalLayout() {
 
   private val lines = mutableListOf<DocumentLine>()
@@ -32,21 +33,21 @@ class DocumentLineEditor(
     grid.addColumn(DocumentLine::vatRate).setHeader("TVA %").setAutoWidth(true)
     grid.addColumn(DocumentLine::lineTotalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid
-      .addComponentColumn { line ->
-        val deleteBtn =
-          Button("✕") {
-            lines.remove(line)
-            grid.setItems(lines)
-          }
-        deleteBtn.addThemeVariants(
-          ButtonVariant.LUMO_SMALL,
-          ButtonVariant.LUMO_ERROR,
-          ButtonVariant.LUMO_TERTIARY,
-        )
-        deleteBtn
-      }
-      .setHeader("")
-      .setAutoWidth(true)
+        .addComponentColumn { line ->
+          val deleteBtn =
+              Button("✕") {
+                lines.remove(line)
+                grid.setItems(lines)
+              }
+          deleteBtn.addThemeVariants(
+              ButtonVariant.LUMO_SMALL,
+              ButtonVariant.LUMO_ERROR,
+              ButtonVariant.LUMO_TERTIARY,
+          )
+          deleteBtn
+        }
+        .setHeader("")
+        .setAutoWidth(true)
     grid.setHeight("250px")
 
     val fromProductCombo = ComboBox<Product>("Ajouter depuis produit")
@@ -64,7 +65,7 @@ class DocumentLineEditor(
 
     val toolbar = HorizontalLayout(fromProductCombo, addFreeLineBtn)
     toolbar.setWidthFull()
-    toolbar.setAlignItems(Alignment.BASELINE)
+    toolbar.alignItems = FlexComponent.Alignment.BASELINE
     toolbar.setFlexGrow(1.0, fromProductCombo)
 
     add(toolbar, grid)

@@ -36,7 +36,10 @@ dependencies {
   testRuntimeOnly(libs.h2)
 }
 
-tasks.test { finalizedBy(tasks.jacocoTestReport) }
+tasks.test {
+  useJUnitPlatform()
+  finalizedBy(tasks.jacocoTestReport)
+}
 
 tasks.jacocoTestReport { reports { xml.required = true } }
 
