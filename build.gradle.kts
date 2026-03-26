@@ -1,11 +1,12 @@
 plugins {
-  id("org.springframework.boot") version "4.0.3"
-  id("io.spring.dependency-management") version "1.1.7"
-  kotlin("jvm") version "2.1.0"
-  kotlin("plugin.spring") version "2.1.0"
-  kotlin("plugin.jpa") version "2.1.0"
-  id("com.vaadin") version "25.0.7"
-  id("com.ncorti.ktfmt.gradle") version "0.22.0"
+  alias(libs.plugins.spring.boot)
+  alias(libs.plugins.spring.dependency.management)
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.kotlin.spring)
+  alias(libs.plugins.kotlin.jpa)
+  alias(libs.plugins.vaadin)
+  alias(libs.plugins.ktfmt)
+  alias(libs.plugins.sonarqube)
 }
 
 group = "fr.axl.lvy"
@@ -19,19 +20,27 @@ repositories {
   maven { url = uri("https://maven.vaadin.com/vaadin-addons") }
 }
 
-dependencyManagement { imports { mavenBom("com.vaadin:vaadin-bom:25.0.7") } }
+dependencyManagement { imports { mavenBom(libs.vaadin.bom.get().toString()) } }
 
 dependencies {
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
-  implementation("com.vaadin:vaadin")
-  developmentOnly("com.vaadin:vaadin-dev")
-  implementation("com.vaadin:vaadin-spring-boot-starter")
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-  implementation("org.springframework.boot:spring-boot-starter-validation")
-  runtimeOnly("com.mysql:mysql-connector-j")
-  testImplementation("org.springframework.boot:spring-boot-starter-test")
-  testRuntimeOnly("com.h2database:h2")
+  implementation(libs.vaadin)
+  developmentOnly(libs.vaadin.dev)
+  implementation(libs.vaadin.spring.boot.starter)
+  implementation(libs.spring.boot.starter.data.jpa)
+  implementation(libs.spring.boot.starter.validation)
+  runtimeOnly(libs.mysql.connector)
+  testImplementation(libs.spring.boot.starter.test)
+  testRuntimeOnly(libs.h2)
 }
 
 ktfmt { googleStyle() }
+
+sonar {
+  properties {
+    property("sonar.projectKey", "Axl-Lvy_command-manager")
+    property("sonar.organization", "axl-lvy")
+    property("sonar.host.url", "https://sonarcloud.io")
+  }
+}
