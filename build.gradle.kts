@@ -51,5 +51,6 @@ sonar {
     property("sonar.projectKey", "Axl-Lvy_command-manager")
     property("sonar.organization", "axl-lvy")
     property("sonar.host.url", "https://sonarcloud.io")
+    property("sonar.exclusions", "**/ui/**")
   }
 }
