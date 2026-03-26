@@ -41,6 +41,7 @@ jobs:
           path: |
             build/reports/jacoco/test/jacocoTestReport.xml
             build/test-results/test/*.xml
+          retention-days: 1
 
   publish-test-results:
     name: Publish test results
