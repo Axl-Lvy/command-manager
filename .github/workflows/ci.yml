@@ -59,7 +59,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: test-reports
-          path: build
+          path: test-reports
       - uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: build/test-results/test/*.xml
+          files: test-reports/**/*.xml
