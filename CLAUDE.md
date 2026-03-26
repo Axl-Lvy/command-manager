@@ -5,39 +5,36 @@ This file provides guidance when working with code in this repository.
 ## Technology Stack
 
 This is a Vaadin application built with:
-- Java (with Lombok)
+- Kotlin
 - Spring Boot
 - Spring Data JPA with H2 database
-- Maven build system
+- Gradle build system
 
 ## Coding Conventions
 
-- **All variables and fields must be `final` whenever possible.** Only omit `final` when the variable genuinely needs to be reassigned.
-- **All method and constructor arguments must be `final`.**
-- Entities use Lombok (`@Getter`, `@Setter`, `@NoArgsConstructor`) with protected ID setters.
+- Entities use Kotlin properties (`var`/`val`) with `private set` for computed/readonly fields.
 - Constructor injection throughout (no `@Autowired` on fields).
 
 ## Development Commands
 
 ### Running the Application
 ```bash
-./mvnw                           # Start in development mode (default goal: spring-boot:run)
-./mvnw spring-boot:run           # Explicit development mode
+./gradlew bootRun                # Start in development mode
 ```
 
 The application will be available at http://localhost:8080
 
 ### Building for Production
 ```bash
-./mvnw -Pproduction package      # Build production JAR
-docker build -t my-application:latest .  # Build Docker image
+./gradlew bootJar -Pvaadin.productionMode=true  # Build production JAR
+docker build -t my-application:latest .          # Build Docker image
 ```
 
 ### Testing
 ```bash
-./mvnw test                      # Run all tests
-./mvnw test -Dtest=OrderAServiceTest  # Run a single test class
-./mvnw test -Dtest=OrderAServiceTest#someTestMethod  # Run a single test method
+./gradlew test                                                        # Run all tests
+./gradlew test --tests "fr.axl.lvy.order.OrderAServiceTest"           # Run a single test class
+./gradlew test --tests "fr.axl.lvy.order.OrderAServiceTest.someTest"  # Run a single test method
 ```
 
 ## Architecture
@@ -51,40 +48,40 @@ This project follows a **feature-based package structure** rather than tradition
   - `base.ui.ViewToolbar`: Reusable toolbar component for views
 
 - **`fr.axl.lvy.client`**: Client/supplier management
-  - `Client.java`: Entity (COMPANY/INDIVIDUAL, roles: CLIENT/PRODUCER/BOTH, multi-company visibility)
-  - `client.contact.Contact.java`: Contact person entity (roles: PRIMARY/BILLING/TECHNICAL/OTHER)
-  - `ClientRepository.java`, `ContactRepository.java`, `ClientService.java`
-  - `ui.ClientListView.java`
+  - `Client.kt`: Entity (COMPANY/INDIVIDUAL, roles: CLIENT/PRODUCER/BOTH, multi-company visibility)
+  - `client.contact.Contact.kt`: Contact person entity (roles: PRIMARY/BILLING/TECHNICAL/OTHER)
+  - `ClientRepository.kt`, `ContactRepository.kt`, `ClientService.kt`
+  - `ui.ClientListView.kt`
 
 - **`fr.axl.lvy.product`**: Product catalog
-  - `Product.java`: Entity (types: PRODUCT/SERVICE, MTO flag, selling/purchase prices)
-  - `ProductRepository.java`, `ProductService.java`
-  - `ui.ProductListView.java`
+  - `Product.kt`: Entity (types: PRODUCT/SERVICE, MTO flag, selling/purchase prices)
+  - `ProductRepository.kt`, `ProductService.kt`
+  - `ui.ProductListView.kt`
 
 - **`fr.axl.lvy.quote`**: Quotations/estimates
-  - `Quote.java`: Entity with status workflow (DRAFT → SENT → ACCEPTED/REFUSED/EXPIRED)
-  - `QuoteRepository.java`, `QuoteService.java` (includes `convertToOrderA()`)
-  - `ui.QuoteListView.java`
+  - `Quote.kt`: Entity with status workflow (DRAFT → SENT → ACCEPTED/REFUSED/EXPIRED)
+  - `QuoteRepository.kt`, `QuoteService.kt` (includes `convertToOrderA()`)
+  - `ui.QuoteListView.kt`
 
 - **`fr.axl.lvy.order`**: Order management
-  - `OrderA.java`: Internal/retail order entity (CONFIRMED → IN_PRODUCTION → READY → DELIVERED → INVOICED)
-  - `OrderB.java`: Supplier/MTO order entity (SENT → CONFIRMED → IN_PRODUCTION → RECEIVED)
+  - `OrderA.kt`: Internal/retail order entity (CONFIRMED → IN_PRODUCTION → READY → DELIVERED → INVOICED)
+  - `OrderB.kt`: Supplier/MTO order entity (SENT → CONFIRMED → IN_PRODUCTION → RECEIVED)
   - Repositories, services, and UI views for both
 
 - **`fr.axl.lvy.documentline`**: Reusable line items shared across documents
-  - `DocumentLine.java`: Entity linked to documents via type (QUOTE/ORDER_A/ORDER_B/INVOICE_A/INVOICE_B) + documentId
-  - `DocumentLineRepository.java`
+  - `DocumentLine.kt`: Entity linked to documents via type (QUOTE/ORDER_A/ORDER_B/INVOICE_A/INVOICE_B) + documentId
+  - `DocumentLineRepository.kt`
 
 - **`fr.axl.lvy.delivery`**: Delivery notes
-  - `DeliveryNoteA.java`, `DeliveryNoteB.java`: Entities for customer and supplier deliveries
+  - `DeliveryNoteA.kt`, `DeliveryNoteB.kt`: Entities for customer and supplier deliveries
 
 - **`fr.axl.lvy.invoice`**: Invoices
-  - `InvoiceA.java`, `InvoiceB.java`: Entities for customer and supplier invoices
+  - `InvoiceA.kt`, `InvoiceB.kt`: Entities for customer and supplier invoices
 
 - **`fr.axl.lvy.user`**: System users
-  - `User.java`: Entity (roles: ADMIN/COLLABORATOR/ACCOUNTANT, multi-company: A/B/AB)
+  - `User.kt`: Entity (roles: ADMIN/COLLABORATOR/ACCOUNTANT, multi-company: A/B/AB)
 
-- **`Application.java`**: Main entry point, annotated with `@SpringBootApplication` and `@Theme("default")`
+- **`Application.kt`**: Main entry point, annotated with `@SpringBootApplication` and `@Theme("default")`
 
 ### Key Architecture Patterns
 
@@ -106,7 +103,7 @@ When creating a new feature:
 
 ## Vaadin-Specific Notes
 
-- **Server-side rendering**: UI components are Java classes extending Vaadin components
+- **Server-side rendering**: UI components are Kotlin classes extending Vaadin components
 - **Grid lazy loading**: Use `VaadinSpringDataHelpers.toSpringPageRequest(query)` for pagination
 - **Themes**: Located in `src/main/frontend/themes/default/`, based on Lumo theme
 - **Routing**: `@Route("")` for root path, `@Route("path")` for specific paths

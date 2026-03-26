@@ -1,0 +1,63 @@
+package fr.axl.lvy.order
+
+import java.time.LocalDate
+import java.util.Optional
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+
+@Service
+class OrderBService(private val orderBRepository: OrderBRepository) {
+  companion object {
+    private val ALLOWED_TRANSITIONS_FROM_SENT =
+      setOf(OrderB.OrderBStatus.CONFIRMED, OrderB.OrderBStatus.CANCELLED)
+    private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
+      setOf(OrderB.OrderBStatus.IN_PRODUCTION, OrderB.OrderBStatus.CANCELLED)
+    private val ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION =
+      setOf(OrderB.OrderBStatus.RECEIVED, OrderB.OrderBStatus.CANCELLED)
+  }
+
+  @Transactional(readOnly = true)
+  fun findAll(): List<OrderB> = orderBRepository.findByDeletedAtIsNull()
+
+  @Transactional(readOnly = true)
+  fun findById(id: Long): Optional<OrderB> = orderBRepository.findById(id)
+
+  @Transactional fun save(order: OrderB): OrderB = orderBRepository.save(order)
+
+  @Transactional
+  fun delete(id: Long) {
+    orderBRepository.findById(id).ifPresent { it.softDelete() }
+  }
+
+  @Transactional
+  fun changeStatus(order: OrderB, newStatus: OrderB.OrderBStatus): OrderB {
+    val allowed = getAllowedTransitions(order.status)
+    if (!allowed.contains(newStatus)) {
+      throw IllegalStateException("Cannot transition from ${order.status} to $newStatus")
+    }
+    order.status = newStatus
+    return orderBRepository.save(order)
+  }
+
+  @Transactional
+  fun markReceived(
+    order: OrderB,
+    receptionDate: LocalDate,
+    conforming: Boolean,
+    receptionReserve: String,
+  ): OrderB {
+    order.receptionDate = receptionDate
+    order.receptionConforming = conforming
+    order.receptionReserve = receptionReserve
+    order.status = OrderB.OrderBStatus.RECEIVED
+    return orderBRepository.save(order)
+  }
+
+  private fun getAllowedTransitions(current: OrderB.OrderBStatus): Set<OrderB.OrderBStatus> =
+    when (current) {
+      OrderB.OrderBStatus.SENT -> ALLOWED_TRANSITIONS_FROM_SENT
+      OrderB.OrderBStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
+      OrderB.OrderBStatus.IN_PRODUCTION -> ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION
+      else -> emptySet()
+    }
+}
