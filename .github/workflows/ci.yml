@@ -54,10 +54,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: test-reports
-          path: test-reports
+          path: build
       - uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: test-reports/build/test-results/test/*.xml
+          files: build/test-results/test/*.xml
 
   sonar:
     name: SonarCloud analysis
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: test-reports
-          path: build/reports/jacoco/test
+          path: build
       - run: ./gradlew sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
