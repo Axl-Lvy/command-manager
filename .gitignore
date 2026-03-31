@@ -10,6 +10,7 @@ build/
 .classpath
 *.iml
 .DS_Store
+.kotlin/
 
 # Application
 application-local.properties
