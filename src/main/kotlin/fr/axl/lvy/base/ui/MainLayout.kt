@@ -46,9 +46,9 @@ class MainLayout : AppLayout() {
   }
 
   private fun createSideNavItem(menuEntry: MenuEntry): SideNavItem =
-      if (menuEntry.icon() != null) {
-        SideNavItem(menuEntry.title(), menuEntry.path(), Icon(menuEntry.icon()))
-      } else {
-        SideNavItem(menuEntry.title(), menuEntry.path())
-      }
+    if (menuEntry.icon() != null) {
+      SideNavItem(menuEntry.title(), menuEntry.path(), Icon(menuEntry.icon()))
+    } else {
+      SideNavItem(menuEntry.title(), menuEntry.path())
+    }
 }

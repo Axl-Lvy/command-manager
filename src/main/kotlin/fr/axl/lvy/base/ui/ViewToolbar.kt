@@ -9,7 +9,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.theme.lumo.LumoUtility
 
 class ViewToolbar(viewTitle: String?, vararg components: Component) :
-    Composite<HorizontalLayout>() {
+  Composite<HorizontalLayout>() {
 
   init {
     val layout = content
@@ -23,9 +23,9 @@ class ViewToolbar(viewTitle: String?, vararg components: Component) :
 
     val title = H1(viewTitle)
     title.addClassNames(
-        LumoUtility.FontSize.XLARGE,
-        LumoUtility.Margin.NONE,
-        LumoUtility.FontWeight.LIGHT,
+      LumoUtility.FontSize.XLARGE,
+      LumoUtility.Margin.NONE,
+      LumoUtility.FontWeight.LIGHT,
     )
 
     val toggleAndTitle = HorizontalLayout(drawerToggle, title)
