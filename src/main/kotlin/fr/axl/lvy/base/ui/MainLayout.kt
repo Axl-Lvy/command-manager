@@ -17,6 +17,7 @@ import com.vaadin.flow.server.menu.MenuEntry
 import com.vaadin.flow.theme.lumo.LumoUtility
 
 @Layout
+@Suppress("unused")
 class MainLayout : AppLayout() {
 
   init {
@@ -33,7 +34,7 @@ class MainLayout : AppLayout() {
     appName.style.setFontWeight(Style.FontWeight.BOLD)
 
     val header = VerticalLayout(appLogo, appName)
-    header.setAlignItems(FlexComponent.Alignment.CENTER)
+    header.alignItems = FlexComponent.Alignment.CENTER
     return header
   }
 
@@ -45,9 +46,9 @@ class MainLayout : AppLayout() {
   }
 
   private fun createSideNavItem(menuEntry: MenuEntry): SideNavItem =
-    if (menuEntry.icon() != null) {
-      SideNavItem(menuEntry.title(), menuEntry.path(), Icon(menuEntry.icon()))
-    } else {
-      SideNavItem(menuEntry.title(), menuEntry.path())
-    }
+      if (menuEntry.icon() != null) {
+        SideNavItem(menuEntry.title(), menuEntry.path(), Icon(menuEntry.icon()))
+      } else {
+        SideNavItem(menuEntry.title(), menuEntry.path())
+      }
 }

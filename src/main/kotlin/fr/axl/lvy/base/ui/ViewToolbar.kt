@@ -9,12 +9,12 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.theme.lumo.LumoUtility
 
 class ViewToolbar(viewTitle: String?, vararg components: Component) :
-  Composite<HorizontalLayout>() {
+    Composite<HorizontalLayout>() {
 
   init {
     val layout = content
     layout.isPadding = true
-    layout.setWrap(true)
+    layout.isWrap = true
     layout.setWidthFull()
     layout.addClassName(LumoUtility.Border.BOTTOM)
 
@@ -23,13 +23,13 @@ class ViewToolbar(viewTitle: String?, vararg components: Component) :
 
     val title = H1(viewTitle)
     title.addClassNames(
-      LumoUtility.FontSize.XLARGE,
-      LumoUtility.Margin.NONE,
-      LumoUtility.FontWeight.LIGHT,
+        LumoUtility.FontSize.XLARGE,
+        LumoUtility.Margin.NONE,
+        LumoUtility.FontWeight.LIGHT,
     )
 
     val toggleAndTitle = HorizontalLayout(drawerToggle, title)
-    toggleAndTitle.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER)
+    toggleAndTitle.defaultVerticalComponentAlignment = FlexComponent.Alignment.CENTER
     layout.add(toggleAndTitle)
     layout.setFlexGrow(1.0, toggleAndTitle)
 
@@ -43,7 +43,7 @@ class ViewToolbar(viewTitle: String?, vararg components: Component) :
   companion object {
     fun group(vararg components: Component): Component {
       val group = HorizontalLayout(*components)
-      group.setWrap(true)
+      group.isWrap = true
       return group
     }
   }
