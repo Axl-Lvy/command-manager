@@ -5,7 +5,6 @@ import fr.axl.lvy.client.Client
 import fr.axl.lvy.delivery.DeliveryNoteA
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.invoice.InvoiceA
-import fr.axl.lvy.quote.Quote
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
@@ -26,8 +25,6 @@ class OrderA(
     private val EDITABLE =
       setOf(OrderAStatus.CONFIRMED, OrderAStatus.IN_PRODUCTION, OrderAStatus.READY)
   }
-
-  @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "quote_id") var quote: Quote? = null
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "source_order_id")

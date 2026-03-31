@@ -9,7 +9,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_computes_line_total_without_discount() {
-    val line = DocumentLine(DocumentLine.DocumentType.QUOTE, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
     line.quantity = BigDecimal("10")
     line.unitPriceExclTax = BigDecimal("25.00")
     line.discountPercent = BigDecimal.ZERO
@@ -39,7 +39,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_rounds_to_two_decimals() {
-    val line = DocumentLine(DocumentLine.DocumentType.QUOTE, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
     line.quantity = BigDecimal("3")
     line.unitPriceExclTax = BigDecimal("10.33")
     line.discountPercent = BigDecimal.ZERO
@@ -60,7 +60,7 @@ class DocumentLineTest {
     product.madeIn = "France"
     product.clientProductCode = "CL-BEAM-01"
 
-    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.QUOTE, 1L, product)
+    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 1L, product)
 
     assertThat(line.designation).isEqualTo("Steel Beam")
     assertThat(line.unitPriceExclTax).isEqualByComparingTo("150.00")
@@ -75,7 +75,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_with_zero_quantity_gives_zero() {
-    val line = DocumentLine(DocumentLine.DocumentType.QUOTE, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
     line.quantity = BigDecimal.ZERO
     line.unitPriceExclTax = BigDecimal("100.00")
     line.discountPercent = BigDecimal.ZERO
@@ -89,7 +89,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_with_100_percent_discount_gives_zero() {
-    val line = DocumentLine(DocumentLine.DocumentType.QUOTE, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
     line.quantity = BigDecimal("5")
     line.unitPriceExclTax = BigDecimal("200.00")
     line.discountPercent = BigDecimal("100.00")

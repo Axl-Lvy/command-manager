@@ -84,7 +84,6 @@ class DocumentLine(
   }
 
   enum class DocumentType {
-    QUOTE,
     ORDER_A,
     ORDER_B,
     INVOICE_A,
