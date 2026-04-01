@@ -90,6 +90,33 @@ class DocumentLineTest {
   }
 
   @Test
+  fun fromProduct_without_client_sets_null_clientProductCode() {
+    val product = Product("REF-002", "Copper Wire")
+    product.sellingPriceExclTax = BigDecimal("50.00")
+    product.unit = "m"
+    product.hsCode = "7408.11"
+    product.madeIn = "Germany"
+
+    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.INVOICE_A, 2L, product)
+
+    assertThat(line.clientProductCode).isNull()
+    assertThat(line.designation).isEqualTo("Copper Wire")
+    assertThat(line.unitPriceExclTax).isEqualByComparingTo("50.00")
+    assertThat(line.lineTotalExclTax).isEqualByComparingTo("50.00")
+  }
+
+  @Test
+  fun fromProduct_with_client_not_having_code_sets_null_clientProductCode() {
+    val client = Client("CLI-99", "Unknown Client")
+    val product = Product("REF-003", "Bolt")
+    product.sellingPriceExclTax = BigDecimal("2.00")
+
+    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_B, 3L, product, client)
+
+    assertThat(line.clientProductCode).isNull()
+  }
+
+  @Test
   fun recalculate_with_100_percent_discount_gives_zero() {
     val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
     line.quantity = BigDecimal("5")

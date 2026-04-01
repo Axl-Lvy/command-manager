@@ -101,6 +101,100 @@ class ProductServiceTest {
   }
 
   @Test
+  fun findDetailedById_returns_product_with_client_codes() {
+    val client = createClient("CLI-DET")
+    val product = Product(name = "Detailed Product")
+    product.replaceClientProductCodes(listOf(client to "DET-001"))
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findDetailedById(product.id!!)
+    assertThat(found).isPresent
+    assertThat(found.get().clientProductCodes).hasSize(1)
+    assertThat(found.get().clientProductCodes[0].code).isEqualTo("DET-001")
+  }
+
+  @Test
+  fun findDetailedById_returns_empty_for_unknown_id() {
+    val found = productService.findDetailedById(-999L)
+    assertThat(found).isEmpty
+  }
+
+  @Test
+  fun save_generates_incremented_reference() {
+    val first = Product(name = "First")
+    productService.save(first)
+    val firstRef = first.reference
+
+    val second = Product(name = "Second")
+    productService.save(second)
+
+    val firstNum = firstRef.removePrefix("P").toInt()
+    val secondNum = second.reference.removePrefix("P").toInt()
+    assertThat(secondNum).isEqualTo(firstNum + 1)
+  }
+
+  @Test
+  fun save_keeps_explicit_reference() {
+    val product = Product("CUSTOM-REF", "Custom")
+    productService.save(product)
+
+    assertThat(product.reference).isEqualTo("CUSTOM-REF")
+  }
+
+  @Test
+  fun delete_nonexistent_id_does_not_throw() {
+    productService.delete(-999L)
+    // No exception expected
+  }
+
+  @Test
+  fun replaceClientProductCodes_clears_previous_codes() {
+    val clientA = createClient("CLI-R01")
+    val clientB = createClient("CLI-R02")
+    val product = Product(name = "Replaceable")
+    product.replaceClientProductCodes(listOf(clientA to "OLD-001"))
+    productService.save(product)
+    productRepository.flush()
+
+    product.replaceClientProductCodes(listOf(clientB to "NEW-002"))
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findById(product.id!!).orElseThrow()
+    assertThat(found.findClientProductCode(clientA)).isNull()
+    assertThat(found.findClientProductCode(clientB)).isEqualTo("NEW-002")
+  }
+
+  @Test
+  fun findClientProductCode_returns_null_for_null_client() {
+    val product = Product("REF-NUL", "No Client")
+    product.replaceClientProductCodes(listOf(createClient("CLI-X") to "X-001"))
+    productService.save(product)
+
+    assertThat(product.findClientProductCode(null)).isNull()
+  }
+
+  @Test
+  fun validateOnUpdate_resets_mto_for_service() {
+    val product = Product("REF-UPD", "Service Update")
+    product.type = Product.ProductType.PRODUCT
+    product.mto = true
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findById(product.id!!).orElseThrow()
+    assertThat(found.mto).isTrue
+
+    found.type = Product.ProductType.SERVICE
+    productService.save(found)
+    productRepository.flush()
+
+    val updated = productService.findById(product.id!!).orElseThrow()
+    assertThat(updated.mto).isFalse
+  }
+
+  @Test
   fun save_persists_client_product_codes_per_client() {
     val clientA = createClient("CLI-P01")
     val clientB = createClient("CLI-P02")
