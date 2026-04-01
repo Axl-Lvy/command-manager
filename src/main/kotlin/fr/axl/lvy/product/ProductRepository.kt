@@ -8,5 +8,16 @@ interface ProductRepository : JpaRepository<Product, Long> {
 
   fun findByDeletedAtIsNull(): List<Product>
 
+  @Query(
+    """
+      SELECT DISTINCT p
+      FROM Product p
+      LEFT JOIN FETCH p.clientProductCodes c
+      LEFT JOIN FETCH c.client
+      WHERE p.id = :id
+    """
+  )
+  fun findDetailedById(id: Long): Product?
+
   @Query("SELECT p.reference FROM Product p") fun findAllReferences(): List<String>
 }

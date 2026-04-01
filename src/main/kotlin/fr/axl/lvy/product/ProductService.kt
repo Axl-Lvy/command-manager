@@ -16,6 +16,9 @@ class ProductService(private val productRepository: ProductRepository) {
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<Product> = productRepository.findById(id)
 
+  @Transactional(readOnly = true)
+  fun findDetailedById(id: Long): Optional<Product> = Optional.ofNullable(productRepository.findDetailedById(id))
+
   @Transactional
   fun save(product: Product): Product {
     if (product.reference.isBlank()) {
