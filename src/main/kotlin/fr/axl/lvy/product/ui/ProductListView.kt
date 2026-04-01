@@ -4,19 +4,24 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.dom.Style
 import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
 
 @Route("produits")
 @PageTitle("Produits")
 @Menu(order = 0.0, icon = "vaadin:package", title = "Produits")
-internal class ProductListView(private val productService: ProductService) : VerticalLayout() {
+internal class ProductListView(
+  private val productService: ProductService,
+  private val clientService: ClientService,
+) : VerticalLayout() {
 
   private val grid: Grid<Product>
 
@@ -25,12 +30,34 @@ internal class ProductListView(private val productService: ProductService) : Ver
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
-    grid.addColumn(Product::reference).setHeader("Référence").setAutoWidth(true)
-    grid.addColumn(Product::designation).setHeader("Désignation").setFlexGrow(1)
+    grid.addColumn(Product::reference).setHeader("ID").setAutoWidth(true)
+    grid.addColumn(Product::name).setHeader("Nom").setFlexGrow(1)
     grid.addColumn { it.type.name }.setHeader("Type").setAutoWidth(true)
     grid.addColumn(Product::sellingPriceExclTax).setHeader("Prix vente HT").setAutoWidth(true)
     grid.addColumn(Product::purchasePriceExclTax).setHeader("Prix achat HT").setAutoWidth(true)
     grid.addColumn { if (it.active) "Actif" else "Inactif" }.setHeader("Statut").setAutoWidth(true)
+    grid
+      .addComponentColumn { product ->
+        val editButton = Button("Modifier") { openForm(product) }
+        editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+
+        val archiveButton =
+          Button("Archiver") {
+            product.active = false
+            productService.save(product)
+            refreshGrid()
+          }
+        archiveButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY)
+        archiveButton.isEnabled = product.active
+
+        HorizontalLayout(editButton, archiveButton).apply {
+          isPadding = false
+          isSpacing = true
+        }
+      }
+      .setHeader("Actions")
+      .setAutoWidth(true)
+      .setFlexGrow(0)
     grid.setEmptyStateText("Aucun produit")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
@@ -48,7 +75,8 @@ internal class ProductListView(private val productService: ProductService) : Ver
   }
 
   private fun openForm(product: Product?) {
-    ProductFormDialog(productService, product, this::refreshGrid).open()
+    val loadedProduct = product?.id?.let { productService.findDetailedById(it).orElse(null) }
+    ProductFormDialog(productService, clientService, loadedProduct, this::refreshGrid).open()
   }
 
   private fun refreshGrid() {

@@ -72,7 +72,8 @@ internal class OrderAFormDialog(
     form.add(notes, 3)
     form.add(conditions, 3)
 
-    lineEditor = DocumentLineEditor(productService, DocumentLine.DocumentType.ORDER_A)
+    lineEditor =
+      DocumentLineEditor(productService, DocumentLine.DocumentType.ORDER_A) { clientCombo.value }
 
     val content = VerticalLayout(form, lineEditor)
     content.isPadding = false

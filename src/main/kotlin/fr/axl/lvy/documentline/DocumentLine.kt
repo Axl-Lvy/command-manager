@@ -1,6 +1,7 @@
 package fr.axl.lvy.documentline
 
 import fr.axl.lvy.base.BaseEntity
+import fr.axl.lvy.client.Client
 import fr.axl.lvy.product.Product
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
@@ -67,12 +68,17 @@ class DocumentLine(
   }
 
   companion object {
-    fun fromProduct(documentType: DocumentType, documentId: Long, product: Product): DocumentLine {
-      val line = DocumentLine(documentType, documentId, product.designation)
+    fun fromProduct(
+      documentType: DocumentType,
+      documentId: Long,
+      product: Product,
+      client: Client? = null,
+    ): DocumentLine {
+      val line = DocumentLine(documentType, documentId, product.name)
       line.product = product
       line.hsCode = product.hsCode
       line.madeIn = product.madeIn
-      line.clientProductCode = product.clientProductCode
+      line.clientProductCode = product.findClientProductCode(client)
       line.unit = product.unit
       line.unitPriceExclTax = product.sellingPriceExclTax
       line.quantity = BigDecimal.ONE
@@ -84,7 +90,6 @@ class DocumentLine(
   }
 
   enum class DocumentType {
-    QUOTE,
     ORDER_A,
     ORDER_B,
     INVOICE_A,
