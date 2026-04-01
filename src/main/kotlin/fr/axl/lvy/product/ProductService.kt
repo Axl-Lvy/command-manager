@@ -16,10 +16,33 @@ class ProductService(private val productRepository: ProductRepository) {
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<Product> = productRepository.findById(id)
 
-  @Transactional fun save(product: Product): Product = productRepository.save(product)
+  @Transactional
+  fun save(product: Product): Product {
+    if (product.reference.isBlank()) {
+      product.reference = generateNextReference()
+    }
+    return productRepository.save(product)
+  }
 
   @Transactional
   fun delete(id: Long) {
     productRepository.findById(id).ifPresent { it.softDelete() }
+  }
+
+  private fun generateNextReference(): String {
+    val nextNumber =
+      productRepository
+        .findAllReferences()
+        .mapNotNull { reference ->
+          REFERENCE_REGEX.matchEntire(reference)?.groupValues?.get(1)?.toIntOrNull()
+        }
+        .maxOrNull()
+        ?.plus(1) ?: 1
+    return REFERENCE_PREFIX + nextNumber.toString().padStart(6, '0')
+  }
+
+  companion object {
+    private const val REFERENCE_PREFIX = "P"
+    private val REFERENCE_REGEX = Regex("""P(\d{6})""")
   }
 }

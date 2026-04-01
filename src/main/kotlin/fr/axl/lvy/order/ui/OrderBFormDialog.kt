@@ -54,7 +54,10 @@ internal class OrderBFormDialog(
     form.add(orderDate, expectedDeliveryDate)
     form.add(notes, 2)
 
-    lineEditor = DocumentLineEditor(productService, DocumentLine.DocumentType.ORDER_B)
+    lineEditor =
+      DocumentLineEditor(productService, DocumentLine.DocumentType.ORDER_B) {
+        orderACombo.value?.client
+      }
 
     val content = VerticalLayout(form, lineEditor)
     content.isPadding = false

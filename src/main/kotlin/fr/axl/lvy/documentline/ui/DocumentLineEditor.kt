@@ -7,6 +7,7 @@ import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
+import fr.axl.lvy.client.Client
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
@@ -15,6 +16,7 @@ import java.math.BigDecimal
 class DocumentLineEditor(
   private val productService: ProductService,
   private val documentType: DocumentLine.DocumentType,
+  private val clientSupplier: (() -> Client?)? = null,
 ) : VerticalLayout() {
 
   private val lines = mutableListOf<DocumentLine>()
@@ -52,7 +54,7 @@ class DocumentLineEditor(
 
     val fromProductCombo = ComboBox<Product>("Ajouter depuis produit")
     fromProductCombo.setItems(productService.findActive())
-    fromProductCombo.setItemLabelGenerator { "${it.reference} - ${it.designation}" }
+    fromProductCombo.setItemLabelGenerator { "${it.reference} - ${it.name}" }
     fromProductCombo.setWidthFull()
     fromProductCombo.addValueChangeListener { e ->
       if (e.value != null) {
@@ -72,7 +74,7 @@ class DocumentLineEditor(
   }
 
   private fun addLineFromProduct(product: Product) {
-    val line = DocumentLine.fromProduct(documentType, 0L, product)
+    val line = DocumentLine.fromProduct(documentType, 0L, product, clientSupplier?.invoke())
     line.position = lines.size
     lines.add(line)
     grid.setItems(lines)

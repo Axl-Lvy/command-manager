@@ -1,6 +1,7 @@
 package fr.axl.lvy.product
 
 import fr.axl.lvy.base.SoftDeletableEntity
+import fr.axl.lvy.client.Client
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
@@ -8,10 +9,10 @@ import java.math.BigDecimal
 @Entity
 @Table(name = "products")
 class Product(
-  @NotBlank @Column(nullable = false, unique = true, length = 50) var reference: String,
-  @NotBlank @Column(nullable = false) var designation: String,
+  @NotBlank @Column(nullable = false, unique = true, length = 50) var reference: String = "",
+  @NotBlank @Column(name = "designation", nullable = false) var name: String,
 ) : SoftDeletableEntity() {
-  @Column(columnDefinition = "TEXT") var description: String? = null
+  @Column(name = "description", columnDefinition = "TEXT") var specifications: String? = null
 
   @Enumerated(EnumType.STRING) @Column(nullable = false) var type: ProductType = ProductType.PRODUCT
 
@@ -32,9 +33,23 @@ class Product(
 
   @Column(name = "made_in", length = 100) var madeIn: String? = null
 
-  @Column(name = "client_product_code", length = 100) var clientProductCode: String? = null
-
   var active: Boolean = true
+
+  @OneToMany(mappedBy = "product", cascade = [CascadeType.ALL], orphanRemoval = true)
+  var clientProductCodes: MutableList<ProductClientCode> = mutableListOf()
+
+  fun replaceClientProductCodes(entries: List<Pair<Client, String>>) {
+    clientProductCodes.clear()
+    entries.forEach { (client, code) ->
+      val clientProductCode = ProductClientCode(this, client, code)
+      clientProductCodes.add(clientProductCode)
+    }
+  }
+
+  fun findClientProductCode(client: Client?): String? =
+    client?.let { currentClient ->
+      clientProductCodes.firstOrNull { it.client == currentClient }?.code
+    }
 
   @PrePersist
   fun validateOnPersist() {

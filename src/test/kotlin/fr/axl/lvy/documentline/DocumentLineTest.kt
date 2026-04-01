@@ -1,5 +1,6 @@
 package fr.axl.lvy.documentline
 
+import fr.axl.lvy.client.Client
 import fr.axl.lvy.product.Product
 import java.math.BigDecimal
 import org.assertj.core.api.Assertions.assertThat
@@ -53,14 +54,15 @@ class DocumentLineTest {
 
   @Test
   fun fromProduct_creates_line_with_product_data() {
+    val client = Client("CLI-01", "Client 01")
     val product = Product("REF-001", "Steel Beam")
     product.sellingPriceExclTax = BigDecimal("150.00")
     product.unit = "kg"
     product.hsCode = "7216.10"
     product.madeIn = "France"
-    product.clientProductCode = "CL-BEAM-01"
+    product.replaceClientProductCodes(listOf(client to "CL-BEAM-01"))
 
-    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 1L, product)
+    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 1L, product, client)
 
     assertThat(line.designation).isEqualTo("Steel Beam")
     assertThat(line.unitPriceExclTax).isEqualByComparingTo("150.00")

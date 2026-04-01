@@ -1,5 +1,7 @@
 package fr.axl.lvy.product
 
+import fr.axl.lvy.client.Client
+import fr.axl.lvy.client.ClientRepository
 import java.math.BigDecimal
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -13,10 +15,14 @@ class ProductServiceTest {
 
   @Autowired lateinit var productService: ProductService
   @Autowired lateinit var productRepository: ProductRepository
+  @Autowired lateinit var clientRepository: ClientRepository
+
+  private fun createClient(code: String): Client =
+    clientRepository.save(Client(code, "Client $code"))
 
   @Test
   fun save_and_retrieve_product() {
-    val product = Product("REF-001", "Steel Beam")
+    val product = Product(name = "Steel Beam")
     product.sellingPriceExclTax = BigDecimal("150.00")
     product.purchasePriceExclTax = BigDecimal("80.00")
     product.vatRate = BigDecimal("20.00")
@@ -25,7 +31,8 @@ class ProductServiceTest {
 
     val found = productService.findById(product.id!!)
     assertThat(found).isPresent
-    assertThat(found.get().designation).isEqualTo("Steel Beam")
+    assertThat(found.get().name).isEqualTo("Steel Beam")
+    assertThat(found.get().reference).matches("""P\d{6}""")
     assertThat(found.get().sellingPriceExclTax).isEqualByComparingTo("150.00")
   }
 
@@ -86,10 +93,25 @@ class ProductServiceTest {
 
   @Test
   fun product_has_timestamps_after_persist() {
-    val product = Product("REF-TS", "Timestamped")
+    val product = Product(name = "Timestamped")
     productService.save(product)
 
     assertThat(product.createdAt).isNotNull
     assertThat(product.updatedAt).isNotNull
+  }
+
+  @Test
+  fun save_persists_client_product_codes_per_client() {
+    val clientA = createClient("CLI-P01")
+    val clientB = createClient("CLI-P02")
+    val product = Product(name = "Beam")
+    product.replaceClientProductCodes(listOf(clientA to "A-001", clientB to "B-002"))
+
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findById(product.id!!).orElseThrow()
+    assertThat(found.findClientProductCode(clientA)).isEqualTo("A-001")
+    assertThat(found.findClientProductCode(clientB)).isEqualTo("B-002")
   }
 }
