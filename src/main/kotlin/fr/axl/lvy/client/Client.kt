@@ -12,7 +12,7 @@ import java.math.BigDecimal
 class Client(
   @NotBlank
   @Column(name = "client_code", nullable = false, unique = true, length = 20)
-  var clientCode: String,
+  var clientCode: String = "",
   @NotBlank @Column(nullable = false) var name: String,
 ) : SoftDeletableEntity() {
   @Enumerated(EnumType.STRING) @Column(nullable = false) var type: ClientType = ClientType.COMPANY

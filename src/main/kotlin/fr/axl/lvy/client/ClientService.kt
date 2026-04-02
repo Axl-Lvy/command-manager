@@ -25,10 +25,37 @@ class ClientService(private val clientRepository: ClientRepository) {
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<Client> = clientRepository.findById(id)
 
-  @Transactional fun save(client: Client): Client = clientRepository.save(client)
+  @Transactional(readOnly = true)
+  fun findDetailedById(id: Long): Optional<Client> =
+    Optional.ofNullable(clientRepository.findDetailedById(id))
+
+  @Transactional
+  fun save(client: Client): Client {
+    if (client.clientCode.isBlank()) {
+      client.clientCode = generateNextClientCode()
+    }
+    return clientRepository.save(client)
+  }
 
   @Transactional
   fun delete(id: Long) {
     clientRepository.findById(id).ifPresent { it.softDelete() }
+  }
+
+  private fun generateNextClientCode(): String {
+    val nextNumber =
+      clientRepository
+        .findAllClientCodes()
+        .mapNotNull { code ->
+          CLIENT_CODE_REGEX.matchEntire(code)?.groupValues?.get(1)?.toIntOrNull()
+        }
+        .maxOrNull()
+        ?.plus(1) ?: 1
+    return CLIENT_CODE_PREFIX + nextNumber.toString().padStart(6, '0')
+  }
+
+  companion object {
+    private const val CLIENT_CODE_PREFIX = "C"
+    private val CLIENT_CODE_REGEX = Regex("""C(\d{6})""")
   }
 }

@@ -30,7 +30,6 @@ internal class ProductListView(
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
-    grid.addColumn(Product::reference).setHeader("ID").setAutoWidth(true)
     grid.addColumn(Product::name).setHeader("Nom").setFlexGrow(1)
     grid.addColumn { it.type.name }.setHeader("Type").setAutoWidth(true)
     grid.addColumn(Product::sellingPriceExclTax).setHeader("Prix vente HT").setAutoWidth(true)

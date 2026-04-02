@@ -27,7 +27,6 @@ internal class ClientFormDialog(
   private val onSave: Runnable,
 ) : Dialog() {
 
-  private val clientCode = TextField("Code client")
   private val name = TextField("Nom")
   private val type = ComboBox<Client.ClientType>("Type")
   private val role = ComboBox<Client.ClientRole>("Rôle")
@@ -42,7 +41,7 @@ internal class ClientFormDialog(
   private val paymentDelay = IntegerField("Délai paiement (jours)")
   private val paymentMethod = TextField("Mode de paiement")
   private val defaultDiscount = BigDecimalField("Remise par défaut (%)")
-  private val status = ComboBox<Client.Status>("Statut")
+  private val statusToggle = Button()
   private val notes = TextArea("Notes")
 
   private val contacts = mutableListOf<Contact>()
@@ -64,21 +63,25 @@ internal class ClientFormDialog(
       }
     }
     visibleCompany.setItems(*User.Company.entries.toTypedArray())
-    status.setItems(*Client.Status.entries.toTypedArray())
-    status.setItemLabelGenerator { if (it == Client.Status.ACTIVE) "Actif" else "Inactif" }
+    statusToggle.addClickListener {
+      val currentStatus = statusToggle.element.getProperty("data-status")
+      val nextStatus =
+        if (currentStatus == Client.Status.ACTIVE.name) Client.Status.INACTIVE
+        else Client.Status.ACTIVE
+      updateStatusButton(nextStatus)
+    }
 
-    clientCode.isRequired = true
     name.isRequired = true
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
-    form.add(clientCode, name)
-    form.add(type, role)
-    form.add(visibleCompany, status)
-    form.add(email, phone)
-    form.add(website, siret)
-    form.add(vatNumber, paymentMethod)
-    form.add(paymentDelay, defaultDiscount)
+    form.add(name, type)
+    form.add(role, visibleCompany)
+    form.add(statusToggle, email)
+    form.add(phone, website)
+    form.add(siret, vatNumber)
+    form.add(paymentMethod, paymentDelay)
+    form.add(defaultDiscount)
     form.add(billingAddress, 2)
     form.add(shippingAddress, 2)
     form.add(notes, 2)
@@ -114,12 +117,11 @@ internal class ClientFormDialog(
       type.value = Client.ClientType.COMPANY
       role.value = Client.ClientRole.CLIENT
       visibleCompany.value = User.Company.A
-      status.value = Client.Status.ACTIVE
+      updateStatusButton(Client.Status.ACTIVE)
     }
   }
 
   private fun populateForm(c: Client) {
-    clientCode.value = c.clientCode
     name.value = c.name
     type.value = c.type
     role.value = c.role
@@ -134,7 +136,7 @@ internal class ClientFormDialog(
     paymentDelay.value = c.paymentDelay
     paymentMethod.value = c.paymentMethod ?: ""
     defaultDiscount.value = c.defaultDiscount
-    status.value = c.status
+    updateStatusButton(c.status)
     notes.value = c.notes ?: ""
     contacts.addAll(c.contacts)
     contactGrid.setItems(contacts)
@@ -154,7 +156,7 @@ internal class ClientFormDialog(
   }
 
   private fun save() {
-    if (clientCode.isEmpty || name.isEmpty) {
+    if (name.isEmpty) {
       Notification.show(
           "Veuillez remplir les champs obligatoires",
           3000,
@@ -164,9 +166,8 @@ internal class ClientFormDialog(
       return
     }
 
-    val c = client ?: Client(clientCode.value, name.value)
+    val c = client ?: Client(name = name.value)
     if (client != null) {
-      c.clientCode = clientCode.value
       c.name = name.value
     }
     c.type = type.value
@@ -182,7 +183,12 @@ internal class ClientFormDialog(
     c.paymentDelay = paymentDelay.value
     c.paymentMethod = if (paymentMethod.value.isBlank()) null else paymentMethod.value
     c.defaultDiscount = defaultDiscount.value ?: BigDecimal.ZERO
-    c.status = status.value
+    c.status =
+      if (statusToggle.element.getProperty("data-status") == Client.Status.INACTIVE.name) {
+        Client.Status.INACTIVE
+      } else {
+        Client.Status.ACTIVE
+      }
     c.notes = if (notes.value.isBlank()) null else notes.value
 
     c.contacts.clear()
@@ -196,5 +202,16 @@ internal class ClientFormDialog(
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
     onSave.run()
     close()
+  }
+
+  private fun updateStatusButton(status: Client.Status) {
+    statusToggle.text = if (status == Client.Status.ACTIVE) "Actif" else "Inactif"
+    statusToggle.element.setProperty("data-status", status.name)
+    statusToggle.removeThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_CONTRAST)
+    if (status == Client.Status.ACTIVE) {
+      statusToggle.addThemeVariants(ButtonVariant.LUMO_SUCCESS)
+    } else {
+      statusToggle.addThemeVariants(ButtonVariant.LUMO_CONTRAST)
+    }
   }
 }

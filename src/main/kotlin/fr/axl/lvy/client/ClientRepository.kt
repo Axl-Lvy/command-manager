@@ -8,6 +8,18 @@ interface ClientRepository : JpaRepository<Client, Long> {
 
   fun findByDeletedAtIsNull(): List<Client>
 
+  @Query("SELECT c.clientCode FROM Client c") fun findAllClientCodes(): List<String>
+
+  @Query(
+    """
+      SELECT DISTINCT c
+      FROM Client c
+      LEFT JOIN FETCH c.contacts
+      WHERE c.id = :id
+    """
+  )
+  fun findDetailedById(id: Long): Client?
+
   @Query(
     "SELECT c FROM Client c WHERE c.deletedAt IS NULL AND (c.visibleCompany = :company OR c.visibleCompany = 'AB')"
   )
