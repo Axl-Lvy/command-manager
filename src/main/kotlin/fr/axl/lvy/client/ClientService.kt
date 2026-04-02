@@ -26,7 +26,8 @@ class ClientService(private val clientRepository: ClientRepository) {
   fun findById(id: Long): Optional<Client> = clientRepository.findById(id)
 
   @Transactional(readOnly = true)
-  fun findDetailedById(id: Long): Optional<Client> = Optional.ofNullable(clientRepository.findDetailedById(id))
+  fun findDetailedById(id: Long): Optional<Client> =
+    Optional.ofNullable(clientRepository.findDetailedById(id))
 
   @Transactional
   fun save(client: Client): Client {
@@ -45,7 +46,9 @@ class ClientService(private val clientRepository: ClientRepository) {
     val nextNumber =
       clientRepository
         .findAllClientCodes()
-        .mapNotNull { code -> CLIENT_CODE_REGEX.matchEntire(code)?.groupValues?.get(1)?.toIntOrNull() }
+        .mapNotNull { code ->
+          CLIENT_CODE_REGEX.matchEntire(code)?.groupValues?.get(1)?.toIntOrNull()
+        }
         .maxOrNull()
         ?.plus(1) ?: 1
     return CLIENT_CODE_PREFIX + nextNumber.toString().padStart(6, '0')
