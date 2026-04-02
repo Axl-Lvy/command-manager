@@ -18,7 +18,7 @@ class ClientServiceTest {
 
   @Test
   fun save_and_retrieve_client() {
-    val client = Client("CLI-001", "Acme Corp")
+    val client = Client(name = "Acme Corp")
     client.email = "contact@acme.com"
     client.phone = "0123456789"
     clientService.save(client)
@@ -26,7 +26,7 @@ class ClientServiceTest {
     val found = clientService.findById(client.id!!)
     assertThat(found).isPresent
     assertThat(found.get().name).isEqualTo("Acme Corp")
-    assertThat(found.get().clientCode).isEqualTo("CLI-001")
+    assertThat(found.get().clientCode).matches("""C\d{6}""")
   }
 
   @Test

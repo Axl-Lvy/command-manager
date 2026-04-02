@@ -4,6 +4,7 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.dom.Style
 import com.vaadin.flow.router.Menu
@@ -25,13 +26,34 @@ internal class ClientListView(private val clientService: ClientService) : Vertic
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
-    grid.addColumn(Client::clientCode).setHeader("Code").setAutoWidth(true)
     grid.addColumn(Client::name).setHeader("Nom").setFlexGrow(1)
     grid.addColumn { it.type.name }.setHeader("Type").setAutoWidth(true)
     grid.addColumn { it.role.name }.setHeader("Rôle").setAutoWidth(true)
     grid.addColumn(Client::email).setHeader("Email").setAutoWidth(true)
     grid.addColumn(Client::phone).setHeader("Téléphone").setAutoWidth(true)
     grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
+    grid
+      .addComponentColumn { client ->
+        val editButton = Button("Modifier") { openForm(client) }
+        editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+
+        val archiveButton =
+          Button("Archiver") {
+            client.status = Client.Status.INACTIVE
+            clientService.save(client)
+            refreshGrid()
+          }
+        archiveButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY)
+        archiveButton.isEnabled = client.status != Client.Status.INACTIVE
+
+        HorizontalLayout(editButton, archiveButton).apply {
+          isPadding = false
+          isSpacing = true
+        }
+      }
+      .setHeader("Actions")
+      .setAutoWidth(true)
+      .setFlexGrow(0)
     grid.setEmptyStateText("Aucun client")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
@@ -49,7 +71,8 @@ internal class ClientListView(private val clientService: ClientService) : Vertic
   }
 
   private fun openForm(client: Client?) {
-    ClientFormDialog(clientService, client, this::refreshGrid).open()
+    val loadedClient = client?.id?.let { clientService.findDetailedById(it).orElse(null) }
+    ClientFormDialog(clientService, loadedClient, this::refreshGrid).open()
   }
 
   private fun refreshGrid() {
