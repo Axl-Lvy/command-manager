@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class OrderBService(private val orderBRepository: OrderBRepository) {
   companion object {
+    private const val ORDER_NUMBER_PREFIX = "NST_PO_"
     private val ALLOWED_TRANSITIONS_FROM_SENT =
       setOf(OrderB.OrderBStatus.CONFIRMED, OrderB.OrderBStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
@@ -22,7 +23,13 @@ class OrderBService(private val orderBRepository: OrderBRepository) {
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderB> = orderBRepository.findById(id)
 
-  @Transactional fun save(order: OrderB): OrderB = orderBRepository.save(order)
+  @Transactional
+  fun save(order: OrderB): OrderB {
+    if (order.orderNumber.isBlank()) {
+      order.orderNumber = generateNextOrderNumber()
+    }
+    return orderBRepository.save(order)
+  }
 
   @Transactional
   fun delete(id: Long) {
@@ -60,4 +67,14 @@ class OrderBService(private val orderBRepository: OrderBRepository) {
       OrderB.OrderBStatus.IN_PRODUCTION -> ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION
       else -> emptySet()
     }
+
+  private fun generateNextOrderNumber(): String {
+    val nextNumber =
+      orderBRepository
+        .findAllOrderNumbers()
+        .mapNotNull { orderNumber -> orderNumber.removePrefix(ORDER_NUMBER_PREFIX).toIntOrNull() }
+        .maxOrNull()
+        ?.plus(1) ?: 1
+    return ORDER_NUMBER_PREFIX + nextNumber.toString().padStart(3, '0')
+  }
 }

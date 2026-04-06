@@ -90,6 +90,8 @@ class DocumentLine(
   }
 
   enum class DocumentType {
+    SALES_A,
+    SALES_B,
     ORDER_A,
     ORDER_B,
     INVOICE_A,

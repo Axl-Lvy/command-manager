@@ -11,35 +11,35 @@ import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.documentline.DocumentLineRepository
-import fr.axl.lvy.order.OrderAService
-import fr.axl.lvy.order.OrderB
-import fr.axl.lvy.order.OrderBService
 import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesAService
+import fr.axl.lvy.sale.SalesB
+import fr.axl.lvy.sale.SalesBService
 
-@Route("commandes-b")
-@PageTitle("Commandes B")
-@Menu(order = 4.0, icon = "vaadin:truck", title = "Commandes B")
+@Route("ventes-b")
+@PageTitle("Ventes B")
+@Menu(order = 4.0, icon = "vaadin:truck", title = "Ventes B")
 internal class OrderBListView(
-  private val orderBService: OrderBService,
-  private val orderAService: OrderAService,
+  private val salesBService: SalesBService,
+  private val salesAService: SalesAService,
   private val productService: ProductService,
   private val documentLineRepository: DocumentLineRepository,
 ) : VerticalLayout() {
 
-  private val grid: Grid<OrderB>
+  private val grid: Grid<SalesB>
 
   init {
-    val addBtn = Button("Nouvelle commande B") { openForm(null) }
+    val addBtn = Button("Nouvelle vente B") { openForm(null) }
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
-    grid.addColumn(OrderB::orderNumber).setHeader("N° Commande B").setAutoWidth(true)
-    grid.addColumn { it.orderA?.orderNumber ?: "" }.setHeader("Commande A liée").setAutoWidth(true)
-    grid.addColumn(OrderB::orderDate).setHeader("Date").setAutoWidth(true)
-    grid.addColumn(OrderB::totalExclTax).setHeader("Total HT").setAutoWidth(true)
-    grid.addColumn(OrderB::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
+    grid.addColumn(SalesB::saleNumber).setHeader("N° Vente B").setAutoWidth(true)
+    grid.addColumn { it.salesA.saleNumber }.setHeader("Vente A liée").setAutoWidth(true)
+    grid.addColumn(SalesB::saleDate).setHeader("Date").setAutoWidth(true)
+    grid.addColumn(SalesB::totalExclTax).setHeader("Total HT").setAutoWidth(true)
+    grid.addColumn(SalesB::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
     grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
-    grid.setEmptyStateText("Aucune commande B")
+    grid.setEmptyStateText("Aucune vente B")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
     grid.addItemDoubleClickListener { openForm(it.item) }
@@ -51,14 +51,14 @@ internal class OrderBListView(
     isSpacing = false
     style.setOverflow(Style.Overflow.HIDDEN)
 
-    add(ViewToolbar("Commandes B", addBtn))
+    add(ViewToolbar("Ventes B", addBtn))
     add(grid)
   }
 
-  private fun openForm(order: OrderB?) {
+  private fun openForm(order: SalesB?) {
     OrderBFormDialog(
-        orderBService,
-        orderAService,
+        salesBService,
+        salesAService,
         productService,
         documentLineRepository,
         order,
@@ -68,6 +68,6 @@ internal class OrderBListView(
   }
 
   private fun refreshGrid() {
-    grid.setItems(orderBService.findAll())
+    grid.setItems(salesBService.findAll())
   }
 }

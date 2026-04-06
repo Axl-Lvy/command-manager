@@ -12,35 +12,34 @@ import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLineRepository
-import fr.axl.lvy.order.OrderA
-import fr.axl.lvy.order.OrderAService
 import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesA
+import fr.axl.lvy.sale.SalesAService
 
-@Route("commandes-a")
-@PageTitle("Commandes A")
-@Menu(order = 3.0, icon = "vaadin:cart", title = "Commandes A")
+@Route("ventes-a")
+@PageTitle("Ventes A")
+@Menu(order = 3.0, icon = "vaadin:cart", title = "Ventes A")
 internal class OrderAListView(
-  private val orderAService: OrderAService,
+  private val salesAService: SalesAService,
   private val clientService: ClientService,
   private val productService: ProductService,
   private val documentLineRepository: DocumentLineRepository,
 ) : VerticalLayout() {
 
-  private val grid: Grid<OrderA>
+  private val grid: Grid<SalesA>
 
   init {
-    val addBtn = Button("Nouvelle commande") { openForm(null) }
+    val addBtn = Button("Nouvelle vente") { openForm(null) }
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
-    grid.addColumn(OrderA::orderNumber).setHeader("N° Commande").setAutoWidth(true)
+    grid.addColumn(SalesA::saleNumber).setHeader("N° Vente").setAutoWidth(true)
     grid.addColumn { it.client.name }.setHeader("Client").setFlexGrow(1)
-    grid.addColumn(OrderA::orderDate).setHeader("Date").setAutoWidth(true)
-    grid.addColumn(OrderA::totalExclTax).setHeader("Total HT").setAutoWidth(true)
-    grid.addColumn(OrderA::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
-    grid.addColumn(OrderA::marginExclTax).setHeader("Marge HT").setAutoWidth(true)
+    grid.addColumn(SalesA::saleDate).setHeader("Date").setAutoWidth(true)
+    grid.addColumn(SalesA::totalExclTax).setHeader("Total HT").setAutoWidth(true)
+    grid.addColumn(SalesA::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
     grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
-    grid.setEmptyStateText("Aucune commande A")
+    grid.setEmptyStateText("Aucune vente A")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
     grid.addItemDoubleClickListener { openForm(it.item) }
@@ -52,13 +51,13 @@ internal class OrderAListView(
     isSpacing = false
     style.setOverflow(Style.Overflow.HIDDEN)
 
-    add(ViewToolbar("Commandes A", addBtn))
+    add(ViewToolbar("Ventes A", addBtn))
     add(grid)
   }
 
-  private fun openForm(order: OrderA?) {
+  private fun openForm(order: SalesA?) {
     OrderAFormDialog(
-        orderAService,
+        salesAService,
         clientService,
         productService,
         documentLineRepository,
@@ -69,6 +68,6 @@ internal class OrderAListView(
   }
 
   private fun refreshGrid() {
-    grid.setItems(orderAService.findAll())
+    grid.setItems(salesAService.findAll())
   }
 }

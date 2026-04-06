@@ -11,4 +11,7 @@ interface OrderBRepository : JpaRepository<OrderB, Long> {
   fun findByDeletedAtIsNull(): List<OrderB>
 
   fun findByOrderAId(orderAId: Long): List<OrderB>
+
+  @Query("SELECT o.orderNumber FROM OrderB o WHERE o.orderNumber LIKE 'NST_PO_%'")
+  fun findAllOrderNumbers(): List<String>
 }

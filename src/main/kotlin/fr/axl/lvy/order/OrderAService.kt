@@ -13,6 +13,7 @@ class OrderAService(
   private val documentLineRepository: DocumentLineRepository,
 ) {
   companion object {
+    private const val ORDER_NUMBER_PREFIX = "CoD_PO_"
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
       setOf(OrderA.OrderAStatus.IN_PRODUCTION, OrderA.OrderAStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION =
@@ -28,7 +29,19 @@ class OrderAService(
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderA> = orderARepository.findById(id)
 
-  @Transactional fun save(order: OrderA): OrderA = orderARepository.save(order)
+  @Transactional
+  fun save(order: OrderA): OrderA {
+    if (order.orderNumber.isBlank()) {
+      order.orderNumber = generateNextOrderNumber()
+    }
+    if (order.billingAddress.isNullOrBlank()) {
+      order.billingAddress = order.client.billingAddress
+    }
+    if (order.shippingAddress.isNullOrBlank()) {
+      order.shippingAddress = order.client.shippingAddress
+    }
+    return orderARepository.save(order)
+  }
 
   @Transactional
   fun delete(id: Long) {
@@ -52,8 +65,8 @@ class OrderAService(
     copy.subject = source.subject
     copy.billingAddress = source.billingAddress
     copy.shippingAddress = source.shippingAddress
+    copy.vatRate = source.vatRate
     copy.currency = source.currency
-    copy.exchangeRate = source.exchangeRate
     copy.incoterms = source.incoterms
     copy.notes = source.notes
     copy.conditions = source.conditions
@@ -135,6 +148,8 @@ class OrderAService(
     orderARepository.save(order)
   }
 
+  @Transactional(readOnly = true) fun nextOrderNumber(): String = generateNextOrderNumber()
+
   private fun getAllowedTransitions(current: OrderA.OrderAStatus): Set<OrderA.OrderAStatus> =
     when (current) {
       OrderA.OrderAStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
@@ -143,4 +158,14 @@ class OrderAService(
       OrderA.OrderAStatus.DELIVERED -> ALLOWED_TRANSITIONS_FROM_DELIVERED
       else -> emptySet()
     }
+
+  private fun generateNextOrderNumber(): String {
+    val nextNumber =
+      orderARepository
+        .findAllOrderNumbers()
+        .mapNotNull { orderNumber -> orderNumber.removePrefix(ORDER_NUMBER_PREFIX).toIntOrNull() }
+        .maxOrNull()
+        ?.plus(1) ?: 1
+    return ORDER_NUMBER_PREFIX + nextNumber.toString().padStart(3, '0')
+  }
 }

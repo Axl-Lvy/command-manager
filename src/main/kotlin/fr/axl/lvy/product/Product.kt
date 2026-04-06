@@ -24,9 +24,6 @@ class Product(
   @Column(name = "purchase_price_excl_tax", nullable = false, precision = 12, scale = 2)
   var purchasePriceExclTax: BigDecimal = BigDecimal.ZERO
 
-  @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
-  var vatRate: BigDecimal = BigDecimal.ZERO
-
   @Column(length = 20) var unit: String? = null
 
   @Column(name = "hs_code", length = 20) var hsCode: String? = null

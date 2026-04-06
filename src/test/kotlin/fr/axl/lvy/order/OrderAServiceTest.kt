@@ -141,7 +141,7 @@ class OrderAServiceTest {
   fun recalculateTotals_includes_margin() {
     val client = createClient("CLI-OA10")
     val order = createOrderA("CA-CALC-1", client, OrderA.OrderAStatus.CONFIRMED)
-    order.purchasePriceExclTax = BigDecimal("300.00")
+    order.vatRate = BigDecimal("20.00")
     orderARepository.flush()
 
     val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, order.id!!, "Item")
@@ -156,7 +156,7 @@ class OrderAServiceTest {
     assertThat(order.totalExclTax).isEqualByComparingTo("500.00")
     assertThat(order.totalVat).isEqualByComparingTo("100.00")
     assertThat(order.totalInclTax).isEqualByComparingTo("600.00")
-    assertThat(order.marginExclTax).isEqualByComparingTo("200.00") // 500 - 300
+    assertThat(order.marginExclTax).isEqualByComparingTo("0.00")
   }
 
   @Test

@@ -56,17 +56,14 @@ class OrderA(
   var totalInclTax: BigDecimal = BigDecimal.ZERO
     private set
 
-  @Column(name = "purchase_price_excl_tax", nullable = false, precision = 12, scale = 2)
-  var purchasePriceExclTax: BigDecimal = BigDecimal.ZERO
+  @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
+  var vatRate: BigDecimal = BigDecimal.ZERO
 
   @Column(name = "margin_excl_tax", nullable = false, precision = 12, scale = 2)
   var marginExclTax: BigDecimal = BigDecimal.ZERO
     private set
 
   @Column(nullable = false, length = 5) var currency: String = "EUR"
-
-  @Column(name = "exchange_rate", nullable = false, precision = 10, scale = 4)
-  var exchangeRate: BigDecimal = BigDecimal.ONE
 
   @Column(length = 10) var incoterms: String? = null
 
@@ -88,7 +85,7 @@ class OrderA(
     totalExclTax = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
     totalVat = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.vatAmount) }
     totalInclTax = totalExclTax.add(totalVat)
-    marginExclTax = totalExclTax.subtract(purchasePriceExclTax)
+    marginExclTax = BigDecimal.ZERO
   }
 
   enum class OrderAStatus {
