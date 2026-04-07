@@ -54,7 +54,8 @@ internal class CommandAListView(
   }
 
   private fun openForm(order: OrderA?) {
-    CommandAFormDialog(orderAService, clientService, productService, order, this::refreshGrid).open()
+    CommandAFormDialog(orderAService, clientService, productService, order, this::refreshGrid)
+      .open()
   }
 
   private fun refreshGrid() {

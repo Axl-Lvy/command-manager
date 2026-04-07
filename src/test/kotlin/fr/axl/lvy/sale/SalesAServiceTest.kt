@@ -116,12 +116,14 @@ class SalesAServiceTest {
     val sale = createSalesA("SA-SYNC-02", client)
     salesARepository.flush()
 
-    val line1 = testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget A")
+    val line1 =
+      testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget A")
 
     salesAService.syncGeneratedOrder(sale, listOf(line1))
     val firstOrderId = sale.orderA!!.id!!
 
-    val line2 = testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget B")
+    val line2 =
+      testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget B")
 
     salesAService.syncGeneratedOrder(sale, listOf(line2))
 

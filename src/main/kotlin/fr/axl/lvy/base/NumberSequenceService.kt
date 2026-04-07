@@ -9,15 +9,13 @@ class NumberSequenceService(private val repository: NumberSequenceRepository) {
   @Transactional
   fun nextNumber(entityType: String): String {
     val config =
-      CONFIGS[entityType]
-        ?: throw IllegalArgumentException("Unknown entity type: $entityType")
+      CONFIGS[entityType] ?: throw IllegalArgumentException("Unknown entity type: $entityType")
     return nextNumber(entityType, config.prefix, config.padding)
   }
 
   @Transactional
   fun nextNumber(entityType: String, prefix: String, padding: Int): String {
-    val seq = repository.findForUpdate(entityType)
-      ?: repository.save(NumberSequence(entityType))
+    val seq = repository.findForUpdate(entityType) ?: repository.save(NumberSequence(entityType))
     val current = seq.nextVal
     seq.nextVal++
     repository.save(seq)

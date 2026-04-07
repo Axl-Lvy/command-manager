@@ -119,16 +119,19 @@ class SalesBService(
   @Transactional(readOnly = true)
   fun findLines(saleId: Long): List<DocumentLine> =
     documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-      DocumentLine.DocumentType.SALES_B, saleId
+      DocumentLine.DocumentType.SALES_B,
+      saleId,
     )
 
   @Transactional
   fun saveWithLines(sale: SalesB, lines: List<DocumentLine>): SalesB {
     val saved = save(sale)
 
-    val existingLines = documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-      DocumentLine.DocumentType.SALES_B, saved.id!!
-    )
+    val existingLines =
+      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+        DocumentLine.DocumentType.SALES_B,
+        saved.id!!,
+      )
     documentLineRepository.deleteAll(existingLines)
 
     lines.forEachIndexed { i, line ->
