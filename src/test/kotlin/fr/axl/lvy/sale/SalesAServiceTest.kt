@@ -1,7 +1,7 @@
 package fr.axl.lvy.sale
 
+import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
-import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderARepository
@@ -22,17 +22,10 @@ class SalesAServiceTest {
   @Autowired lateinit var salesAService: SalesAService
   @Autowired lateinit var salesARepository: SalesARepository
   @Autowired lateinit var salesBRepository: SalesBRepository
-  @Autowired lateinit var clientRepository: ClientRepository
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var orderARepository: OrderARepository
-
-  private fun createClient(code: String): Client {
-    val client = Client(code, "Client $code")
-    client.billingAddress = "123 Billing St"
-    client.shippingAddress = "456 Shipping Ave"
-    return clientRepository.save(client)
-  }
+  @Autowired lateinit var testData: TestDataFactory
 
   private fun createSalesA(
     number: String,
@@ -45,29 +38,9 @@ class SalesAServiceTest {
     return salesARepository.save(sale)
   }
 
-  private fun createDocumentLine(
-    type: DocumentLine.DocumentType,
-    documentId: Long,
-    designation: String,
-    quantity: BigDecimal = BigDecimal.ONE,
-    unitPrice: BigDecimal = BigDecimal("100.00"),
-    vatRate: BigDecimal = BigDecimal("20.00"),
-    product: Product? = null,
-  ): DocumentLine {
-    val line = DocumentLine(type, documentId, designation)
-    line.product = product
-    line.quantity = quantity
-    line.unitPriceExclTax = unitPrice
-    line.discountPercent = BigDecimal.ZERO
-    line.vatRate = vatRate
-    line.position = 0
-    line.recalculate()
-    return documentLineRepository.saveAndFlush(line)
-  }
-
   @Test
   fun save_and_retrieve_sale() {
-    val client = createClient("CLI-SA01")
+    val client = testData.createClient("CLI-SA01")
     val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
     salesAService.save(sale)
 
@@ -78,7 +51,7 @@ class SalesAServiceTest {
 
   @Test
   fun save_uses_client_addresses_when_blank() {
-    val client = createClient("CLI-SA02")
+    val client = testData.createClient("CLI-SA02", "123 Billing St", "456 Shipping Ave")
     val sale = SalesA("SA-ADDR-01", client, LocalDate.of(2026, 3, 1))
     val saved = salesAService.save(sale)
 
@@ -88,7 +61,7 @@ class SalesAServiceTest {
 
   @Test
   fun soft_delete_excludes_from_findAll() {
-    val client = createClient("CLI-SA03")
+    val client = testData.createClient("CLI-SA03")
     val sale = createSalesA("SA-DEL-01", client)
 
     salesAService.delete(sale.id!!)
@@ -99,7 +72,7 @@ class SalesAServiceTest {
 
   @Test
   fun syncGeneratedOrder_creates_order_and_lines() {
-    val client = createClient("CLI-SA04")
+    val client = testData.createClient("CLI-SA04")
     val sale = createSalesA("SA-SYNC-01", client)
     sale.subject = "Test Subject"
     sale.currency = "USD"
@@ -107,7 +80,7 @@ class SalesAServiceTest {
     salesARepository.saveAndFlush(sale)
 
     val line =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
         sale.id!!,
         "Widget",
@@ -139,16 +112,16 @@ class SalesAServiceTest {
 
   @Test
   fun syncGeneratedOrder_updates_existing_order() {
-    val client = createClient("CLI-SA05")
+    val client = testData.createClient("CLI-SA05")
     val sale = createSalesA("SA-SYNC-02", client)
     salesARepository.flush()
 
-    val line1 = createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget A")
+    val line1 = testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget A")
 
     salesAService.syncGeneratedOrder(sale, listOf(line1))
     val firstOrderId = sale.orderA!!.id!!
 
-    val line2 = createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget B")
+    val line2 = testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget B")
 
     salesAService.syncGeneratedOrder(sale, listOf(line2))
 
@@ -157,7 +130,7 @@ class SalesAServiceTest {
 
   @Test
   fun syncGeneratedOrder_creates_salesB_when_validated_with_mto() {
-    val client = createClient("CLI-SA06")
+    val client = testData.createClient("CLI-SA06")
     val sale = createSalesA("SA-MTO-01", client, SalesA.SalesAStatus.VALIDATED)
     salesARepository.flush()
 
@@ -169,7 +142,7 @@ class SalesAServiceTest {
     productRepository.saveAndFlush(mtoProduct)
 
     val line =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
         sale.id!!,
         "Custom Part",
@@ -185,7 +158,7 @@ class SalesAServiceTest {
 
   @Test
   fun syncGeneratedOrder_deletes_salesB_when_no_mto_lines() {
-    val client = createClient("CLI-SA07")
+    val client = testData.createClient("CLI-SA07")
     val sale = createSalesA("SA-MTO-02", client, SalesA.SalesAStatus.VALIDATED)
     salesARepository.flush()
 
@@ -196,7 +169,7 @@ class SalesAServiceTest {
     productRepository.saveAndFlush(regularProduct)
 
     val line =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
         sale.id!!,
         "Standard Part",
@@ -211,7 +184,7 @@ class SalesAServiceTest {
 
   @Test
   fun recalculateTotals_sums_lines() {
-    val client = createClient("CLI-SA08")
+    val client = testData.createClient("CLI-SA08")
     val sale = createSalesA("SA-CALC-01", client)
 
     val line1 = DocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Item 1")

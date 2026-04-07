@@ -1,15 +1,13 @@
 package fr.axl.lvy.sale
 
+import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
-import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderARepository
 import fr.axl.lvy.order.OrderAService
 import fr.axl.lvy.order.OrderBRepository
-import fr.axl.lvy.product.Product
-import fr.axl.lvy.product.ProductRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
@@ -26,19 +24,11 @@ class SalesBServiceTest {
   @Autowired lateinit var salesAService: SalesAService
   @Autowired lateinit var salesARepository: SalesARepository
   @Autowired lateinit var salesBRepository: SalesBRepository
-  @Autowired lateinit var clientRepository: ClientRepository
-  @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var orderAService: OrderAService
   @Autowired lateinit var orderARepository: OrderARepository
   @Autowired lateinit var orderBRepository: OrderBRepository
-
-  private fun createClient(code: String): Client {
-    val client = Client(code, "Client $code")
-    client.billingAddress = "123 Billing St"
-    client.shippingAddress = "456 Shipping Ave"
-    return clientRepository.save(client)
-  }
+  @Autowired lateinit var testData: TestDataFactory
 
   private fun createSalesAWithOrder(
     number: String,
@@ -56,46 +46,9 @@ class SalesBServiceTest {
     return salesARepository.saveAndFlush(saved)
   }
 
-  private fun createMtoProduct(ref: String): Product {
-    val product = Product(ref, "MTO $ref")
-    product.type = Product.ProductType.PRODUCT
-    product.mto = true
-    product.sellingPriceExclTax = BigDecimal("100.00")
-    product.purchasePriceExclTax = BigDecimal("60.00")
-    return productRepository.saveAndFlush(product)
-  }
-
-  private fun createRegularProduct(ref: String): Product {
-    val product = Product(ref, "Regular $ref")
-    product.type = Product.ProductType.PRODUCT
-    product.mto = false
-    product.sellingPriceExclTax = BigDecimal("50.00")
-    product.purchasePriceExclTax = BigDecimal("30.00")
-    return productRepository.saveAndFlush(product)
-  }
-
-  private fun createDocumentLine(
-    type: DocumentLine.DocumentType,
-    documentId: Long,
-    designation: String,
-    product: Product? = null,
-    quantity: BigDecimal = BigDecimal.ONE,
-    unitPrice: BigDecimal = BigDecimal("100.00"),
-  ): DocumentLine {
-    val line = DocumentLine(type, documentId, designation)
-    line.product = product
-    line.quantity = quantity
-    line.unitPriceExclTax = unitPrice
-    line.discountPercent = BigDecimal.ZERO
-    line.vatRate = BigDecimal("20.00")
-    line.position = 0
-    line.recalculate()
-    return documentLineRepository.saveAndFlush(line)
-  }
-
   @Test
   fun save_and_retrieve_sale() {
-    val client = createClient("CLI-SB01")
+    val client = testData.createClient("CLI-SB01", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-01", client)
     val salesB = SalesB("", salesA)
     salesBService.save(salesB)
@@ -107,7 +60,7 @@ class SalesBServiceTest {
 
   @Test
   fun soft_delete_excludes_from_findAll() {
-    val client = createClient("CLI-SB02")
+    val client = testData.createClient("CLI-SB02", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-02", client)
     val salesB = SalesB("SB-DEL-01", salesA)
     salesBService.save(salesB)
@@ -120,21 +73,21 @@ class SalesBServiceTest {
 
   @Test
   fun createOrUpdateFromValidatedSalesA_creates_salesB_with_mto_lines() {
-    val client = createClient("CLI-SB03")
+    val client = testData.createClient("CLI-SB03", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-03", client)
 
-    val mtoProduct = createMtoProduct("PRD-MTO-SB1")
-    val regularProduct = createRegularProduct("PRD-REG-SB1")
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB1")
+    val regularProduct = testData.createRegularProduct("PRD-REG-SB1")
 
     val mtoLine =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
         salesA.id!!,
         "MTO Item",
         product = mtoProduct,
       )
     val regularLine =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
         salesA.id!!,
         "Regular Item",
@@ -157,12 +110,12 @@ class SalesBServiceTest {
 
   @Test
   fun createOrUpdateFromValidatedSalesA_updates_existing_salesB() {
-    val client = createClient("CLI-SB04")
+    val client = testData.createClient("CLI-SB04", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-04", client)
 
-    val mtoProduct = createMtoProduct("PRD-MTO-SB2")
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB2")
     val line =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
         salesA.id!!,
         "MTO Item",
@@ -173,7 +126,7 @@ class SalesBServiceTest {
     val firstId = first.id!!
 
     val line2 =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
         salesA.id!!,
         "MTO Item Updated",
@@ -188,17 +141,17 @@ class SalesBServiceTest {
 
   @Test
   fun syncGeneratedOrder_creates_orderB() {
-    val client = createClient("CLI-SB05")
+    val client = testData.createClient("CLI-SB05", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-05", client)
 
-    val mtoProduct = createMtoProduct("PRD-MTO-SB3")
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB3")
     val salesB = SalesB("SB-SYNC-01", salesA)
     salesB.saleDate = LocalDate.of(2026, 3, 1)
     salesB.status = SalesB.SalesBStatus.VALIDATED
     val savedSalesB = salesBRepository.saveAndFlush(salesB)
 
     val line =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_B,
         savedSalesB.id!!,
         "MTO Item",
@@ -222,17 +175,17 @@ class SalesBServiceTest {
 
   @Test
   fun syncGeneratedOrder_updates_existing_orderB() {
-    val client = createClient("CLI-SB06")
+    val client = testData.createClient("CLI-SB06", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-06", client)
 
-    val mtoProduct = createMtoProduct("PRD-MTO-SB4")
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB4")
     val salesB = SalesB("SB-SYNC-02", salesA)
     salesB.saleDate = LocalDate.of(2026, 3, 1)
     salesB.status = SalesB.SalesBStatus.VALIDATED
     val savedSalesB = salesBRepository.saveAndFlush(salesB)
 
     val line1 =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_B,
         savedSalesB.id!!,
         "MTO Item",
@@ -243,7 +196,7 @@ class SalesBServiceTest {
     val firstOrderBId = savedSalesB.orderB!!.id!!
 
     val line2 =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_B,
         savedSalesB.id!!,
         "MTO Item v2",
@@ -257,17 +210,17 @@ class SalesBServiceTest {
 
   @Test
   fun deleteBySalesAId_soft_deletes_salesB_and_orderB() {
-    val client = createClient("CLI-SB07")
+    val client = testData.createClient("CLI-SB07", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-07", client)
 
-    val mtoProduct = createMtoProduct("PRD-MTO-SB5")
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB5")
     val salesB = SalesB("SB-DEL-02", salesA)
     salesB.saleDate = LocalDate.of(2026, 3, 1)
     salesB.status = SalesB.SalesBStatus.VALIDATED
     val savedSalesB = salesBRepository.saveAndFlush(salesB)
 
     val line =
-      createDocumentLine(
+      testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_B,
         savedSalesB.id!!,
         "MTO Item",
@@ -290,7 +243,7 @@ class SalesBServiceTest {
 
   @Test
   fun recalculateTotals_sums_lines() {
-    val client = createClient("CLI-SB08")
+    val client = testData.createClient("CLI-SB08", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-08", client)
     val salesB = SalesB("SB-CALC-01", salesA)
     salesBService.save(salesB)
