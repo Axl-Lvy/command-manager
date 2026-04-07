@@ -209,4 +209,49 @@ class SalesAServiceTest {
     assertThat(sale.totalVat).isEqualByComparingTo("70.00")
     assertThat(sale.totalInclTax).isEqualByComparingTo("420.00")
   }
+
+  @Test
+  fun saveWithLines_creates_sale_with_lines_and_syncs_order() {
+    val client = testData.createClient("CLI-SA-SWL", "123 Billing St", "456 Shipping Ave")
+    val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
+    sale.vatRate = BigDecimal("20.00")
+
+    val line = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Widget")
+    line.quantity = BigDecimal("5")
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+
+    val saved = salesAService.saveWithLines(sale, listOf(line))
+
+    assertThat(saved.saleNumber).startsWith("CoD_SO_")
+    assertThat(saved.totalExclTax).isEqualByComparingTo("500.00")
+    assertThat(saved.orderA).isNotNull
+
+    val lines = salesAService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].vatRate).isEqualByComparingTo("20.00")
+  }
+
+  @Test
+  fun saveWithLines_replaces_existing_lines() {
+    val client = testData.createClient("CLI-SA-SWL2", "123 Billing St", "456 Shipping Ave")
+    val sale = SalesA("SA-SWL-01", client, LocalDate.of(2026, 3, 1))
+    sale.vatRate = BigDecimal("20.00")
+
+    val line1 = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Item A")
+    line1.quantity = BigDecimal.ONE
+    line1.unitPriceExclTax = BigDecimal("100.00")
+    line1.discountPercent = BigDecimal.ZERO
+    salesAService.saveWithLines(sale, listOf(line1))
+
+    val line2 = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Item B")
+    line2.quantity = BigDecimal("2")
+    line2.unitPriceExclTax = BigDecimal("50.00")
+    line2.discountPercent = BigDecimal.ZERO
+    val saved = salesAService.saveWithLines(sale, listOf(line2))
+
+    val lines = salesAService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Item B")
+  }
 }

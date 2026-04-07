@@ -268,4 +268,59 @@ class SalesBServiceTest {
     assertThat(salesB.totalVat).isEqualByComparingTo("70.00")
     assertThat(salesB.totalInclTax).isEqualByComparingTo("420.00")
   }
+
+  @Test
+  fun saveWithLines_creates_salesB_with_lines_and_syncs_order() {
+    val client = testData.createClient("CLI-SB-SWL", "123 Billing St", "456 Shipping Ave")
+    val salesA = createSalesAWithOrder("SA-SB-SWL", client)
+    val salesB = SalesB("", salesA)
+    salesB.saleDate = LocalDate.of(2026, 3, 1)
+
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SWL")
+    val line = DocumentLine(DocumentLine.DocumentType.SALES_B, 0L, "MTO Item")
+    line.product = mtoProduct
+    line.quantity = BigDecimal("2")
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
+
+    val saved = salesBService.saveWithLines(salesB, listOf(line))
+
+    assertThat(saved.saleNumber).startsWith("NST_SO_")
+    assertThat(saved.totalExclTax).isEqualByComparingTo("200.00")
+    assertThat(saved.orderB).isNotNull
+
+    val lines = salesBService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("MTO Item")
+  }
+
+  @Test
+  fun saveWithLines_replaces_existing_lines() {
+    val client = testData.createClient("CLI-SB-SWL2", "123 Billing St", "456 Shipping Ave")
+    val salesA = createSalesAWithOrder("SA-SB-SWL2", client)
+    val salesB = SalesB("SB-SWL-01", salesA)
+    salesB.saleDate = LocalDate.of(2026, 3, 1)
+
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SWL2")
+    val line1 = DocumentLine(DocumentLine.DocumentType.SALES_B, 0L, "Item A")
+    line1.product = mtoProduct
+    line1.quantity = BigDecimal.ONE
+    line1.unitPriceExclTax = BigDecimal("100.00")
+    line1.discountPercent = BigDecimal.ZERO
+    line1.vatRate = BigDecimal("20.00")
+    salesBService.saveWithLines(salesB, listOf(line1))
+
+    val line2 = DocumentLine(DocumentLine.DocumentType.SALES_B, 0L, "Item B")
+    line2.product = mtoProduct
+    line2.quantity = BigDecimal("2")
+    line2.unitPriceExclTax = BigDecimal("50.00")
+    line2.discountPercent = BigDecimal.ZERO
+    line2.vatRate = BigDecimal("20.00")
+    val saved = salesBService.saveWithLines(salesB, listOf(line2))
+
+    val lines = salesBService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Item B")
+  }
 }

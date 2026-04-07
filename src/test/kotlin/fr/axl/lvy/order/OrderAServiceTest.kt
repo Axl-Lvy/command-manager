@@ -283,4 +283,52 @@ class OrderAServiceTest {
     assertThat(updatedOrder.orderB).isNull()
     assertThat(orderBRepository.findAll()).isEmpty()
   }
+
+  @Test
+  fun saveWithLines_creates_order_with_lines() {
+    val client = testData.createClient("CLI-OA-SWL")
+    val order = OrderA("", client, LocalDate.of(2026, 3, 1))
+    order.vatRate = BigDecimal("20.00")
+
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "Widget")
+    line.quantity = BigDecimal("5")
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+
+    val saved = orderAService.saveWithLines(order, listOf(line))
+
+    assertThat(saved.orderNumber).startsWith("CoD_PO_")
+    assertThat(saved.totalExclTax).isEqualByComparingTo("500.00")
+    assertThat(saved.totalVat).isEqualByComparingTo("100.00")
+    assertThat(saved.totalInclTax).isEqualByComparingTo("600.00")
+
+    val lines = orderAService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Widget")
+    assertThat(lines[0].vatRate).isEqualByComparingTo("20.00")
+    assertThat(lines[0].position).isEqualTo(0)
+  }
+
+  @Test
+  fun saveWithLines_replaces_existing_lines() {
+    val client = testData.createClient("CLI-OA-SWL2")
+    val order = OrderA("OA-SWL-01", client, LocalDate.of(2026, 3, 1))
+    order.vatRate = BigDecimal("20.00")
+
+    val line1 = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "Widget A")
+    line1.quantity = BigDecimal.ONE
+    line1.unitPriceExclTax = BigDecimal("100.00")
+    line1.discountPercent = BigDecimal.ZERO
+    orderAService.saveWithLines(order, listOf(line1))
+
+    val line2 = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "Widget B")
+    line2.quantity = BigDecimal("2")
+    line2.unitPriceExclTax = BigDecimal("50.00")
+    line2.discountPercent = BigDecimal.ZERO
+    val saved = orderAService.saveWithLines(order, listOf(line2))
+
+    val lines = orderAService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Widget B")
+  }
 }

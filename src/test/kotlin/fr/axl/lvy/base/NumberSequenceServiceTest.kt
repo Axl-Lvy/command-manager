@@ -45,4 +45,13 @@ class NumberSequenceServiceTest {
     assertThat(first).isEqualTo("NEW_0001")
     assertThat(second).isEqualTo("NEW_0002")
   }
+
+  @Test
+  fun nextNumber_single_param_uses_config() {
+    val client = numberSequenceService.nextNumber(NumberSequenceService.CLIENT)
+    assertThat(client).isEqualTo("C000001")
+
+    val orderA = numberSequenceService.nextNumber(NumberSequenceService.ORDER_A)
+    assertThat(orderA).isEqualTo("CoD_PO_001")
+  }
 }
