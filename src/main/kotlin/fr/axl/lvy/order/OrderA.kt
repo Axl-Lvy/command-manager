@@ -71,7 +71,7 @@ class OrderA(
 
   @Column(columnDefinition = "TEXT") var conditions: String? = null
 
-  @OneToOne(fetch = FetchType.LAZY) @JoinColumn(name = "order_b_id") var orderB: OrderB? = null
+  @OneToOne(mappedBy = "orderA", fetch = FetchType.LAZY) var orderB: OrderB? = null
 
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "delivery_note_id")
@@ -82,9 +82,10 @@ class OrderA(
   fun isEditable(): Boolean = EDITABLE.contains(status)
 
   fun recalculateTotals(lines: List<DocumentLine>) {
-    totalExclTax = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
-    totalVat = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.vatAmount) }
-    totalInclTax = totalExclTax.add(totalVat)
+    val totals = DocumentLine.computeTotals(lines)
+    totalExclTax = totals.exclTax
+    totalVat = totals.vat
+    totalInclTax = totals.inclTax
     marginExclTax = BigDecimal.ZERO
   }
 

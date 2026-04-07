@@ -87,6 +87,14 @@ class DocumentLine(
   }
 
   companion object {
+    data class Totals(val exclTax: BigDecimal, val vat: BigDecimal, val inclTax: BigDecimal)
+
+    fun computeTotals(lines: List<DocumentLine>): Totals {
+      val exclTax = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
+      val vat = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.vatAmount) }
+      return Totals(exclTax, vat, exclTax.add(vat))
+    }
+
     fun fromProduct(
       documentType: DocumentType,
       documentId: Long,

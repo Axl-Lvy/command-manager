@@ -14,7 +14,7 @@ class OrderB(
   @NotBlank
   @Column(name = "order_number", nullable = false, unique = true, length = 20)
   var orderNumber: String,
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @OneToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "order_a_id", nullable = false)
   var orderA: OrderA,
 ) : SoftDeletableEntity() {
@@ -52,9 +52,10 @@ class OrderB(
   var invoiceB: InvoiceB? = null
 
   fun recalculateTotals(lines: List<DocumentLine>) {
-    totalExclTax = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
-    totalVat = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.vatAmount) }
-    totalInclTax = totalExclTax.add(totalVat)
+    val totals = DocumentLine.computeTotals(lines)
+    totalExclTax = totals.exclTax
+    totalVat = totals.vat
+    totalInclTax = totals.inclTax
   }
 
   enum class OrderBStatus {

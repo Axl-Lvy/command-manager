@@ -62,9 +62,10 @@ class SalesA(
   @OneToOne(mappedBy = "salesA", fetch = FetchType.LAZY) var salesB: SalesB? = null
 
   fun recalculateTotals(lines: List<DocumentLine>) {
-    totalExclTax = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
-    totalVat = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.vatAmount) }
-    totalInclTax = totalExclTax.add(totalVat)
+    val totals = DocumentLine.computeTotals(lines)
+    totalExclTax = totals.exclTax
+    totalVat = totals.vat
+    totalInclTax = totals.inclTax
   }
 
   enum class SalesAStatus {
