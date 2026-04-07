@@ -130,3 +130,8 @@ When creating a new feature:
 - H2 in-memory for tests (`ddl-auto=create-drop`)
 - JPA entities use `@GeneratedValue(strategy = GenerationType.IDENTITY)`
 - Entity equality based on ID (see equals/hashCode pattern in BaseEntity)
+- The project is still in development, so don't care about database migrations for now
+
+## Misc
+
+- Never commit by yourself
