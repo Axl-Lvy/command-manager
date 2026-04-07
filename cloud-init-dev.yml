@@ -1,20 +1,8 @@
 #cloud-config
-packages:
-  - docker.io
-
 runcmd:
-  - systemctl enable docker
-  - systemctl start docker
+  - curl -fsSL https://get.docker.com | sh
 
   - mkdir -p /opt/command-manager-dev
-
-  - |
-    cat > /opt/command-manager-dev/.env << 'EOF'
-    DB_PASSWORD=choose_a_strong_password
-    DB_ROOT_PASSWORD=choose_another_strong_password
-    EOF
-
-  - chmod 600 /opt/command-manager-dev/.env
 
   - |
     cat > /opt/command-manager-dev/docker-compose.yml << 'EOF'
