@@ -1,6 +1,8 @@
 package fr.axl.lvy.order
 
 import fr.axl.lvy.base.NumberSequenceService
+import fr.axl.lvy.documentline.DocumentLine
+import fr.axl.lvy.documentline.DocumentLineRepository
 import java.time.LocalDate
 import java.util.Optional
 import org.springframework.stereotype.Service
@@ -9,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class OrderBService(
   private val orderBRepository: OrderBRepository,
+  private val documentLineRepository: DocumentLineRepository,
   private val numberSequenceService: NumberSequenceService,
 ) {
   companion object {
@@ -61,6 +64,33 @@ class OrderBService(
     order.receptionReserve = receptionReserve
     order.status = OrderB.OrderBStatus.RECEIVED
     return orderBRepository.save(order)
+  }
+
+  @Transactional(readOnly = true)
+  fun findLines(orderId: Long): List<DocumentLine> =
+    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.ORDER_B, orderId
+    )
+
+  @Transactional
+  fun saveWithLines(order: OrderB, lines: List<DocumentLine>): OrderB {
+    val saved = save(order)
+
+    val existingLines = documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.ORDER_B, saved.id!!
+    )
+    documentLineRepository.deleteAll(existingLines)
+
+    lines.forEachIndexed { i, line ->
+      line.documentType = DocumentLine.DocumentType.ORDER_B
+      line.documentId = saved.id!!
+      line.position = i
+      line.recalculate()
+      documentLineRepository.save(line)
+    }
+
+    saved.recalculateTotals(lines)
+    return orderBRepository.save(saved)
   }
 
   private fun getAllowedTransitions(current: OrderB.OrderBStatus): Set<OrderB.OrderBStatus> =

@@ -92,6 +92,34 @@ class SalesAService(
     return persistedSale
   }
 
+  @Transactional(readOnly = true)
+  fun findLines(saleId: Long): List<DocumentLine> =
+    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.SALES_A, saleId
+    )
+
+  @Transactional
+  fun saveWithLines(sale: SalesA, lines: List<DocumentLine>): SalesA {
+    val saved = save(sale)
+
+    val existingLines = documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.SALES_A, saved.id!!
+    )
+    documentLineRepository.deleteAll(existingLines)
+
+    lines.forEachIndexed { i, line ->
+      line.documentType = DocumentLine.DocumentType.SALES_A
+      line.documentId = saved.id!!
+      line.position = i
+      line.vatRate = saved.vatRate
+      line.recalculate()
+      documentLineRepository.save(line)
+    }
+
+    saved.recalculateTotals(lines)
+    return syncGeneratedOrder(saved, lines)
+  }
+
   private fun generateNextSaleNumber(): String =
     numberSequenceService.nextNumber(NumberSequenceService.SALES_A)
 }

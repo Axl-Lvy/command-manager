@@ -126,6 +126,34 @@ class OrderAService(
     orderARepository.save(order)
   }
 
+  @Transactional(readOnly = true)
+  fun findLines(orderId: Long): List<DocumentLine> =
+    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.ORDER_A, orderId
+    )
+
+  @Transactional
+  fun saveWithLines(order: OrderA, lines: List<DocumentLine>): OrderA {
+    val saved = save(order)
+
+    val existingLines = documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.ORDER_A, saved.id!!
+    )
+    documentLineRepository.deleteAll(existingLines)
+
+    lines.forEachIndexed { i, line ->
+      line.documentType = DocumentLine.DocumentType.ORDER_A
+      line.documentId = saved.id!!
+      line.position = i
+      line.vatRate = saved.vatRate
+      line.recalculate()
+      documentLineRepository.save(line)
+    }
+
+    saved.recalculateTotals(lines)
+    return orderARepository.save(saved)
+  }
+
   private fun getAllowedTransitions(current: OrderA.OrderAStatus): Set<OrderA.OrderAStatus> =
     when (current) {
       OrderA.OrderAStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
