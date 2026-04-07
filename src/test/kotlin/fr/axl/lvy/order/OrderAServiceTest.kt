@@ -124,7 +124,7 @@ class OrderAServiceTest {
     val order = createOrderA("CA-ST-06", client, OrderA.OrderAStatus.CONFIRMED)
 
     assertThatThrownBy { orderAService.changeStatus(order, OrderA.OrderAStatus.INVOICED) }
-      .isInstanceOf(IllegalStateException::class.java)
+      .isInstanceOf(IllegalArgumentException::class.java)
   }
 
   @ParameterizedTest
@@ -134,7 +134,7 @@ class OrderAServiceTest {
     val order = createOrderA("CA-TERM-${terminal.ordinal}", client, terminal)
 
     assertThatThrownBy { orderAService.changeStatus(order, OrderA.OrderAStatus.CONFIRMED) }
-      .isInstanceOf(IllegalStateException::class.java)
+      .isInstanceOf(IllegalArgumentException::class.java)
   }
 
   @Test
