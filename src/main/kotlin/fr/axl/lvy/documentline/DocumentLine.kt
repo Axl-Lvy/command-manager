@@ -58,6 +58,7 @@ class DocumentLine(
     overrideVatRate: BigDecimal? = null,
     overrideUnitPrice: BigDecimal? = null,
   ) {
+    designation = source.designation
     product = source.product
     description = source.description
     hsCode = source.hsCode

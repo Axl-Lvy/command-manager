@@ -9,6 +9,7 @@ class NumberSequenceService(private val repository: NumberSequenceRepository) {
   @Transactional
   fun nextNumber(entityType: String, prefix: String, padding: Int): String {
     val seq = repository.findForUpdate(entityType)
+      ?: repository.save(NumberSequence(entityType, 1))
     val current = seq.nextVal
     seq.nextVal++
     repository.save(seq)

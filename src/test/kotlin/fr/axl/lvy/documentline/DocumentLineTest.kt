@@ -134,6 +134,7 @@ class DocumentLineTest {
     val target = DocumentLine(DocumentLine.DocumentType.SALES_A, 2L, "Target")
     target.copyFieldsFrom(source)
 
+    assertThat(target.designation).isEqualTo("Source")
     assertThat(target.product!!.reference).isEqualTo("REF-CP")
     assertThat(target.description).isEqualTo("A description")
     assertThat(target.hsCode).isEqualTo("1234.56")

@@ -9,5 +9,5 @@ import org.springframework.data.repository.query.Param
 interface NumberSequenceRepository : JpaRepository<NumberSequence, String> {
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT n FROM NumberSequence n WHERE n.entityType = :type")
-  fun findForUpdate(@Param("type") type: String): NumberSequence
+  fun findForUpdate(@Param("type") type: String): NumberSequence?
 }
