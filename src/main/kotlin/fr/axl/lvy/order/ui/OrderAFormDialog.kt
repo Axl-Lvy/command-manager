@@ -51,9 +51,9 @@ internal class OrderAFormDialog(
   private val lineEditor: DocumentLineEditor
 
   init {
-    setHeaderTitle(if (order == null) "Nouvelle vente A" else "Modifier vente A")
-    setWidth("900px")
-    setHeight("90%")
+    headerTitle = if (order == null) "Nouvelle vente A" else "Modifier vente A"
+    width = "900px"
+    height = "90%"
 
     clientCombo.isRequired = true
     orderDate.isRequired = true
@@ -103,7 +103,7 @@ internal class OrderAFormDialog(
     if (order != null) {
       populateForm(order)
     } else {
-      orderNumber.value = salesAService.nextSaleNumber()
+      orderNumber.value = "(auto)"
       orderDate.value = LocalDate.now()
       status.value = SalesA.SalesAStatus.DRAFT
       currency.value = "EUR"
@@ -166,6 +166,7 @@ internal class OrderAFormDialog(
     o.conditions = if (conditions.value.isBlank()) null else conditions.value
 
     val saved = salesAService.save(o)
+    orderNumber.value = saved.saleNumber
 
     if (order != null) {
       val oldLines =

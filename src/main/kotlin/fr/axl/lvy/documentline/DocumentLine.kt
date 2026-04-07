@@ -53,6 +53,24 @@ class DocumentLine(
 
   var position: Int = 0
 
+  fun copyFieldsFrom(
+    source: DocumentLine,
+    overrideVatRate: BigDecimal? = null,
+    overrideUnitPrice: BigDecimal? = null,
+  ) {
+    product = source.product
+    description = source.description
+    hsCode = source.hsCode
+    madeIn = source.madeIn
+    clientProductCode = source.clientProductCode
+    quantity = source.quantity
+    unit = source.unit
+    unitPriceExclTax = overrideUnitPrice ?: source.unitPriceExclTax
+    discountPercent = source.discountPercent
+    vatRate = overrideVatRate ?: source.vatRate
+    recalculate()
+  }
+
   fun recalculate() {
     val discountMultiplier =
       BigDecimal.ONE.subtract(

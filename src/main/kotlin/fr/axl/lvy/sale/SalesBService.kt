@@ -1,5 +1,6 @@
 package fr.axl.lvy.sale
 
+import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderB
@@ -13,6 +14,7 @@ class SalesBService(
   private val salesBRepository: SalesBRepository,
   private val orderBService: OrderBService,
   private val documentLineRepository: DocumentLineRepository,
+  private val numberSequenceService: NumberSequenceService,
 ) {
   @Transactional(readOnly = true)
   fun findAll(): List<SalesB> = salesBRepository.findByDeletedAtIsNull()
@@ -32,8 +34,6 @@ class SalesBService(
   fun delete(id: Long) {
     salesBRepository.findById(id).ifPresent { it.softDelete() }
   }
-
-  @Transactional(readOnly = true) fun nextSaleNumber(): String = generateNextSaleNumber()
 
   @Transactional
   fun createOrUpdateFromValidatedSalesA(salesA: SalesA, saleLines: List<DocumentLine>): SalesB {
@@ -61,18 +61,8 @@ class SalesBService(
         .filter { it.product?.mto == true }
         .mapIndexed { index, line ->
           DocumentLine(DocumentLine.DocumentType.SALES_B, savedSale.id!!, line.designation).apply {
-            product = line.product
-            description = line.description
-            hsCode = line.hsCode
-            madeIn = line.madeIn
-            clientProductCode = line.clientProductCode
-            quantity = line.quantity
-            unit = line.unit
-            unitPriceExclTax = line.unitPriceExclTax
-            discountPercent = line.discountPercent
-            vatRate = line.vatRate
+            copyFieldsFrom(line)
             position = index
-            recalculate()
           }
         }
     documentLineRepository.saveAll(generatedSaleLines)
@@ -87,8 +77,7 @@ class SalesBService(
   fun syncGeneratedOrder(sale: SalesB, saleLines: List<DocumentLine>): SalesB {
     val sourceOrderA =
       sale.salesA.orderA ?: throw IllegalStateException("Sales A must generate Order A first")
-    val order =
-      sale.orderB ?: OrderB("", sourceOrderA).also { generated -> sale.orderB = generated }
+    val order = sale.orderB ?: OrderB("", sourceOrderA)
 
     order.orderA = sourceOrderA
     order.orderDate = sale.saleDate
@@ -106,18 +95,8 @@ class SalesBService(
     val generatedLines =
       saleLines.mapIndexed { index, line ->
         DocumentLine(DocumentLine.DocumentType.ORDER_B, savedOrder.id!!, line.designation).apply {
-          product = line.product
-          description = line.description
-          hsCode = line.hsCode
-          madeIn = line.madeIn
-          clientProductCode = line.clientProductCode
-          quantity = line.quantity
-          unit = line.unit
-          unitPriceExclTax = line.unitPriceExclTax
-          discountPercent = line.discountPercent
-          vatRate = line.vatRate
+          copyFieldsFrom(line)
           position = index
-          recalculate()
         }
       }
     documentLineRepository.saveAll(generatedLines)
@@ -137,17 +116,6 @@ class SalesBService(
     salesBRepository.save(salesB)
   }
 
-  private fun generateNextSaleNumber(): String {
-    val nextNumber =
-      salesBRepository
-        .findAllSaleNumbers()
-        .mapNotNull { saleNumber -> saleNumber.removePrefix(SALE_NUMBER_PREFIX).toIntOrNull() }
-        .maxOrNull()
-        ?.plus(1) ?: 1
-    return SALE_NUMBER_PREFIX + nextNumber.toString().padStart(3, '0')
-  }
-
-  companion object {
-    private const val SALE_NUMBER_PREFIX = "NST_SO_"
-  }
+  private fun generateNextSaleNumber(): String =
+    numberSequenceService.nextNumber(NumberSequenceService.SALES_B, "NST_SO_", 3)
 }

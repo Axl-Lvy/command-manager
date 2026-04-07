@@ -117,6 +117,74 @@ class DocumentLineTest {
   }
 
   @Test
+  fun copyFieldsFrom_copies_all_fields() {
+    val source = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Source")
+    source.product = Product("REF-CP", "Copied Product")
+    source.description = "A description"
+    source.hsCode = "1234.56"
+    source.madeIn = "France"
+    source.clientProductCode = "CPC-01"
+    source.quantity = BigDecimal("7")
+    source.unit = "kg"
+    source.unitPriceExclTax = BigDecimal("50.00")
+    source.discountPercent = BigDecimal("10.00")
+    source.vatRate = BigDecimal("20.00")
+    source.recalculate()
+
+    val target = DocumentLine(DocumentLine.DocumentType.SALES_A, 2L, "Target")
+    target.copyFieldsFrom(source)
+
+    assertThat(target.product!!.reference).isEqualTo("REF-CP")
+    assertThat(target.description).isEqualTo("A description")
+    assertThat(target.hsCode).isEqualTo("1234.56")
+    assertThat(target.madeIn).isEqualTo("France")
+    assertThat(target.clientProductCode).isEqualTo("CPC-01")
+    assertThat(target.quantity).isEqualByComparingTo("7")
+    assertThat(target.unit).isEqualTo("kg")
+    assertThat(target.unitPriceExclTax).isEqualByComparingTo("50.00")
+    assertThat(target.discountPercent).isEqualByComparingTo("10.00")
+    assertThat(target.vatRate).isEqualByComparingTo("20.00")
+    assertThat(target.lineTotalExclTax).isEqualByComparingTo(source.lineTotalExclTax)
+    assertThat(target.vatAmount).isEqualByComparingTo(source.vatAmount)
+  }
+
+  @Test
+  fun copyFieldsFrom_with_overrideVatRate() {
+    val source = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Source")
+    source.quantity = BigDecimal("2")
+    source.unitPriceExclTax = BigDecimal("100.00")
+    source.discountPercent = BigDecimal.ZERO
+    source.vatRate = BigDecimal("20.00")
+    source.recalculate()
+
+    val target = DocumentLine(DocumentLine.DocumentType.SALES_A, 2L, "Target")
+    target.copyFieldsFrom(source, overrideVatRate = BigDecimal("5.50"))
+
+    assertThat(target.vatRate).isEqualByComparingTo("5.50")
+    assertThat(target.unitPriceExclTax).isEqualByComparingTo("100.00")
+    assertThat(target.lineTotalExclTax).isEqualByComparingTo("200.00")
+    assertThat(target.vatAmount).isEqualByComparingTo("11.00")
+  }
+
+  @Test
+  fun copyFieldsFrom_with_overrideUnitPrice() {
+    val source = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Source")
+    source.quantity = BigDecimal("3")
+    source.unitPriceExclTax = BigDecimal("100.00")
+    source.discountPercent = BigDecimal.ZERO
+    source.vatRate = BigDecimal("20.00")
+    source.recalculate()
+
+    val target = DocumentLine(DocumentLine.DocumentType.ORDER_B, 2L, "Target")
+    target.copyFieldsFrom(source, overrideUnitPrice = BigDecimal("60.00"))
+
+    assertThat(target.unitPriceExclTax).isEqualByComparingTo("60.00")
+    assertThat(target.vatRate).isEqualByComparingTo("20.00")
+    assertThat(target.lineTotalExclTax).isEqualByComparingTo("180.00")
+    assertThat(target.vatAmount).isEqualByComparingTo("36.00")
+  }
+
+  @Test
   fun recalculate_with_100_percent_discount_gives_zero() {
     val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
     line.quantity = BigDecimal("5")

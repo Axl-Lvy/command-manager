@@ -1,14 +1,17 @@
 package fr.axl.lvy.order
 
+import fr.axl.lvy.base.NumberSequenceService
 import java.time.LocalDate
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class OrderBService(private val orderBRepository: OrderBRepository) {
+class OrderBService(
+  private val orderBRepository: OrderBRepository,
+  private val numberSequenceService: NumberSequenceService,
+) {
   companion object {
-    private const val ORDER_NUMBER_PREFIX = "NST_PO_"
     private val ALLOWED_TRANSITIONS_FROM_SENT =
       setOf(OrderB.OrderBStatus.CONFIRMED, OrderB.OrderBStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
@@ -68,13 +71,6 @@ class OrderBService(private val orderBRepository: OrderBRepository) {
       else -> emptySet()
     }
 
-  private fun generateNextOrderNumber(): String {
-    val nextNumber =
-      orderBRepository
-        .findAllOrderNumbers()
-        .mapNotNull { orderNumber -> orderNumber.removePrefix(ORDER_NUMBER_PREFIX).toIntOrNull() }
-        .maxOrNull()
-        ?.plus(1) ?: 1
-    return ORDER_NUMBER_PREFIX + nextNumber.toString().padStart(3, '0')
-  }
+  private fun generateNextOrderNumber(): String =
+    numberSequenceService.nextNumber(NumberSequenceService.ORDER_B, "NST_PO_", 3)
 }

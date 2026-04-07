@@ -71,7 +71,7 @@ internal class OrderBFormDialog(
     if (order != null) {
       populateForm(order)
     } else {
-      orderNumber.value = salesBService.nextSaleNumber()
+      orderNumber.value = "(auto)"
     }
   }
 
@@ -110,6 +110,7 @@ internal class OrderBFormDialog(
     o.notes = if (notes.value.isBlank()) null else notes.value
 
     val saved = salesBService.save(o)
+    orderNumber.value = saved.saleNumber
 
     if (order != null) {
       val oldLines =

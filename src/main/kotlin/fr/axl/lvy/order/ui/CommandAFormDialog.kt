@@ -96,7 +96,7 @@ internal class CommandAFormDialog(
     if (order != null) {
       populateForm(order)
     } else {
-      orderNumber.value = orderAService.nextOrderNumber()
+      orderNumber.value = "(auto)"
       orderDate.value = LocalDate.now()
       status.value = OrderA.OrderAStatus.CONFIRMED
       currency.value = "EUR"
@@ -159,6 +159,7 @@ internal class CommandAFormDialog(
     o.conditions = conditions.value.takeIf { it.isNotBlank() }
 
     val saved = orderAService.save(o)
+    orderNumber.value = saved.orderNumber
 
     if (order != null) {
       val oldLines =

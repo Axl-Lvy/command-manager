@@ -1,5 +1,6 @@
 package fr.axl.lvy.sale
 
+import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderA
@@ -14,6 +15,7 @@ class SalesAService(
   private val orderAService: OrderAService,
   private val documentLineRepository: DocumentLineRepository,
   private val salesBService: SalesBService,
+  private val numberSequenceService: NumberSequenceService,
 ) {
   @Transactional(readOnly = true)
   fun findAll(): List<SalesA> = salesARepository.findByDeletedAtIsNull()
@@ -40,13 +42,9 @@ class SalesAService(
     salesARepository.findById(id).ifPresent { it.softDelete() }
   }
 
-  @Transactional(readOnly = true) fun nextSaleNumber(): String = generateNextSaleNumber()
-
   @Transactional
   fun syncGeneratedOrder(sale: SalesA, saleLines: List<DocumentLine>): SalesA {
-    val order =
-      sale.orderA
-        ?: OrderA("", sale.client, sale.saleDate).also { generated -> sale.orderA = generated }
+    val order = sale.orderA ?: OrderA("", sale.client, sale.saleDate)
 
     order.client = sale.client
     order.orderDate = sale.saleDate
@@ -72,18 +70,8 @@ class SalesAService(
     val generatedLines =
       saleLines.mapIndexed { index, line ->
         DocumentLine(DocumentLine.DocumentType.ORDER_A, savedOrder.id!!, line.designation).apply {
-          product = line.product
-          description = line.description
-          hsCode = line.hsCode
-          madeIn = line.madeIn
-          clientProductCode = line.clientProductCode
-          quantity = line.quantity
-          unit = line.unit
-          unitPriceExclTax = line.unitPriceExclTax
-          discountPercent = line.discountPercent
-          vatRate = sale.vatRate
+          copyFieldsFrom(line, overrideVatRate = sale.vatRate)
           position = index
-          recalculate()
         }
       }
     documentLineRepository.saveAll(generatedLines)
@@ -104,17 +92,6 @@ class SalesAService(
     return persistedSale
   }
 
-  private fun generateNextSaleNumber(): String {
-    val nextNumber =
-      salesARepository
-        .findAllSaleNumbers()
-        .mapNotNull { saleNumber -> saleNumber.removePrefix(SALE_NUMBER_PREFIX).toIntOrNull() }
-        .maxOrNull()
-        ?.plus(1) ?: 1
-    return SALE_NUMBER_PREFIX + nextNumber.toString().padStart(3, '0')
-  }
-
-  companion object {
-    private const val SALE_NUMBER_PREFIX = "CoD_SO_"
-  }
+  private fun generateNextSaleNumber(): String =
+    numberSequenceService.nextNumber(NumberSequenceService.SALES_A, "CoD_SO_", 3)
 }
