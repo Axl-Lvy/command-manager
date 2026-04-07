@@ -36,4 +36,13 @@ class NumberSequenceServiceTest {
 
     assertThat(client).isEqualTo("C000001")
   }
+
+  @Test
+  fun nextNumber_auto_creates_sequence_when_missing() {
+    val first = numberSequenceService.nextNumber("NEW_TYPE", "NEW_", 4)
+    val second = numberSequenceService.nextNumber("NEW_TYPE", "NEW_", 4)
+
+    assertThat(first).isEqualTo("NEW_0001")
+    assertThat(second).isEqualTo("NEW_0002")
+  }
 }
