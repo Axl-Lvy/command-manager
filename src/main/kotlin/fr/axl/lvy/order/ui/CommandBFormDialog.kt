@@ -13,7 +13,6 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
@@ -21,17 +20,17 @@ import fr.axl.lvy.order.OrderB
 import fr.axl.lvy.order.OrderBService
 import fr.axl.lvy.product.ProductService
 
-internal class OrderBFormDialog(
+internal class CommandBFormDialog(
   private val orderBService: OrderBService,
   orderAService: OrderAService,
   productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
   private val order: OrderB?,
   private val onSave: Runnable,
 ) : Dialog() {
 
   private val orderNumber = TextField("N° Commande B")
   private val orderACombo = ComboBox<OrderA>("Commande A liée")
+  private val status = ComboBox<OrderB.OrderBStatus>("Statut")
   private val orderDate = DatePicker("Date commande")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
   private val notes = TextArea("Notes")
@@ -42,17 +41,18 @@ internal class OrderBFormDialog(
     setWidth("900px")
     setHeight("90%")
 
-    orderNumber.isRequired = true
     orderACombo.isRequired = true
+    orderNumber.isReadOnly = true
+    status.setItems(*OrderB.OrderBStatus.entries.toTypedArray())
 
     orderACombo.setItems(orderAService.findAll())
-    orderACombo.setItemLabelGenerator { "${it.orderNumber} - ${it.client?.name ?: ""}" }
+    orderACombo.setItemLabelGenerator { "${it.orderNumber} - ${it.client.name}" }
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
     form.add(orderNumber, orderACombo)
-    form.add(orderDate, expectedDeliveryDate)
-    form.add(notes, 2)
+    form.add(status, orderDate)
+    form.add(expectedDeliveryDate, notes)
 
     lineEditor =
       DocumentLineEditor(productService, DocumentLine.DocumentType.ORDER_B) {
@@ -70,26 +70,24 @@ internal class OrderBFormDialog(
 
     if (order != null) {
       populateForm(order)
+    } else {
+      status.value = OrderB.OrderBStatus.SENT
     }
   }
 
   private fun populateForm(o: OrderB) {
     orderNumber.value = o.orderNumber
     orderACombo.value = o.orderA
+    status.value = o.status
     orderDate.value = o.orderDate
     expectedDeliveryDate.value = o.expectedDeliveryDate
     notes.value = o.notes ?: ""
 
-    val lines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-        DocumentLine.DocumentType.ORDER_B,
-        o.id!!,
-      )
-    lineEditor.setLines(lines)
+    lineEditor.setLines(orderBService.findLines(o.id!!))
   }
 
   private fun save() {
-    if (orderNumber.isEmpty || orderACombo.isEmpty) {
+    if (orderACombo.isEmpty) {
       Notification.show(
           "Veuillez remplir les champs obligatoires",
           3000,
@@ -99,35 +97,17 @@ internal class OrderBFormDialog(
       return
     }
 
-    val o = order ?: OrderB(orderNumber.value, orderACombo.value)
+    val o = order ?: OrderB("", orderACombo.value)
     if (order != null) {
-      o.orderNumber = orderNumber.value
       o.orderA = orderACombo.value
     }
+    o.status = status.value ?: OrderB.OrderBStatus.SENT
     o.orderDate = orderDate.value
     o.expectedDeliveryDate = expectedDeliveryDate.value
-    o.notes = if (notes.value.isBlank()) null else notes.value
+    o.notes = notes.value.takeIf { it.isNotBlank() }
 
-    val saved = orderBService.save(o)
-
-    if (order != null) {
-      val oldLines =
-        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-          DocumentLine.DocumentType.ORDER_B,
-          saved.id!!,
-        )
-      documentLineRepository.deleteAll(oldLines)
-    }
-    val newLines = lineEditor.getLines()
-    newLines.forEachIndexed { i, line ->
-      line.documentId = saved.id!!
-      line.position = i
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
-
-    saved.recalculateTotals(newLines)
-    orderBService.save(saved)
+    val saved = orderBService.saveWithLines(o, lineEditor.getLines())
+    orderNumber.value = saved.orderNumber
 
     Notification.show("Commande B enregistrée", 3000, Notification.Position.BOTTOM_END)
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)

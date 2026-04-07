@@ -1,5 +1,6 @@
 package fr.axl.lvy.order
 
+import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import java.util.Optional
@@ -11,6 +12,7 @@ class OrderAService(
   private val orderARepository: OrderARepository,
   private val orderBRepository: OrderBRepository,
   private val documentLineRepository: DocumentLineRepository,
+  private val numberSequenceService: NumberSequenceService,
 ) {
   companion object {
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
@@ -28,7 +30,19 @@ class OrderAService(
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderA> = orderARepository.findById(id)
 
-  @Transactional fun save(order: OrderA): OrderA = orderARepository.save(order)
+  @Transactional
+  fun save(order: OrderA): OrderA {
+    if (order.orderNumber.isBlank()) {
+      order.orderNumber = generateNextOrderNumber()
+    }
+    if (order.billingAddress.isNullOrBlank()) {
+      order.billingAddress = order.client.billingAddress
+    }
+    if (order.shippingAddress.isNullOrBlank()) {
+      order.shippingAddress = order.client.shippingAddress
+    }
+    return orderARepository.save(order)
+  }
 
   @Transactional
   fun delete(id: Long) {
@@ -38,9 +52,7 @@ class OrderAService(
   @Transactional
   fun changeStatus(order: OrderA, newStatus: OrderA.OrderAStatus): OrderA {
     val allowed = getAllowedTransitions(order.status)
-    if (!allowed.contains(newStatus)) {
-      throw IllegalStateException("Cannot transition from ${order.status} to $newStatus")
-    }
+    require(allowed.contains(newStatus)) { "Cannot transition from ${order.status} to $newStatus" }
     order.status = newStatus
     return orderARepository.save(order)
   }
@@ -52,8 +64,8 @@ class OrderAService(
     copy.subject = source.subject
     copy.billingAddress = source.billingAddress
     copy.shippingAddress = source.shippingAddress
+    copy.vatRate = source.vatRate
     copy.currency = source.currency
-    copy.exchangeRate = source.exchangeRate
     copy.incoterms = source.incoterms
     copy.notes = source.notes
     copy.conditions = source.conditions
@@ -67,18 +79,8 @@ class OrderAService(
       )
     for (line in lines) {
       val newLine = DocumentLine(DocumentLine.DocumentType.ORDER_A, copy.id!!, line.designation)
-      newLine.product = line.product
-      newLine.description = line.description
-      newLine.hsCode = line.hsCode
-      newLine.madeIn = line.madeIn
-      newLine.clientProductCode = line.clientProductCode
-      newLine.quantity = line.quantity
-      newLine.unit = line.unit
-      newLine.unitPriceExclTax = line.unitPriceExclTax
-      newLine.discountPercent = line.discountPercent
-      newLine.vatRate = line.vatRate
+      newLine.copyFieldsFrom(line)
       newLine.position = line.position
-      newLine.recalculate()
       documentLineRepository.save(newLine)
     }
 
@@ -106,20 +108,9 @@ class OrderAService(
     orderB = orderBRepository.save(orderB)
 
     for (line in mtoLines) {
-      val product = line.product!!
       val newLine = DocumentLine(DocumentLine.DocumentType.ORDER_B, orderB.id!!, line.designation)
-      newLine.product = product
-      newLine.description = line.description
-      newLine.hsCode = line.hsCode
-      newLine.madeIn = line.madeIn
-      newLine.clientProductCode = line.clientProductCode
-      newLine.quantity = line.quantity
-      newLine.unit = line.unit
-      newLine.unitPriceExclTax = product.purchasePriceExclTax
-      newLine.discountPercent = line.discountPercent
-      newLine.vatRate = line.vatRate
+      newLine.copyFieldsFrom(line, overrideUnitPrice = line.product!!.purchasePriceExclTax)
       newLine.position = line.position
-      newLine.recalculate()
       documentLineRepository.save(newLine)
     }
 
@@ -135,6 +126,37 @@ class OrderAService(
     orderARepository.save(order)
   }
 
+  @Transactional(readOnly = true)
+  fun findLines(orderId: Long): List<DocumentLine> =
+    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.ORDER_A,
+      orderId,
+    )
+
+  @Transactional
+  fun saveWithLines(order: OrderA, lines: List<DocumentLine>): OrderA {
+    val saved = save(order)
+
+    val existingLines =
+      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+        DocumentLine.DocumentType.ORDER_A,
+        saved.id!!,
+      )
+    documentLineRepository.deleteAll(existingLines)
+
+    lines.forEachIndexed { i, line ->
+      line.documentType = DocumentLine.DocumentType.ORDER_A
+      line.documentId = saved.id!!
+      line.position = i
+      line.vatRate = saved.vatRate
+      line.recalculate()
+      documentLineRepository.save(line)
+    }
+
+    saved.recalculateTotals(lines)
+    return orderARepository.save(saved)
+  }
+
   private fun getAllowedTransitions(current: OrderA.OrderAStatus): Set<OrderA.OrderAStatus> =
     when (current) {
       OrderA.OrderAStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
@@ -143,4 +165,7 @@ class OrderAService(
       OrderA.OrderAStatus.DELIVERED -> ALLOWED_TRANSITIONS_FROM_DELIVERED
       else -> emptySet()
     }
+
+  private fun generateNextOrderNumber(): String =
+    numberSequenceService.nextNumber(NumberSequenceService.ORDER_A)
 }

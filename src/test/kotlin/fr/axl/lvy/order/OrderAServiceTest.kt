@@ -1,7 +1,7 @@
 package fr.axl.lvy.order
 
+import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
-import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.product.Product
@@ -24,13 +24,9 @@ class OrderAServiceTest {
   @Autowired lateinit var orderAService: OrderAService
   @Autowired lateinit var orderARepository: OrderARepository
   @Autowired lateinit var orderBRepository: OrderBRepository
-  @Autowired lateinit var clientRepository: ClientRepository
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
-
-  private fun createClient(code: String): Client {
-    return clientRepository.save(Client(code, "Client $code"))
-  }
+  @Autowired lateinit var testData: TestDataFactory
 
   private fun createOrderA(number: String, client: Client, status: OrderA.OrderAStatus): OrderA {
     val order = OrderA(number, client, LocalDate.of(2026, 3, 1))
@@ -40,7 +36,7 @@ class OrderAServiceTest {
 
   @Test
   fun save_and_retrieve_order() {
-    val client = createClient("CLI-OA01")
+    val client = testData.createClient("CLI-OA01")
     val order = OrderA("CA-2026-0001", client, LocalDate.of(2026, 3, 1))
     order.subject = "Test Order"
     orderAService.save(order)
@@ -52,7 +48,7 @@ class OrderAServiceTest {
 
   @Test
   fun soft_delete_excludes_from_findAll() {
-    val client = createClient("CLI-OA02")
+    val client = testData.createClient("CLI-OA02")
     val order = createOrderA("CA-DEL-001", client, OrderA.OrderAStatus.CONFIRMED)
 
     orderAService.delete(order.id!!)
@@ -63,7 +59,7 @@ class OrderAServiceTest {
 
   @Test
   fun isEditable_for_confirmed_in_production_ready() {
-    val client = createClient("CLI-OA03")
+    val client = testData.createClient("CLI-OA03")
 
     assertThat(createOrderA("CA-E1", client, OrderA.OrderAStatus.CONFIRMED).isEditable()).isTrue
     assertThat(createOrderA("CA-E2", client, OrderA.OrderAStatus.IN_PRODUCTION).isEditable()).isTrue
@@ -75,7 +71,7 @@ class OrderAServiceTest {
 
   @Test
   fun status_transition_confirmed_to_in_production() {
-    val client = createClient("CLI-OA04")
+    val client = testData.createClient("CLI-OA04")
     val order = createOrderA("CA-ST-01", client, OrderA.OrderAStatus.CONFIRMED)
 
     val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.IN_PRODUCTION)
@@ -84,7 +80,7 @@ class OrderAServiceTest {
 
   @Test
   fun status_transition_in_production_to_ready() {
-    val client = createClient("CLI-OA05")
+    val client = testData.createClient("CLI-OA05")
     val order = createOrderA("CA-ST-02", client, OrderA.OrderAStatus.IN_PRODUCTION)
 
     val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.READY)
@@ -93,7 +89,7 @@ class OrderAServiceTest {
 
   @Test
   fun status_transition_ready_to_delivered() {
-    val client = createClient("CLI-OA06")
+    val client = testData.createClient("CLI-OA06")
     val order = createOrderA("CA-ST-03", client, OrderA.OrderAStatus.READY)
 
     val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.DELIVERED)
@@ -102,7 +98,7 @@ class OrderAServiceTest {
 
   @Test
   fun status_transition_delivered_to_invoiced() {
-    val client = createClient("CLI-OA07")
+    val client = testData.createClient("CLI-OA07")
     val order = createOrderA("CA-ST-04", client, OrderA.OrderAStatus.DELIVERED)
 
     val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.INVOICED)
@@ -111,7 +107,7 @@ class OrderAServiceTest {
 
   @Test
   fun status_transition_confirmed_to_cancelled() {
-    val client = createClient("CLI-OA08")
+    val client = testData.createClient("CLI-OA08")
     val order = createOrderA("CA-ST-05", client, OrderA.OrderAStatus.CONFIRMED)
 
     val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.CANCELLED)
@@ -120,28 +116,28 @@ class OrderAServiceTest {
 
   @Test
   fun invalid_status_transition_throws() {
-    val client = createClient("CLI-OA09")
+    val client = testData.createClient("CLI-OA09")
     val order = createOrderA("CA-ST-06", client, OrderA.OrderAStatus.CONFIRMED)
 
     assertThatThrownBy { orderAService.changeStatus(order, OrderA.OrderAStatus.INVOICED) }
-      .isInstanceOf(IllegalStateException::class.java)
+      .isInstanceOf(IllegalArgumentException::class.java)
   }
 
   @ParameterizedTest
   @EnumSource(value = OrderA.OrderAStatus::class, names = ["INVOICED", "CANCELLED"])
   fun no_transitions_from_terminal_statuses(terminal: OrderA.OrderAStatus) {
-    val client = createClient("CLI-OA-T${terminal.ordinal}")
+    val client = testData.createClient("CLI-OA-T${terminal.ordinal}")
     val order = createOrderA("CA-TERM-${terminal.ordinal}", client, terminal)
 
     assertThatThrownBy { orderAService.changeStatus(order, OrderA.OrderAStatus.CONFIRMED) }
-      .isInstanceOf(IllegalStateException::class.java)
+      .isInstanceOf(IllegalArgumentException::class.java)
   }
 
   @Test
   fun recalculateTotals_includes_margin() {
-    val client = createClient("CLI-OA10")
+    val client = testData.createClient("CLI-OA10")
     val order = createOrderA("CA-CALC-1", client, OrderA.OrderAStatus.CONFIRMED)
-    order.purchasePriceExclTax = BigDecimal("300.00")
+    order.vatRate = BigDecimal("20.00")
     orderARepository.flush()
 
     val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, order.id!!, "Item")
@@ -156,12 +152,12 @@ class OrderAServiceTest {
     assertThat(order.totalExclTax).isEqualByComparingTo("500.00")
     assertThat(order.totalVat).isEqualByComparingTo("100.00")
     assertThat(order.totalInclTax).isEqualByComparingTo("600.00")
-    assertThat(order.marginExclTax).isEqualByComparingTo("200.00") // 500 - 300
+    assertThat(order.marginExclTax).isEqualByComparingTo("0.00")
   }
 
   @Test
   fun duplicate_copies_order_and_lines() {
-    val client = createClient("CLI-OA11")
+    val client = testData.createClient("CLI-OA11")
     val order = createOrderA("CA-DUP-1", client, OrderA.OrderAStatus.CONFIRMED)
     order.subject = "Original"
     order.clientReference = "CR-DUP"
@@ -201,7 +197,7 @@ class OrderAServiceTest {
 
   @Test
   fun handleMto_creates_orderB_for_mto_products() {
-    val client = createClient("CLI-OA12")
+    val client = testData.createClient("CLI-OA12")
     val order = createOrderA("CA-MTO-1", client, OrderA.OrderAStatus.CONFIRMED)
     orderARepository.flush()
 
@@ -262,7 +258,7 @@ class OrderAServiceTest {
 
   @Test
   fun handleMto_does_nothing_without_mto_products() {
-    val client = createClient("CLI-OA13")
+    val client = testData.createClient("CLI-OA13")
     val order = createOrderA("CA-MTO-2", client, OrderA.OrderAStatus.CONFIRMED)
     orderARepository.flush()
 
@@ -286,5 +282,53 @@ class OrderAServiceTest {
     val updatedOrder = orderARepository.findById(order.id!!).orElseThrow()
     assertThat(updatedOrder.orderB).isNull()
     assertThat(orderBRepository.findAll()).isEmpty()
+  }
+
+  @Test
+  fun saveWithLines_creates_order_with_lines() {
+    val client = testData.createClient("CLI-OA-SWL")
+    val order = OrderA("", client, LocalDate.of(2026, 3, 1))
+    order.vatRate = BigDecimal("20.00")
+
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "Widget")
+    line.quantity = BigDecimal("5")
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+
+    val saved = orderAService.saveWithLines(order, listOf(line))
+
+    assertThat(saved.orderNumber).startsWith("CoD_PO_")
+    assertThat(saved.totalExclTax).isEqualByComparingTo("500.00")
+    assertThat(saved.totalVat).isEqualByComparingTo("100.00")
+    assertThat(saved.totalInclTax).isEqualByComparingTo("600.00")
+
+    val lines = orderAService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Widget")
+    assertThat(lines[0].vatRate).isEqualByComparingTo("20.00")
+    assertThat(lines[0].position).isEqualTo(0)
+  }
+
+  @Test
+  fun saveWithLines_replaces_existing_lines() {
+    val client = testData.createClient("CLI-OA-SWL2")
+    val order = OrderA("OA-SWL-01", client, LocalDate.of(2026, 3, 1))
+    order.vatRate = BigDecimal("20.00")
+
+    val line1 = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "Widget A")
+    line1.quantity = BigDecimal.ONE
+    line1.unitPriceExclTax = BigDecimal("100.00")
+    line1.discountPercent = BigDecimal.ZERO
+    orderAService.saveWithLines(order, listOf(line1))
+
+    val line2 = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "Widget B")
+    line2.quantity = BigDecimal("2")
+    line2.unitPriceExclTax = BigDecimal("50.00")
+    line2.discountPercent = BigDecimal.ZERO
+    val saved = orderAService.saveWithLines(order, listOf(line2))
+
+    val lines = orderAService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Widget B")
   }
 }

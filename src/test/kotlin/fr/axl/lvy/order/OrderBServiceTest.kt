@@ -1,7 +1,10 @@
 package fr.axl.lvy.order
 
+import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientRepository
+import fr.axl.lvy.documentline.DocumentLine
+import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -20,6 +23,7 @@ class OrderBServiceTest {
   @Autowired lateinit var orderBRepository: OrderBRepository
   @Autowired lateinit var orderARepository: OrderARepository
   @Autowired lateinit var clientRepository: ClientRepository
+  @Autowired lateinit var testData: TestDataFactory
 
   private fun createOrderA(number: String): OrderA {
     val client = clientRepository.save(Client("CLI-OB-$number", "Client"))
@@ -152,5 +156,51 @@ class OrderBServiceTest {
     val orderA = createOrderA("CA-OB-11")
     val orderB = OrderB("CB-DEF-01", orderA)
     assertThat(orderB.status).isEqualTo(OrderB.OrderBStatus.SENT)
+  }
+
+  @Test
+  fun saveWithLines_creates_orderB_with_lines() {
+    val orderA = createOrderA("CA-OB-SWL")
+    val orderB = OrderB("", orderA)
+
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_B, 0L, "Component")
+    line.quantity = BigDecimal("3")
+    line.unitPriceExclTax = BigDecimal("60.00")
+    line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
+
+    val saved = orderBService.saveWithLines(orderB, listOf(line))
+
+    assertThat(saved.orderNumber).startsWith("NST_PO_")
+    assertThat(saved.totalExclTax).isEqualByComparingTo("180.00")
+
+    val lines = orderBService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Component")
+    assertThat(lines[0].position).isEqualTo(0)
+  }
+
+  @Test
+  fun saveWithLines_replaces_existing_lines() {
+    val orderA = createOrderA("CA-OB-SWL2")
+    val orderB = OrderB("OB-SWL-01", orderA)
+
+    val line1 = DocumentLine(DocumentLine.DocumentType.ORDER_B, 0L, "Part A")
+    line1.quantity = BigDecimal.ONE
+    line1.unitPriceExclTax = BigDecimal("100.00")
+    line1.discountPercent = BigDecimal.ZERO
+    line1.vatRate = BigDecimal("20.00")
+    orderBService.saveWithLines(orderB, listOf(line1))
+
+    val line2 = DocumentLine(DocumentLine.DocumentType.ORDER_B, 0L, "Part B")
+    line2.quantity = BigDecimal("2")
+    line2.unitPriceExclTax = BigDecimal("50.00")
+    line2.discountPercent = BigDecimal.ZERO
+    line2.vatRate = BigDecimal("20.00")
+    val saved = orderBService.saveWithLines(orderB, listOf(line2))
+
+    val lines = orderBService.findLines(saved.id!!)
+    assertThat(lines).hasSize(1)
+    assertThat(lines[0].designation).isEqualTo("Part B")
   }
 }

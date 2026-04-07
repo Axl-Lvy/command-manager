@@ -1,12 +1,19 @@
 package fr.axl.lvy.order
 
+import fr.axl.lvy.base.NumberSequenceService
+import fr.axl.lvy.documentline.DocumentLine
+import fr.axl.lvy.documentline.DocumentLineRepository
 import java.time.LocalDate
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class OrderBService(private val orderBRepository: OrderBRepository) {
+class OrderBService(
+  private val orderBRepository: OrderBRepository,
+  private val documentLineRepository: DocumentLineRepository,
+  private val numberSequenceService: NumberSequenceService,
+) {
   companion object {
     private val ALLOWED_TRANSITIONS_FROM_SENT =
       setOf(OrderB.OrderBStatus.CONFIRMED, OrderB.OrderBStatus.CANCELLED)
@@ -22,7 +29,13 @@ class OrderBService(private val orderBRepository: OrderBRepository) {
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderB> = orderBRepository.findById(id)
 
-  @Transactional fun save(order: OrderB): OrderB = orderBRepository.save(order)
+  @Transactional
+  fun save(order: OrderB): OrderB {
+    if (order.orderNumber.isBlank()) {
+      order.orderNumber = generateNextOrderNumber()
+    }
+    return orderBRepository.save(order)
+  }
 
   @Transactional
   fun delete(id: Long) {
@@ -53,6 +66,36 @@ class OrderBService(private val orderBRepository: OrderBRepository) {
     return orderBRepository.save(order)
   }
 
+  @Transactional(readOnly = true)
+  fun findLines(orderId: Long): List<DocumentLine> =
+    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      DocumentLine.DocumentType.ORDER_B,
+      orderId,
+    )
+
+  @Transactional
+  fun saveWithLines(order: OrderB, lines: List<DocumentLine>): OrderB {
+    val saved = save(order)
+
+    val existingLines =
+      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+        DocumentLine.DocumentType.ORDER_B,
+        saved.id!!,
+      )
+    documentLineRepository.deleteAll(existingLines)
+
+    lines.forEachIndexed { i, line ->
+      line.documentType = DocumentLine.DocumentType.ORDER_B
+      line.documentId = saved.id!!
+      line.position = i
+      line.recalculate()
+      documentLineRepository.save(line)
+    }
+
+    saved.recalculateTotals(lines)
+    return orderBRepository.save(saved)
+  }
+
   private fun getAllowedTransitions(current: OrderB.OrderBStatus): Set<OrderB.OrderBStatus> =
     when (current) {
       OrderB.OrderBStatus.SENT -> ALLOWED_TRANSITIONS_FROM_SENT
@@ -60,4 +103,7 @@ class OrderBService(private val orderBRepository: OrderBRepository) {
       OrderB.OrderBStatus.IN_PRODUCTION -> ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION
       else -> emptySet()
     }
+
+  private fun generateNextOrderNumber(): String =
+    numberSequenceService.nextNumber(NumberSequenceService.ORDER_B)
 }

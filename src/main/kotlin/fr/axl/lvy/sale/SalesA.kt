@@ -1,42 +1,32 @@
-package fr.axl.lvy.order
+package fr.axl.lvy.sale
 
 import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.Client
-import fr.axl.lvy.delivery.DeliveryNoteA
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.invoice.InvoiceA
+import fr.axl.lvy.order.OrderA
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
 import java.time.LocalDate
 
 @Entity
-@Table(name = "orders_a")
-class OrderA(
+@Table(name = "sales_a")
+class SalesA(
   @NotBlank
-  @Column(name = "order_number", nullable = false, unique = true, length = 20)
-  var orderNumber: String,
+  @Column(name = "sale_number", nullable = false, unique = true, length = 20)
+  var saleNumber: String,
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "client_id", nullable = false)
   var client: Client,
-  @Column(name = "order_date", nullable = false) var orderDate: LocalDate,
+  @Column(name = "sale_date", nullable = false) var saleDate: LocalDate,
 ) : SoftDeletableEntity() {
-  companion object {
-    private val EDITABLE =
-      setOf(OrderAStatus.CONFIRMED, OrderAStatus.IN_PRODUCTION, OrderAStatus.READY)
-  }
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "source_order_id")
-  var sourceOrder: OrderA? = null
-
   @Column(name = "client_reference", length = 100) var clientReference: String? = null
 
   var subject: String? = null
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  var status: OrderAStatus = OrderAStatus.CONFIRMED
+  var status: SalesAStatus = SalesAStatus.DRAFT
 
   @Column(name = "expected_delivery_date") var expectedDeliveryDate: LocalDate? = null
 
@@ -59,10 +49,6 @@ class OrderA(
   @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
   var vatRate: BigDecimal = BigDecimal.ZERO
 
-  @Column(name = "margin_excl_tax", nullable = false, precision = 12, scale = 2)
-  var marginExclTax: BigDecimal = BigDecimal.ZERO
-    private set
-
   @Column(nullable = false, length = 5) var currency: String = "EUR"
 
   @Column(length = 10) var incoterms: String? = null
@@ -71,30 +57,20 @@ class OrderA(
 
   @Column(columnDefinition = "TEXT") var conditions: String? = null
 
-  @OneToOne(mappedBy = "orderA", fetch = FetchType.LAZY) var orderB: OrderB? = null
+  @OneToOne(fetch = FetchType.LAZY) @JoinColumn(name = "order_a_id") var orderA: OrderA? = null
 
-  @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "delivery_note_id")
-  var deliveryNote: DeliveryNoteA? = null
-
-  @OneToOne(fetch = FetchType.LAZY) @JoinColumn(name = "invoice_id") var invoice: InvoiceA? = null
-
-  fun isEditable(): Boolean = EDITABLE.contains(status)
+  @OneToOne(mappedBy = "salesA", fetch = FetchType.LAZY) var salesB: SalesB? = null
 
   fun recalculateTotals(lines: List<DocumentLine>) {
     val totals = DocumentLine.computeTotals(lines)
     totalExclTax = totals.exclTax
     totalVat = totals.vat
     totalInclTax = totals.inclTax
-    marginExclTax = BigDecimal.ZERO
   }
 
-  enum class OrderAStatus {
-    CONFIRMED,
-    IN_PRODUCTION,
-    READY,
-    DELIVERED,
-    INVOICED,
+  enum class SalesAStatus {
+    DRAFT,
+    VALIDATED,
     CANCELLED,
   }
 }

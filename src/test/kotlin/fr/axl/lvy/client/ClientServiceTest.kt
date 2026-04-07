@@ -136,4 +136,14 @@ class ClientServiceTest {
     assertThat(client.status).isEqualTo(Client.Status.ACTIVE)
     assertThat(client.defaultDiscount).isEqualByComparingTo(BigDecimal.ZERO)
   }
+
+  @Test
+  fun findDetailedById_returns_client_with_contacts() {
+    val client = Client("CLI-DET-01", "Detailed Client")
+    clientService.save(client)
+
+    val found = clientService.findDetailedById(client.id!!)
+    assertThat(found).isPresent
+    assertThat(found.get().name).isEqualTo("Detailed Client")
+  }
 }

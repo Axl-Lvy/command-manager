@@ -10,7 +10,6 @@ import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderAService
 import fr.axl.lvy.order.OrderB
 import fr.axl.lvy.order.OrderBService
@@ -18,12 +17,11 @@ import fr.axl.lvy.product.ProductService
 
 @Route("commandes-b")
 @PageTitle("Commandes B")
-@Menu(order = 4.0, icon = "vaadin:truck", title = "Commandes B")
-internal class OrderBListView(
+@Menu(order = 6.0, icon = "vaadin:cart-o", title = "Commandes B")
+internal class CommandBListView(
   private val orderBService: OrderBService,
   private val orderAService: OrderAService,
   private val productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
 ) : VerticalLayout() {
 
   private val grid: Grid<OrderB>
@@ -34,7 +32,7 @@ internal class OrderBListView(
 
     grid = Grid()
     grid.addColumn(OrderB::orderNumber).setHeader("N° Commande B").setAutoWidth(true)
-    grid.addColumn { it.orderA?.orderNumber ?: "" }.setHeader("Commande A liée").setAutoWidth(true)
+    grid.addColumn { it.orderA.orderNumber }.setHeader("Commande A liée").setAutoWidth(true)
     grid.addColumn(OrderB::orderDate).setHeader("Date").setAutoWidth(true)
     grid.addColumn(OrderB::totalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid.addColumn(OrderB::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
@@ -56,14 +54,7 @@ internal class OrderBListView(
   }
 
   private fun openForm(order: OrderB?) {
-    OrderBFormDialog(
-        orderBService,
-        orderAService,
-        productService,
-        documentLineRepository,
-        order,
-        this::refreshGrid,
-      )
+    CommandBFormDialog(orderBService, orderAService, productService, order, this::refreshGrid)
       .open()
   }
 

@@ -145,4 +145,24 @@ class InvoiceBTest {
     assertThat(found.disputeReason).isEqualTo("Amount mismatch")
     assertThat(found.amountDiscrepancy).isEqualByComparingTo("150.50")
   }
+
+  @Test
+  fun payment_and_verification_fields() {
+    val client = createClient("CLI-IB09")
+    val invoice =
+      InvoiceB("FB-PAY-01", InvoiceB.RecipientType.COMPANY_A, client, LocalDate.of(2026, 3, 1))
+    invoice.dueDate = LocalDate.of(2026, 4, 1)
+    invoice.verificationDate = LocalDate.of(2026, 3, 20)
+    invoice.paymentDate = LocalDate.of(2026, 3, 25)
+    invoice.pdfPath = "/invoices/FB-PAY-01.pdf"
+    invoice.notes = "Verified and paid"
+    invoiceBRepository.save(invoice)
+
+    val found = invoiceBRepository.findById(invoice.id!!).orElseThrow()
+    assertThat(found.dueDate).isEqualTo(LocalDate.of(2026, 4, 1))
+    assertThat(found.verificationDate).isEqualTo(LocalDate.of(2026, 3, 20))
+    assertThat(found.paymentDate).isEqualTo(LocalDate.of(2026, 3, 25))
+    assertThat(found.pdfPath).isEqualTo("/invoices/FB-PAY-01.pdf")
+    assertThat(found.notes).isEqualTo("Verified and paid")
+  }
 }

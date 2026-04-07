@@ -8,8 +8,6 @@ interface ClientRepository : JpaRepository<Client, Long> {
 
   fun findByDeletedAtIsNull(): List<Client>
 
-  @Query("SELECT c.clientCode FROM Client c") fun findAllClientCodes(): List<String>
-
   @Query(
     """
       SELECT DISTINCT c

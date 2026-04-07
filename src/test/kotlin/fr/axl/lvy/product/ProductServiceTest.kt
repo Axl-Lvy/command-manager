@@ -25,7 +25,6 @@ class ProductServiceTest {
     val product = Product(name = "Steel Beam")
     product.sellingPriceExclTax = BigDecimal("150.00")
     product.purchasePriceExclTax = BigDecimal("80.00")
-    product.vatRate = BigDecimal("20.00")
     product.unit = "kg"
     productService.save(product)
 

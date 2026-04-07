@@ -11,25 +11,23 @@ import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.ClientService
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
 import fr.axl.lvy.product.ProductService
 
 @Route("commandes-a")
 @PageTitle("Commandes A")
-@Menu(order = 3.0, icon = "vaadin:cart", title = "Commandes A")
-internal class OrderAListView(
+@Menu(order = 5.0, icon = "vaadin:clipboard-text", title = "Commandes A")
+internal class CommandAListView(
   private val orderAService: OrderAService,
   private val clientService: ClientService,
   private val productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
 ) : VerticalLayout() {
 
   private val grid: Grid<OrderA>
 
   init {
-    val addBtn = Button("Nouvelle commande") { openForm(null) }
+    val addBtn = Button("Nouvelle commande A") { openForm(null) }
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
@@ -38,7 +36,6 @@ internal class OrderAListView(
     grid.addColumn(OrderA::orderDate).setHeader("Date").setAutoWidth(true)
     grid.addColumn(OrderA::totalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid.addColumn(OrderA::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
-    grid.addColumn(OrderA::marginExclTax).setHeader("Marge HT").setAutoWidth(true)
     grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
     grid.setEmptyStateText("Aucune commande A")
     grid.setSizeFull()
@@ -57,14 +54,7 @@ internal class OrderAListView(
   }
 
   private fun openForm(order: OrderA?) {
-    OrderAFormDialog(
-        orderAService,
-        clientService,
-        productService,
-        documentLineRepository,
-        order,
-        this::refreshGrid,
-      )
+    CommandAFormDialog(orderAService, clientService, productService, order, this::refreshGrid)
       .open()
   }
 

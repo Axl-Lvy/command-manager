@@ -1,37 +1,30 @@
-package fr.axl.lvy.order
+package fr.axl.lvy.sale
 
 import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.invoice.InvoiceB
+import fr.axl.lvy.order.OrderB
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
 import java.time.LocalDate
 
 @Entity
-@Table(name = "orders_b")
-class OrderB(
+@Table(name = "sales_b")
+class SalesB(
   @NotBlank
-  @Column(name = "order_number", nullable = false, unique = true, length = 20)
-  var orderNumber: String,
-  @OneToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "order_a_id", nullable = false)
-  var orderA: OrderA,
+  @Column(name = "sale_number", nullable = false, unique = true, length = 20)
+  var saleNumber: String,
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "sale_a_id", nullable = false)
+  var salesA: SalesA,
 ) : SoftDeletableEntity() {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  var status: OrderBStatus = OrderBStatus.SENT
+  var status: SalesBStatus = SalesBStatus.DRAFT
 
-  @Column(name = "order_date") var orderDate: LocalDate? = null
+  @Column(name = "sale_date") var saleDate: LocalDate? = null
 
   @Column(name = "expected_delivery_date") var expectedDeliveryDate: LocalDate? = null
-
-  @Column(name = "reception_date") var receptionDate: LocalDate? = null
-
-  @Column(name = "reception_conforming") var receptionConforming: Boolean? = null
-
-  @Column(name = "reception_reserve", columnDefinition = "TEXT")
-  var receptionReserve: String? = null
 
   @Column(name = "total_excl_tax", nullable = false, precision = 12, scale = 2)
   var totalExclTax: BigDecimal = BigDecimal.ZERO
@@ -47,9 +40,7 @@ class OrderB(
 
   @Column(columnDefinition = "TEXT") var notes: String? = null
 
-  @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "invoice_b_id")
-  var invoiceB: InvoiceB? = null
+  @OneToOne(fetch = FetchType.LAZY) @JoinColumn(name = "order_b_id") var orderB: OrderB? = null
 
   fun recalculateTotals(lines: List<DocumentLine>) {
     val totals = DocumentLine.computeTotals(lines)
@@ -58,11 +49,9 @@ class OrderB(
     totalInclTax = totals.inclTax
   }
 
-  enum class OrderBStatus {
-    SENT,
-    CONFIRMED,
-    IN_PRODUCTION,
-    RECEIVED,
+  enum class SalesBStatus {
+    DRAFT,
+    VALIDATED,
     CANCELLED,
   }
 }

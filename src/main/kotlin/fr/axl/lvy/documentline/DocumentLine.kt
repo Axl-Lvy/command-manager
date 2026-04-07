@@ -53,6 +53,25 @@ class DocumentLine(
 
   var position: Int = 0
 
+  fun copyFieldsFrom(
+    source: DocumentLine,
+    overrideVatRate: BigDecimal? = null,
+    overrideUnitPrice: BigDecimal? = null,
+  ) {
+    designation = source.designation
+    product = source.product
+    description = source.description
+    hsCode = source.hsCode
+    madeIn = source.madeIn
+    clientProductCode = source.clientProductCode
+    quantity = source.quantity
+    unit = source.unit
+    unitPriceExclTax = overrideUnitPrice ?: source.unitPriceExclTax
+    discountPercent = source.discountPercent
+    vatRate = overrideVatRate ?: source.vatRate
+    recalculate()
+  }
+
   fun recalculate() {
     val discountMultiplier =
       BigDecimal.ONE.subtract(
@@ -68,6 +87,14 @@ class DocumentLine(
   }
 
   companion object {
+    data class Totals(val exclTax: BigDecimal, val vat: BigDecimal, val inclTax: BigDecimal)
+
+    fun computeTotals(lines: List<DocumentLine>): Totals {
+      val exclTax = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
+      val vat = lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.vatAmount) }
+      return Totals(exclTax, vat, exclTax.add(vat))
+    }
+
     fun fromProduct(
       documentType: DocumentType,
       documentId: Long,
@@ -90,6 +117,8 @@ class DocumentLine(
   }
 
   enum class DocumentType {
+    SALES_A,
+    SALES_B,
     ORDER_A,
     ORDER_B,
     INVOICE_A,

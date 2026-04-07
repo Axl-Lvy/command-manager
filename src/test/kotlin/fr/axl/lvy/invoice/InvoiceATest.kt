@@ -117,4 +117,38 @@ class InvoiceATest {
     assertThat(found.clientSiret).isEqualTo("12345678901234")
     assertThat(found.clientVatNumber).isEqualTo("FR12345678901")
   }
+
+  @Test
+  fun payment_and_legal_fields() {
+    val client = createClient("CLI-IA08")
+    val invoice = InvoiceA("FA-PAY-01", client, LocalDate.of(2026, 3, 1))
+    invoice.dueDate = LocalDate.of(2026, 4, 1)
+    invoice.paymentDate = LocalDate.of(2026, 3, 25)
+    invoice.incoterms = "FOB"
+    invoice.legalNotice = "Payment within 30 days"
+    invoice.latePenalties = "3x legal rate"
+    invoiceARepository.save(invoice)
+
+    val found = invoiceARepository.findById(invoice.id!!).orElseThrow()
+    assertThat(found.dueDate).isEqualTo(LocalDate.of(2026, 4, 1))
+    assertThat(found.paymentDate).isEqualTo(LocalDate.of(2026, 3, 25))
+    assertThat(found.incoterms).isEqualTo("FOB")
+    assertThat(found.legalNotice).isEqualTo("Payment within 30 days")
+    assertThat(found.latePenalties).isEqualTo("3x legal rate")
+  }
+
+  @Test
+  fun credit_note_self_reference() {
+    val client = createClient("CLI-IA09")
+    val original = InvoiceA("FA-ORIG-01", client, LocalDate.of(2026, 3, 1))
+    invoiceARepository.save(original)
+
+    val creditNote = InvoiceA("FA-CN-01", client, LocalDate.of(2026, 3, 15))
+    creditNote.status = InvoiceA.InvoiceAStatus.CREDIT_NOTE
+    creditNote.creditNote = original
+    invoiceARepository.save(creditNote)
+
+    val found = invoiceARepository.findById(creditNote.id!!).orElseThrow()
+    assertThat(found.creditNote!!.id).isEqualTo(original.id)
+  }
 }

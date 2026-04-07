@@ -32,7 +32,6 @@ class DocumentLineEditor(
     grid.addColumn(DocumentLine::unit).setHeader("Unité").setAutoWidth(true)
     grid.addColumn(DocumentLine::unitPriceExclTax).setHeader("PU HT").setAutoWidth(true)
     grid.addColumn(DocumentLine::discountPercent).setHeader("Remise %").setAutoWidth(true)
-    grid.addColumn(DocumentLine::vatRate).setHeader("TVA %").setAutoWidth(true)
     grid.addColumn(DocumentLine::lineTotalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid
       .addComponentColumn { line ->

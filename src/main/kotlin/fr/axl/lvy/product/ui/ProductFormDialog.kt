@@ -33,7 +33,6 @@ internal class ProductFormDialog(
   private val mto = Checkbox("Fabrication sur commande (MTO)")
   private val sellingPrice = BigDecimalField("Prix vente HT")
   private val purchasePrice = BigDecimalField("Prix achat HT")
-  private val vatRate = BigDecimalField("Taux TVA (%)")
   private val unitOption = ComboBox<String>("Unité")
   private val customUnit = TextField("Autre unité")
   private val hsCode = TextField("Code HS")
@@ -69,8 +68,8 @@ internal class ProductFormDialog(
     form.add(specifications, 2)
     form.add(unitOption, customUnit)
     form.add(sellingPrice, purchasePrice)
-    form.add(vatRate, hsCode)
-    form.add(madeIn, mto)
+    form.add(hsCode, madeIn)
+    form.add(mto)
     form.add(active)
 
     val addClientCodeButton = Button("Ajouter code client") { addClientCodeRow() }
@@ -100,7 +99,6 @@ internal class ProductFormDialog(
     mto.value = p.mto
     sellingPrice.value = p.sellingPriceExclTax
     purchasePrice.value = p.purchasePriceExclTax
-    vatRate.value = p.vatRate
     applyUnitValue(p.type, p.unit)
     hsCode.value = p.hsCode ?: ""
     madeIn.value = p.madeIn
@@ -139,7 +137,6 @@ internal class ProductFormDialog(
     p.mto = type.value == Product.ProductType.PRODUCT && mto.value
     p.sellingPriceExclTax = sellingPrice.value ?: BigDecimal.ZERO
     p.purchasePriceExclTax = purchasePrice.value ?: BigDecimal.ZERO
-    p.vatRate = vatRate.value ?: BigDecimal.ZERO
     p.unit = resolveUnitValue()
     p.hsCode = if (hsCode.value.isBlank()) null else hsCode.value
     p.madeIn = madeIn.value
