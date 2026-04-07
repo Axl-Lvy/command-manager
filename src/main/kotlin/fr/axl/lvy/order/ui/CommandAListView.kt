@@ -11,7 +11,6 @@ import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.ClientService
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
 import fr.axl.lvy.product.ProductService
@@ -23,7 +22,6 @@ internal class CommandAListView(
   private val orderAService: OrderAService,
   private val clientService: ClientService,
   private val productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
 ) : VerticalLayout() {
 
   private val grid: Grid<OrderA>
@@ -56,15 +54,7 @@ internal class CommandAListView(
   }
 
   private fun openForm(order: OrderA?) {
-    CommandAFormDialog(
-        orderAService,
-        clientService,
-        productService,
-        documentLineRepository,
-        order,
-        this::refreshGrid,
-      )
-      .open()
+    CommandAFormDialog(orderAService, clientService, productService, order, this::refreshGrid).open()
   }
 
   private fun refreshGrid() {

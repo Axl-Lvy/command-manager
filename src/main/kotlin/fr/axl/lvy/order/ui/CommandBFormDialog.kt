@@ -13,7 +13,6 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
@@ -25,7 +24,6 @@ internal class CommandBFormDialog(
   private val orderBService: OrderBService,
   orderAService: OrderAService,
   productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
   private val order: OrderB?,
   private val onSave: Runnable,
 ) : Dialog() {
@@ -85,12 +83,7 @@ internal class CommandBFormDialog(
     expectedDeliveryDate.value = o.expectedDeliveryDate
     notes.value = o.notes ?: ""
 
-    val lines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-        DocumentLine.DocumentType.ORDER_B,
-        o.id!!,
-      )
-    lineEditor.setLines(lines)
+    lineEditor.setLines(orderBService.findLines(o.id!!))
   }
 
   private fun save() {
@@ -113,28 +106,8 @@ internal class CommandBFormDialog(
     o.expectedDeliveryDate = expectedDeliveryDate.value
     o.notes = notes.value.takeIf { it.isNotBlank() }
 
-    val saved = orderBService.save(o)
+    val saved = orderBService.saveWithLines(o, lineEditor.getLines())
     orderNumber.value = saved.orderNumber
-
-    if (order != null) {
-      val oldLines =
-        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-          DocumentLine.DocumentType.ORDER_B,
-          saved.id!!,
-        )
-      documentLineRepository.deleteAll(oldLines)
-    }
-    val newLines = lineEditor.getLines()
-    newLines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.ORDER_B
-      line.documentId = saved.id!!
-      line.position = i
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
-
-    saved.recalculateTotals(newLines)
-    orderBService.save(saved)
 
     Notification.show("Commande B enregistrée", 3000, Notification.Position.BOTTOM_END)
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)

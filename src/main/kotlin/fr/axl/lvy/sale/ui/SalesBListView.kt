@@ -1,4 +1,4 @@
-package fr.axl.lvy.order.ui
+package fr.axl.lvy.sale.ui
 
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
@@ -10,7 +10,6 @@ import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesAService
 import fr.axl.lvy.sale.SalesB
@@ -19,11 +18,10 @@ import fr.axl.lvy.sale.SalesBService
 @Route("ventes-b")
 @PageTitle("Ventes B")
 @Menu(order = 4.0, icon = "vaadin:truck", title = "Ventes B")
-internal class OrderBListView(
+internal class SalesBListView(
   private val salesBService: SalesBService,
   private val salesAService: SalesAService,
   private val productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
 ) : VerticalLayout() {
 
   private val grid: Grid<SalesB>
@@ -56,15 +54,7 @@ internal class OrderBListView(
   }
 
   private fun openForm(order: SalesB?) {
-    OrderBFormDialog(
-        salesBService,
-        salesAService,
-        productService,
-        documentLineRepository,
-        order,
-        this::refreshGrid,
-      )
-      .open()
+    SalesBFormDialog(salesBService, salesAService, productService, order, this::refreshGrid).open()
   }
 
   private fun refreshGrid() {

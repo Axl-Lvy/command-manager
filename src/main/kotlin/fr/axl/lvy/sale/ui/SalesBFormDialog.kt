@@ -1,4 +1,4 @@
-package fr.axl.lvy.order.ui
+package fr.axl.lvy.sale.ui
 
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
@@ -13,7 +13,6 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesA
@@ -21,11 +20,10 @@ import fr.axl.lvy.sale.SalesAService
 import fr.axl.lvy.sale.SalesB
 import fr.axl.lvy.sale.SalesBService
 
-internal class OrderBFormDialog(
+internal class SalesBFormDialog(
   private val salesBService: SalesBService,
   salesAService: SalesAService,
   productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
   private val order: SalesB?,
   private val onSave: Runnable,
 ) : Dialog() {
@@ -82,12 +80,7 @@ internal class OrderBFormDialog(
     expectedDeliveryDate.value = o.expectedDeliveryDate
     notes.value = o.notes ?: ""
 
-    val lines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-        DocumentLine.DocumentType.SALES_B,
-        o.id!!,
-      )
-    lineEditor.setLines(lines)
+    lineEditor.setLines(salesBService.findLines(o.id!!))
   }
 
   private fun save() {
@@ -109,28 +102,8 @@ internal class OrderBFormDialog(
     o.expectedDeliveryDate = expectedDeliveryDate.value
     o.notes = if (notes.value.isBlank()) null else notes.value
 
-    val saved = salesBService.save(o)
+    val saved = salesBService.saveWithLines(o, lineEditor.getLines())
     orderNumber.value = saved.saleNumber
-
-    if (order != null) {
-      val oldLines =
-        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-          DocumentLine.DocumentType.SALES_B,
-          saved.id!!,
-        )
-      documentLineRepository.deleteAll(oldLines)
-    }
-    val newLines = lineEditor.getLines()
-    newLines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.SALES_B
-      line.documentId = saved.id!!
-      line.position = i
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
-
-    saved.recalculateTotals(newLines)
-    salesBService.syncGeneratedOrder(saved, newLines)
 
     Notification.show("Vente B enregistrée", 3000, Notification.Position.BOTTOM_END)
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)

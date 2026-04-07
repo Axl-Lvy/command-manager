@@ -1,4 +1,4 @@
-package fr.axl.lvy.order.ui
+package fr.axl.lvy.sale.ui
 
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
@@ -16,7 +16,6 @@ import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesA
@@ -24,11 +23,10 @@ import fr.axl.lvy.sale.SalesAService
 import java.math.BigDecimal
 import java.time.LocalDate
 
-internal class OrderAFormDialog(
+internal class SalesAFormDialog(
   private val salesAService: SalesAService,
   clientService: ClientService,
   productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
   private val order: SalesA?,
   private val onSave: Runnable,
 ) : Dialog() {
@@ -129,12 +127,7 @@ internal class OrderAFormDialog(
     notes.value = o.notes ?: ""
     conditions.value = o.conditions ?: ""
 
-    val lines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-        DocumentLine.DocumentType.SALES_A,
-        o.id!!,
-      )
-    lineEditor.setLines(lines)
+    lineEditor.setLines(salesAService.findLines(o.id!!))
   }
 
   private fun save() {
@@ -165,30 +158,9 @@ internal class OrderAFormDialog(
     o.notes = if (notes.value.isBlank()) null else notes.value
     o.conditions = if (conditions.value.isBlank()) null else conditions.value
 
-    val saved = salesAService.save(o)
+    val saved = salesAService.saveWithLines(o, lineEditor.getLines())
     orderNumber.value = saved.saleNumber
-
-    if (order != null) {
-      val oldLines =
-        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-          DocumentLine.DocumentType.SALES_A,
-          saved.id!!,
-        )
-      documentLineRepository.deleteAll(oldLines)
-    }
-    val newLines = lineEditor.getLines()
-    newLines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.SALES_A
-      line.documentId = saved.id!!
-      line.position = i
-      line.vatRate = o.vatRate
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
-
-    saved.recalculateTotals(newLines)
     sellingPrice.value = saved.totalExclTax
-    salesAService.syncGeneratedOrder(saved, newLines)
 
     Notification.show("Vente A enregistrée", 3000, Notification.Position.BOTTOM_END)
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)

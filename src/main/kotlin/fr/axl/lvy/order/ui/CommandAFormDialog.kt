@@ -16,7 +16,6 @@ import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
@@ -28,7 +27,6 @@ internal class CommandAFormDialog(
   private val orderAService: OrderAService,
   clientService: ClientService,
   productService: ProductService,
-  private val documentLineRepository: DocumentLineRepository,
   private val order: OrderA?,
   private val onSave: Runnable,
 ) : Dialog() {
@@ -122,12 +120,7 @@ internal class CommandAFormDialog(
     notes.value = o.notes ?: ""
     conditions.value = o.conditions ?: ""
 
-    val lines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-        DocumentLine.DocumentType.ORDER_A,
-        o.id!!,
-      )
-    lineEditor.setLines(lines)
+    lineEditor.setLines(orderAService.findLines(o.id!!))
   }
 
   private fun save() {
@@ -158,29 +151,8 @@ internal class CommandAFormDialog(
     o.notes = notes.value.takeIf { it.isNotBlank() }
     o.conditions = conditions.value.takeIf { it.isNotBlank() }
 
-    val saved = orderAService.save(o)
+    val saved = orderAService.saveWithLines(o, lineEditor.getLines())
     orderNumber.value = saved.orderNumber
-
-    if (order != null) {
-      val oldLines =
-        documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-          DocumentLine.DocumentType.ORDER_A,
-          saved.id!!,
-        )
-      documentLineRepository.deleteAll(oldLines)
-    }
-    val newLines = lineEditor.getLines()
-    newLines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.ORDER_A
-      line.documentId = saved.id!!
-      line.position = i
-      line.vatRate = o.vatRate
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
-
-    saved.recalculateTotals(newLines)
-    orderAService.save(saved)
     totalExclTax.value = saved.totalExclTax
 
     Notification.show("Commande A enregistrée", 3000, Notification.Position.BOTTOM_END)
