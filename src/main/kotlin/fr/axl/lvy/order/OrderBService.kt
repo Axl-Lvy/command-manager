@@ -72,5 +72,5 @@ class OrderBService(
     }
 
   private fun generateNextOrderNumber(): String =
-    numberSequenceService.nextNumber(NumberSequenceService.ORDER_B, "NST_PO_", 3)
+    numberSequenceService.nextNumber(NumberSequenceService.ORDER_B)
 }

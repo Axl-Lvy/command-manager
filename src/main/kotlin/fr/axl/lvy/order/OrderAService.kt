@@ -136,5 +136,5 @@ class OrderAService(
     }
 
   private fun generateNextOrderNumber(): String =
-    numberSequenceService.nextNumber(NumberSequenceService.ORDER_A, "CoD_PO_", 3)
+    numberSequenceService.nextNumber(NumberSequenceService.ORDER_A)
 }

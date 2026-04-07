@@ -117,5 +117,5 @@ class SalesBService(
   }
 
   private fun generateNextSaleNumber(): String =
-    numberSequenceService.nextNumber(NumberSequenceService.SALES_B, "NST_SO_", 3)
+    numberSequenceService.nextNumber(NumberSequenceService.SALES_B)
 }

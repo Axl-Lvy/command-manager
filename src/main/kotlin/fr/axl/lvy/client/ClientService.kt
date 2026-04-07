@@ -47,5 +47,5 @@ class ClientService(
   }
 
   private fun generateNextClientCode(): String =
-    numberSequenceService.nextNumber(NumberSequenceService.CLIENT, "C", 6)
+    numberSequenceService.nextNumber(NumberSequenceService.CLIENT)
 }
