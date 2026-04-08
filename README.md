@@ -353,6 +353,12 @@ mysql -u root -p -e "DROP DATABASE command_manager; CREATE DATABASE command_mana
 
 Then temporarily set `spring.jpa.hibernate.ddl-auto=create` in `application.properties`, start the app, and switch back to `update`.
 
+## Deployment
+
+### Dev instance
+
+A dev instance is automatically deployed to `http://178.104.157.63:8081` on every push to the `dev` branch via GitHub Actions.
+
 ## Building for Production
 
 ```bash
