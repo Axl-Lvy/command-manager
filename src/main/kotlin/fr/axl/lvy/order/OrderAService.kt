@@ -177,7 +177,9 @@ class OrderAService(
 
     saved.recalculateTotals(persistedLines)
     saved.purchasePriceExclTax =
-      persistedLines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
+      persistedLines.fold(BigDecimal.ZERO) { acc, line ->
+        acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
+      }
     val persistedOrder = orderARepository.save(saved)
     val orderId = persistedOrder.id ?: return persistedOrder
     val originatingSale = salesARepository.findByOrderAId(orderId)

@@ -57,7 +57,9 @@ class SalesBService(
       sale.status = SalesB.SalesBStatus.DRAFT
     }
     sale.purchasePriceExclTax =
-      sourceLines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
+      sourceLines.fold(BigDecimal.ZERO) { acc, line ->
+        acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
+      }
 
     val savedSale = save(sale)
 
