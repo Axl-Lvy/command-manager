@@ -20,6 +20,23 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 
+/**
+ * Populates the database with representative development data.
+ *
+ * Active only when the `seed` Spring profile is enabled. Intended to be used alongside
+ * `spring.jpa.hibernate.ddl-auto=create` (defined in `application-seed.properties`), which drops
+ * and recreates the schema on startup before this runner executes.
+ *
+ * To activate: run the application with `--spring.profiles.active=local,seed`.
+ *
+ * Seeded data (in dependency order):
+ * 1. Users
+ * 2. Clients (with contacts)
+ * 3. Products
+ * 4. Orders A (via [OrderAService] — number sequence auto-generated)
+ * 5. Sales A (via [SalesAService] — a VALIDATED sale with an MTO product automatically triggers the
+ *    creation of OrderA, SalesB, and OrderB)
+ */
 @Component
 @Profile("seed")
 class DatabaseSeeder(
