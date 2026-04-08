@@ -53,7 +53,7 @@ jobs:
             echo "DB_PASSWORD=$DB_PASSWORD" > .env
             echo "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" >> .env
             chmod 600 .env
-            grep -q "SPRING_PROFILES_ACTIVE" docker-compose.yml || sed -i '/SPRING_DATASOURCE_PASSWORD/a\          SPRING_PROFILES_ACTIVE: seed' docker-compose.yml
+            grep -q "SPRING_PROFILES_ACTIVE" docker-compose.yml || sed -i '/SPRING_DATASOURCE_PASSWORD/a\      SPRING_PROFILES_ACTIVE: seed' docker-compose.yml
             docker compose pull
             docker compose up -d
             docker image prune -f
