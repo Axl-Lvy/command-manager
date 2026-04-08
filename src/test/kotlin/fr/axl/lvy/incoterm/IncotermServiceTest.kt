@@ -1,6 +1,7 @@
 package fr.axl.lvy.incoterm
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -32,6 +33,23 @@ class IncotermServiceTest {
     val found = incotermService.findAll()
 
     assertThat(found.map { it.name }).containsExactly("CFR", "FOB")
+  }
+
+  @Test
+  fun save_rejects_duplicate_name() {
+    incotermService.save(Incoterm(name = "exw", label = "Ex Works"))
+
+    assertThatThrownBy { incotermService.save(Incoterm(name = "EXW", label = "Ex Works (dup)")) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+      .hasMessageContaining("EXW")
+  }
+
+  @Test
+  fun save_allows_updating_existing_incoterm() {
+    val incoterm = incotermService.save(Incoterm(name = "cif", label = "Cost Insurance Freight"))
+    incoterm.label = "Updated Label"
+    val updated = incotermService.save(incoterm)
+    assertThat(updated.label).isEqualTo("Updated Label")
   }
 
   @Test

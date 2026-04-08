@@ -2,9 +2,10 @@ package fr.axl.lvy.sale
 
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
+import java.math.BigDecimal
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -13,8 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 class SalesAService(
   private val salesARepository: SalesARepository,
   private val orderAService: OrderAService,
-  private val documentLineRepository: DocumentLineRepository,
-  private val salesBService: SalesBService,
+  private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
 ) {
   @Transactional(readOnly = true)
@@ -65,63 +65,40 @@ class SalesAService(
     }
 
     val savedOrder = orderAService.save(order)
-    val existingOrderLines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+    val generatedLines =
+      documentLineService.replaceLines(
         DocumentLine.DocumentType.ORDER_A,
         savedOrder.id!!,
+        saleLines,
+        overrideVatRate = sale.vatRate,
       )
-    documentLineRepository.deleteAll(existingOrderLines)
-
-    val generatedLines =
-      saleLines.mapIndexed { index, line ->
-        DocumentLine(DocumentLine.DocumentType.ORDER_A, savedOrder.id!!, line.designation).apply {
-          copyFieldsFrom(line, overrideVatRate = sale.vatRate)
-          position = index
-        }
-      }
-    documentLineRepository.saveAll(generatedLines)
 
     savedOrder.recalculateTotals(generatedLines)
     orderAService.save(savedOrder)
 
     sale.orderA = savedOrder
-    val persistedSale = salesARepository.save(sale)
-
-    return persistedSale
+    return salesARepository.save(sale)
   }
 
   @Transactional(readOnly = true)
   fun findLines(saleId: Long): List<DocumentLine> =
-    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-      DocumentLine.DocumentType.SALES_A,
-      saleId,
-    )
+    documentLineService.findLines(DocumentLine.DocumentType.SALES_A, saleId)
 
   @Transactional
   fun saveWithLines(sale: SalesA, lines: List<DocumentLine>): SalesA {
     val saved = save(sale)
 
-    val existingLines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+    val persistedLines =
+      documentLineService.replaceLines(
         DocumentLine.DocumentType.SALES_A,
         saved.id!!,
+        lines,
+        overrideVatRate = saved.vatRate,
       )
-    documentLineRepository.deleteAll(existingLines)
-
-    val persistedLines =
-      lines.mapIndexed { i, line ->
-        DocumentLine(DocumentLine.DocumentType.SALES_A, saved.id!!, line.designation).apply {
-          copyFieldsFrom(line, overrideVatRate = saved.vatRate)
-          position = i
-        }
-      }
-    documentLineRepository.saveAll(persistedLines)
 
     saved.purchasePriceExclTax =
-      persistedLines.fold(java.math.BigDecimal.ZERO) { acc, line ->
-        acc.add(
-          (line.product?.purchasePriceExclTax ?: java.math.BigDecimal.ZERO).multiply(line.quantity)
-        )
+      persistedLines.fold(BigDecimal.ZERO) { acc, line ->
+        acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
       }
     saved.recalculateTotals(persistedLines)
     return syncGeneratedOrder(saved, persistedLines)

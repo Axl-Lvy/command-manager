@@ -72,7 +72,7 @@ class SalesBServiceTest {
   }
 
   @Test
-  fun createOrUpdateFromValidatedSalesA_creates_salesB_with_mto_lines() {
+  fun createOrUpdateFromSalesA_creates_salesB_with_mto_lines() {
     val client = testData.createClient("CLI-SB03", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-03", client)
 
@@ -95,7 +95,13 @@ class SalesBServiceTest {
       )
 
     val result =
-      salesBService.createOrUpdateFromValidatedSalesA(salesA, listOf(mtoLine, regularLine))
+      salesBService.createOrUpdateFromSalesA(
+        salesA,
+        salesA.saleDate,
+        salesA.expectedDeliveryDate,
+        salesA.notes,
+        listOf(mtoLine, regularLine),
+      )
 
     assertThat(result.status).isEqualTo(SalesB.SalesBStatus.DRAFT)
     assertThat(result.orderB).isNull()
@@ -110,7 +116,7 @@ class SalesBServiceTest {
   }
 
   @Test
-  fun createOrUpdateFromValidatedSalesA_updates_existing_salesB() {
+  fun createOrUpdateFromSalesA_updates_existing_salesB() {
     val client = testData.createClient("CLI-SB04", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-04", client)
 
@@ -123,7 +129,14 @@ class SalesBServiceTest {
         product = mtoProduct,
       )
 
-    val first = salesBService.createOrUpdateFromValidatedSalesA(salesA, listOf(line))
+    val first =
+      salesBService.createOrUpdateFromSalesA(
+        salesA,
+        salesA.saleDate,
+        salesA.expectedDeliveryDate,
+        salesA.notes,
+        listOf(line),
+      )
     val firstId = first.id!!
 
     val line2 =
@@ -135,7 +148,14 @@ class SalesBServiceTest {
         unitPrice = BigDecimal("200.00"),
       )
 
-    val second = salesBService.createOrUpdateFromValidatedSalesA(salesA, listOf(line2))
+    val second =
+      salesBService.createOrUpdateFromSalesA(
+        salesA,
+        salesA.saleDate,
+        salesA.expectedDeliveryDate,
+        salesA.notes,
+        listOf(line2),
+      )
 
     assertThat(second.id).isEqualTo(firstId)
   }
