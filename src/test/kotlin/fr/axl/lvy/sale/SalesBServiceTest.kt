@@ -97,7 +97,8 @@ class SalesBServiceTest {
     val result =
       salesBService.createOrUpdateFromValidatedSalesA(salesA, listOf(mtoLine, regularLine))
 
-    assertThat(result.status).isEqualTo(SalesB.SalesBStatus.VALIDATED)
+    assertThat(result.status).isEqualTo(SalesB.SalesBStatus.DRAFT)
+    assertThat(result.orderB).isNull()
 
     val salesBLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
@@ -270,7 +271,7 @@ class SalesBServiceTest {
   }
 
   @Test
-  fun saveWithLines_creates_salesB_with_lines_and_syncs_order() {
+  fun saveWithLines_creates_salesB_with_lines_without_syncing_order_when_not_validated() {
     val client = testData.createClient("CLI-SB-SWL", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-SWL", client)
     val salesB = SalesB("", salesA)
@@ -288,7 +289,7 @@ class SalesBServiceTest {
 
     assertThat(saved.saleNumber).startsWith("NST_SO_")
     assertThat(saved.totalExclTax).isEqualByComparingTo("200.00")
-    assertThat(saved.orderB).isNotNull
+    assertThat(saved.orderB).isNull()
 
     val lines = salesBService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)

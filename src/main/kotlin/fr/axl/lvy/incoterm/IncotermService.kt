@@ -1,0 +1,29 @@
+package fr.axl.lvy.incoterm
+
+import java.util.Optional
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+
+@Service
+class IncotermService(private val incotermRepository: IncotermRepository) {
+
+  @Transactional(readOnly = true)
+  fun findAll(): List<Incoterm> = incotermRepository.findAllByOrderByNameAsc()
+
+  @Transactional(readOnly = true)
+  fun findById(id: Long): Optional<Incoterm> = incotermRepository.findById(id)
+
+  @Transactional
+  fun save(incoterm: Incoterm): Incoterm {
+    incoterm.name = incoterm.name.trim().uppercase()
+    incoterm.label = incoterm.label.trim()
+    return incotermRepository.save(incoterm)
+  }
+
+  @Transactional
+  fun delete(id: Long) {
+    if (incotermRepository.existsById(id)) {
+      incotermRepository.deleteById(id)
+    }
+  }
+}

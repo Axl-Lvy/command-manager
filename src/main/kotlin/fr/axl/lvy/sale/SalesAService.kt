@@ -52,12 +52,17 @@ class SalesAService(
     order.clientReference = sale.clientReference
     order.subject = sale.subject
     order.currency = sale.currency
+    order.exchangeRate = sale.exchangeRate
+    order.purchasePriceExclTax = sale.purchasePriceExclTax
     order.vatRate = sale.vatRate
     order.incoterms = sale.incoterms
     order.billingAddress = sale.billingAddress
     order.shippingAddress = sale.shippingAddress
     order.notes = sale.notes
     order.conditions = sale.conditions
+    if (sale.orderA == null) {
+      order.status = OrderA.OrderAStatus.DRAFT
+    }
 
     val savedOrder = orderAService.save(order)
     val existingOrderLines =
@@ -82,13 +87,6 @@ class SalesAService(
     sale.orderA = savedOrder
     val persistedSale = salesARepository.save(sale)
 
-    val hasMtoLines = saleLines.any { it.product?.mto == true }
-    if (persistedSale.status == SalesA.SalesAStatus.VALIDATED && hasMtoLines) {
-      salesBService.createOrUpdateFromValidatedSalesA(persistedSale, saleLines)
-    } else {
-      salesBService.deleteBySalesAId(persistedSale.id!!)
-    }
-
     return persistedSale
   }
 
@@ -110,17 +108,23 @@ class SalesAService(
       )
     documentLineRepository.deleteAll(existingLines)
 
-    lines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.SALES_A
-      line.documentId = saved.id!!
-      line.position = i
-      line.vatRate = saved.vatRate
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
+    val persistedLines =
+      lines.mapIndexed { i, line ->
+        DocumentLine(DocumentLine.DocumentType.SALES_A, saved.id!!, line.designation).apply {
+          copyFieldsFrom(line, overrideVatRate = saved.vatRate)
+          position = i
+        }
+      }
+    documentLineRepository.saveAll(persistedLines)
 
-    saved.recalculateTotals(lines)
-    return syncGeneratedOrder(saved, lines)
+    saved.purchasePriceExclTax =
+      persistedLines.fold(java.math.BigDecimal.ZERO) { acc, line ->
+        acc.add(
+          (line.product?.purchasePriceExclTax ?: java.math.BigDecimal.ZERO).multiply(line.quantity)
+        )
+      }
+    saved.recalculateTotals(persistedLines)
+    return syncGeneratedOrder(saved, persistedLines)
   }
 
   private fun generateNextSaleNumber(): String =

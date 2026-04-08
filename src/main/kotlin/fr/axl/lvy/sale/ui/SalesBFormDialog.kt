@@ -14,6 +14,8 @@ import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
+import fr.axl.lvy.incoterm.Incoterm
+import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesA
 import fr.axl.lvy.sale.SalesAService
@@ -23,6 +25,7 @@ import fr.axl.lvy.sale.SalesBService
 internal class SalesBFormDialog(
   private val salesBService: SalesBService,
   salesAService: SalesAService,
+  private val incotermService: IncotermService,
   productService: ProductService,
   private val order: SalesB?,
   private val onSave: Runnable,
@@ -32,6 +35,8 @@ internal class SalesBFormDialog(
   private val orderACombo = ComboBox<SalesA>("Vente A liée")
   private val orderDate = DatePicker("Date vente")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
+  private val incotermCombo = ComboBox<Incoterm>("Incoterm")
+  private val incotermLocation = TextField("Emplacement")
   private val notes = TextArea("Notes")
   private val lineEditor: DocumentLineEditor
 
@@ -42,6 +47,8 @@ internal class SalesBFormDialog(
 
     orderACombo.isRequired = true
     orderNumber.isReadOnly = true
+    incotermCombo.setItems(incotermService.findAll())
+    incotermCombo.setItemLabelGenerator { it.name }
 
     orderACombo.setItems(salesAService.findAll())
     orderACombo.setItemLabelGenerator { "${it.saleNumber} - ${it.client.name}" }
@@ -50,12 +57,15 @@ internal class SalesBFormDialog(
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
     form.add(orderNumber, orderACombo)
     form.add(orderDate, expectedDeliveryDate)
+    form.add(incotermCombo, incotermLocation)
     form.add(notes, 2)
 
     lineEditor =
-      DocumentLineEditor(productService, DocumentLine.DocumentType.SALES_B) {
-        orderACombo.value?.client
-      }
+      DocumentLineEditor(
+        productService = productService,
+        documentType = DocumentLine.DocumentType.SALES_B,
+        clientSupplier = { orderACombo.value?.client },
+      )
 
     val content = VerticalLayout(form, lineEditor)
     content.isPadding = false
@@ -78,6 +88,8 @@ internal class SalesBFormDialog(
     orderACombo.value = o.salesA
     orderDate.value = o.saleDate
     expectedDeliveryDate.value = o.expectedDeliveryDate
+    incotermCombo.value = incotermService.findAll().firstOrNull { it.name == o.incoterms }
+    incotermLocation.value = o.incotermLocation ?: ""
     notes.value = o.notes ?: ""
 
     lineEditor.setLines(salesBService.findLines(o.id!!))
@@ -100,6 +112,8 @@ internal class SalesBFormDialog(
     }
     o.saleDate = orderDate.value
     o.expectedDeliveryDate = expectedDeliveryDate.value
+    o.incoterms = incotermCombo.value?.name
+    o.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
     o.notes = if (notes.value.isBlank()) null else notes.value
 
     val saved = salesBService.saveWithLines(o, lineEditor.getLines())

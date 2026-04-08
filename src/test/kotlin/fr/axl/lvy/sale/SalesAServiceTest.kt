@@ -4,6 +4,7 @@ import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderARepository
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductRepository
@@ -131,7 +132,7 @@ class SalesAServiceTest {
   }
 
   @Test
-  fun syncGeneratedOrder_creates_salesB_when_validated_with_mto() {
+  fun syncGeneratedOrder_creates_orderA_in_draft_without_salesB_when_validated_with_mto() {
     val client = testData.createClient("CLI-SA06")
     val sale = createSalesA("SA-MTO-01", client, SalesA.SalesAStatus.VALIDATED)
     salesARepository.flush()
@@ -153,9 +154,10 @@ class SalesAServiceTest {
 
     salesAService.syncGeneratedOrder(sale, listOf(line))
 
+    val savedOrder = orderARepository.findById(sale.orderA!!.id!!).orElseThrow()
+    assertThat(savedOrder.status).isEqualTo(OrderA.OrderAStatus.DRAFT)
     val salesB = salesBRepository.findBySalesAId(sale.id!!)
-    assertThat(salesB).isNotNull
-    assertThat(salesB!!.status).isEqualTo(SalesB.SalesBStatus.VALIDATED)
+    assertThat(salesB).isNull()
   }
 
   @Test

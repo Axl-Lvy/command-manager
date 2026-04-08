@@ -67,6 +67,20 @@ class ProductServiceTest {
   }
 
   @Test
+  fun findActive_loads_client_product_codes() {
+    val client = createClient("CLI-ACT")
+    val product = Product("REF-CODE", "Product With Client Code")
+    product.replaceClientProductCodes(listOf(client to "C-ACT-001"))
+    productService.save(product)
+    productRepository.flush()
+
+    val activeProduct =
+      productService.findActive().firstOrNull { it.reference == "REF-CODE" } ?: error("not found")
+
+    assertThat(activeProduct.findClientProductCode(client)).isEqualTo("C-ACT-001")
+  }
+
+  @Test
   fun service_product_cannot_be_mto() {
     val product = Product("REF-SVC", "Consulting")
     product.type = Product.ProductType.SERVICE

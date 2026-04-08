@@ -11,7 +11,7 @@ import java.time.LocalDate
 @Entity
 @Table(name = "sales_b")
 class SalesB(
-  @NotBlank
+  @field:NotBlank
   @Column(name = "sale_number", nullable = false, unique = true, length = 20)
   var saleNumber: String,
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -37,6 +37,13 @@ class SalesB(
   @Column(name = "total_incl_tax", nullable = false, precision = 12, scale = 2)
   var totalInclTax: BigDecimal = BigDecimal.ZERO
     private set
+
+  @Column(name = "purchase_price_excl_tax", nullable = false, precision = 12, scale = 2)
+  var purchasePriceExclTax: BigDecimal = BigDecimal.ZERO
+
+  @Column(length = 10) var incoterms: String? = null
+
+  @Column(name = "incoterm_location", length = 100) var incotermLocation: String? = null
 
   @Column(columnDefinition = "TEXT") var notes: String? = null
 

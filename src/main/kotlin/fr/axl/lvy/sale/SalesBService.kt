@@ -39,13 +39,17 @@ class SalesBService(
   fun createOrUpdateFromValidatedSalesA(salesA: SalesA, saleLines: List<DocumentLine>): SalesB {
     val sale =
       salesBRepository.findBySalesAId(salesA.id!!)
-        ?: SalesB("", salesA).apply { status = SalesB.SalesBStatus.VALIDATED }
+        ?: SalesB("", salesA).apply { status = SalesB.SalesBStatus.DRAFT }
 
     sale.salesA = salesA
     sale.saleDate = salesA.saleDate
     sale.expectedDeliveryDate = salesA.expectedDeliveryDate
     sale.notes = salesA.notes
-    sale.status = SalesB.SalesBStatus.VALIDATED
+    if (sale.status == SalesB.SalesBStatus.CANCELLED) {
+      sale.status = SalesB.SalesBStatus.DRAFT
+    }
+    sale.purchasePriceExclTax =
+      saleLines.fold(java.math.BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
 
     val savedSale = save(sale)
 
@@ -68,9 +72,50 @@ class SalesBService(
     documentLineRepository.saveAll(generatedSaleLines)
 
     savedSale.recalculateTotals(generatedSaleLines)
-    val persistedSale = salesBRepository.save(savedSale)
-    syncGeneratedOrder(persistedSale, generatedSaleLines)
-    return persistedSale
+    return salesBRepository.save(savedSale)
+  }
+
+  @Transactional
+  fun createOrUpdateFromConfirmedOrderA(
+    salesA: SalesA,
+    orderA: fr.axl.lvy.order.OrderA,
+    orderLines: List<DocumentLine>,
+  ): SalesB {
+    val sale =
+      salesBRepository.findBySalesAId(salesA.id!!)
+        ?: SalesB("", salesA).apply { status = SalesB.SalesBStatus.DRAFT }
+
+    sale.salesA = salesA
+    sale.saleDate = orderA.orderDate
+    sale.expectedDeliveryDate = orderA.expectedDeliveryDate
+    sale.notes = orderA.notes
+    if (sale.status == SalesB.SalesBStatus.CANCELLED) {
+      sale.status = SalesB.SalesBStatus.DRAFT
+    }
+    sale.purchasePriceExclTax =
+      orderLines.fold(java.math.BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
+
+    val savedSale = save(sale)
+    val existingSaleLines =
+      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+        DocumentLine.DocumentType.SALES_B,
+        savedSale.id!!,
+      )
+    documentLineRepository.deleteAll(existingSaleLines)
+
+    val generatedSaleLines =
+      orderLines
+        .filter { it.product?.mto == true }
+        .mapIndexed { index, line ->
+          DocumentLine(DocumentLine.DocumentType.SALES_B, savedSale.id!!, line.designation).apply {
+            copyFieldsFrom(line)
+            position = index
+          }
+        }
+    documentLineRepository.saveAll(generatedSaleLines)
+
+    savedSale.recalculateTotals(generatedSaleLines)
+    return salesBRepository.save(savedSale)
   }
 
   @Transactional
@@ -83,6 +128,7 @@ class SalesBService(
     order.orderDate = sale.saleDate
     order.expectedDeliveryDate = sale.expectedDeliveryDate
     order.notes = sale.notes
+    order.purchasePriceExclTax = sale.purchasePriceExclTax
 
     val savedOrder = orderBService.save(order)
     val existingOrderLines =
@@ -134,16 +180,22 @@ class SalesBService(
       )
     documentLineRepository.deleteAll(existingLines)
 
-    lines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.SALES_B
-      line.documentId = saved.id!!
-      line.position = i
-      line.recalculate()
-      documentLineRepository.save(line)
+    val persistedLines =
+      lines.mapIndexed { i, line ->
+        DocumentLine(DocumentLine.DocumentType.SALES_B, saved.id!!, line.designation).apply {
+          copyFieldsFrom(line)
+          position = i
+        }
+      }
+    documentLineRepository.saveAll(persistedLines)
+
+    saved.recalculateTotals(persistedLines)
+    if (saved.status == SalesB.SalesBStatus.VALIDATED) {
+      return syncGeneratedOrder(saved, persistedLines)
     }
 
-    saved.recalculateTotals(lines)
-    return syncGeneratedOrder(saved, lines)
+    saved.orderB = null
+    return salesBRepository.save(saved)
   }
 
   private fun generateNextSaleNumber(): String =

@@ -4,6 +4,15 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 
 interface ProductRepository : JpaRepository<Product, Long> {
+  @Query(
+    """
+      SELECT DISTINCT p
+      FROM Product p
+      LEFT JOIN FETCH p.clientProductCodes c
+      LEFT JOIN FETCH c.client
+      WHERE p.deletedAt IS NULL AND p.active = true
+    """
+  )
   fun findByDeletedAtIsNullAndActiveTrue(): List<Product>
 
   fun findByDeletedAtIsNull(): List<Product>

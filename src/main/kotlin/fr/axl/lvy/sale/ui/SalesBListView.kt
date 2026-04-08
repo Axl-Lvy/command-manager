@@ -10,6 +10,7 @@ import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesAService
 import fr.axl.lvy.sale.SalesB
@@ -21,6 +22,7 @@ import fr.axl.lvy.sale.SalesBService
 internal class SalesBListView(
   private val salesBService: SalesBService,
   private val salesAService: SalesAService,
+  private val incotermService: IncotermService,
   private val productService: ProductService,
 ) : VerticalLayout() {
 
@@ -54,7 +56,15 @@ internal class SalesBListView(
   }
 
   private fun openForm(order: SalesB?) {
-    SalesBFormDialog(salesBService, salesAService, productService, order, this::refreshGrid).open()
+    SalesBFormDialog(
+        salesBService,
+        salesAService,
+        incotermService,
+        productService,
+        order,
+        this::refreshGrid,
+      )
+      .open()
   }
 
   private fun refreshGrid() {

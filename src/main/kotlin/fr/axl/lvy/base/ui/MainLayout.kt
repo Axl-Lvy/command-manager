@@ -41,14 +41,40 @@ class MainLayout : AppLayout() {
   private fun createSideNav(): SideNav {
     val nav = SideNav()
     nav.addClassNames(LumoUtility.Margin.Horizontal.MEDIUM)
-    MenuConfiguration.getMenuEntries().forEach { nav.addItem(createSideNavItem(it)) }
+    val parentItems = linkedMapOf<String, SideNavItem>()
+    MenuConfiguration.getMenuEntries().forEach { menuEntry ->
+      val groupedTitle = parseGroupedTitle(menuEntry.title())
+      if (groupedTitle == null) {
+        nav.addItem(createSideNavItem(menuEntry))
+      } else {
+        val parentItem =
+          parentItems.getOrPut(groupedTitle.parent) { SideNavItem(groupedTitle.parent) }
+        if (parentItem.element.parent == null) {
+          nav.addItem(parentItem)
+        }
+        parentItem.addItem(createSideNavItem(menuEntry, groupedTitle.child))
+      }
+    }
     return nav
   }
 
-  private fun createSideNavItem(menuEntry: MenuEntry): SideNavItem =
+  private fun createSideNavItem(
+    menuEntry: MenuEntry,
+    title: String = menuEntry.title(),
+  ): SideNavItem =
     if (menuEntry.icon() != null) {
-      SideNavItem(menuEntry.title(), menuEntry.path(), Icon(menuEntry.icon()))
+      SideNavItem(title, menuEntry.path(), Icon(menuEntry.icon()))
     } else {
-      SideNavItem(menuEntry.title(), menuEntry.path())
+      SideNavItem(title, menuEntry.path())
     }
+
+  private fun parseGroupedTitle(title: String): GroupedTitle? {
+    val segments = title.split("/", limit = 2).map { it.trim() }
+    if (segments.size < 2 || segments.any { it.isBlank() }) {
+      return null
+    }
+    return GroupedTitle(parent = segments[0], child = segments[1])
+  }
+
+  private data class GroupedTitle(val parent: String, val child: String)
 }

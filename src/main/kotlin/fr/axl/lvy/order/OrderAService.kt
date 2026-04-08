@@ -3,6 +3,8 @@ package fr.axl.lvy.order
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.sale.SalesARepository
+import fr.axl.lvy.sale.SalesBService
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -12,9 +14,13 @@ class OrderAService(
   private val orderARepository: OrderARepository,
   private val orderBRepository: OrderBRepository,
   private val documentLineRepository: DocumentLineRepository,
+  private val salesARepository: SalesARepository,
+  private val salesBService: SalesBService,
   private val numberSequenceService: NumberSequenceService,
 ) {
   companion object {
+    private val ALLOWED_TRANSITIONS_FROM_DRAFT =
+      setOf(OrderA.OrderAStatus.CONFIRMED, OrderA.OrderAStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
       setOf(OrderA.OrderAStatus.IN_PRODUCTION, OrderA.OrderAStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION =
@@ -54,7 +60,21 @@ class OrderAService(
     val allowed = getAllowedTransitions(order.status)
     require(allowed.contains(newStatus)) { "Cannot transition from ${order.status} to $newStatus" }
     order.status = newStatus
-    return orderARepository.save(order)
+    val saved = orderARepository.save(order)
+    val originatingSale = saved.id?.let { salesARepository.findByOrderAId(it) }
+    if (newStatus == OrderA.OrderAStatus.CONFIRMED && originatingSale != null) {
+      val lines = findLines(saved.id!!)
+      val hasMtoLines = lines.any { it.product?.mto == true }
+      if (hasMtoLines) {
+        salesBService.createOrUpdateFromConfirmedOrderA(originatingSale, saved, lines)
+      } else {
+        salesBService.deleteBySalesAId(originatingSale.id!!)
+      }
+    }
+    if (newStatus == OrderA.OrderAStatus.CANCELLED && originatingSale != null) {
+      salesBService.deleteBySalesAId(originatingSale.id!!)
+    }
+    return saved
   }
 
   @Transactional
@@ -66,6 +86,8 @@ class OrderAService(
     copy.shippingAddress = source.shippingAddress
     copy.vatRate = source.vatRate
     copy.currency = source.currency
+    copy.exchangeRate = source.exchangeRate
+    copy.purchasePriceExclTax = source.purchasePriceExclTax
     copy.incoterms = source.incoterms
     copy.notes = source.notes
     copy.conditions = source.conditions
@@ -144,21 +166,38 @@ class OrderAService(
       )
     documentLineRepository.deleteAll(existingLines)
 
-    lines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.ORDER_A
-      line.documentId = saved.id!!
-      line.position = i
-      line.vatRate = saved.vatRate
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
+    val persistedLines =
+      lines.mapIndexed { i, line ->
+        DocumentLine(DocumentLine.DocumentType.ORDER_A, saved.id!!, line.designation).apply {
+          copyFieldsFrom(line, overrideVatRate = saved.vatRate)
+          position = i
+        }
+      }
+    documentLineRepository.saveAll(persistedLines)
 
-    saved.recalculateTotals(lines)
-    return orderARepository.save(saved)
+    saved.recalculateTotals(persistedLines)
+    saved.purchasePriceExclTax =
+      persistedLines.fold(java.math.BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
+    val persistedOrder = orderARepository.save(saved)
+    val originatingSale = persistedOrder.id?.let { salesARepository.findByOrderAId(it) }
+    if (persistedOrder.status == OrderA.OrderAStatus.CONFIRMED && originatingSale != null) {
+      val hasMtoLines = persistedLines.any { it.product?.mto == true }
+      if (hasMtoLines) {
+        salesBService.createOrUpdateFromConfirmedOrderA(
+          originatingSale,
+          persistedOrder,
+          persistedLines,
+        )
+      } else {
+        salesBService.deleteBySalesAId(originatingSale.id!!)
+      }
+    }
+    return persistedOrder
   }
 
   private fun getAllowedTransitions(current: OrderA.OrderAStatus): Set<OrderA.OrderAStatus> =
     when (current) {
+      OrderA.OrderAStatus.DRAFT -> ALLOWED_TRANSITIONS_FROM_DRAFT
       OrderA.OrderAStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
       OrderA.OrderAStatus.IN_PRODUCTION -> ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION
       OrderA.OrderAStatus.READY -> ALLOWED_TRANSITIONS_FROM_READY

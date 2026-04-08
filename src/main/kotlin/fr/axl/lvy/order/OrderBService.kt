@@ -84,15 +84,16 @@ class OrderBService(
       )
     documentLineRepository.deleteAll(existingLines)
 
-    lines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.ORDER_B
-      line.documentId = saved.id!!
-      line.position = i
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
+    val persistedLines =
+      lines.mapIndexed { i, line ->
+        DocumentLine(DocumentLine.DocumentType.ORDER_B, saved.id!!, line.designation).apply {
+          copyFieldsFrom(line)
+          position = i
+        }
+      }
+    documentLineRepository.saveAll(persistedLines)
 
-    saved.recalculateTotals(lines)
+    saved.recalculateTotals(persistedLines)
     return orderBRepository.save(saved)
   }
 
