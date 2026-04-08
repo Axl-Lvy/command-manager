@@ -27,7 +27,7 @@ import java.time.LocalDate
 internal class SalesAFormDialog(
   private val salesAService: SalesAService,
   clientService: ClientService,
-  private val incotermService: IncotermService,
+  incotermService: IncotermService,
   productService: ProductService,
   private val order: SalesA?,
   private val onSave: Runnable,
@@ -39,6 +39,7 @@ internal class SalesAFormDialog(
   private val status = ComboBox<SalesA.SalesAStatus>("Statut")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
   private val clientReference = TextField("Réf. client")
+  private val vatRate = com.vaadin.flow.component.textfield.BigDecimalField("TVA (%)")
   private val incotermCombo = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
   private val billingAddress = TextArea("Adresse facturation")
@@ -46,6 +47,7 @@ internal class SalesAFormDialog(
   private val notes = TextArea("Notes")
   private val conditions = TextArea("Conditions")
   private val lineEditor: DocumentLineEditor
+  private val allIncoterms: List<Incoterm>
   private var selectedCurrency: String = order?.currency ?: "EUR"
 
   init {
@@ -56,7 +58,8 @@ internal class SalesAFormDialog(
     clientCombo.isRequired = true
     orderDate.isRequired = true
     orderNumber.isReadOnly = true
-    incotermCombo.setItems(incotermService.findAll())
+    allIncoterms = incotermService.findAll()
+    incotermCombo.setItems(allIncoterms)
     incotermCombo.setItemLabelGenerator { it.name }
     status.setItems(*SalesA.SalesAStatus.entries.toTypedArray())
     status.setItemLabelGenerator {
@@ -79,7 +82,7 @@ internal class SalesAFormDialog(
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 3))
     form.add(orderNumber, clientCombo, orderDate)
     form.add(status, expectedDeliveryDate, clientReference)
-    form.add(incotermCombo, incotermLocation)
+    form.add(vatRate, incotermCombo, incotermLocation)
     form.add(billingAddress, 3)
     form.add(shippingAddress, 3)
     form.add(notes, 3)
@@ -99,8 +102,6 @@ internal class SalesAFormDialog(
     add(content)
 
     val saveBtn = Button("Enregistrer") { save() }
-    saveBtn.isEnabled = true
-    saveBtn.isDisableOnClick = false
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
     footer.add(HorizontalLayout(saveBtn, cancelBtn))
@@ -112,6 +113,7 @@ internal class SalesAFormDialog(
       orderDate.value = LocalDate.now()
       status.value = SalesA.SalesAStatus.DRAFT
       selectedCurrency = "EUR"
+      vatRate.value = BigDecimal("20.00")
     }
   }
 
@@ -122,8 +124,9 @@ internal class SalesAFormDialog(
     status.value = o.status
     expectedDeliveryDate.value = o.expectedDeliveryDate
     clientReference.value = o.clientReference ?: ""
+    vatRate.value = o.vatRate
     selectedCurrency = o.currency
-    incotermCombo.value = incotermService.findAll().firstOrNull { it.name == o.incoterms }
+    incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
     incotermLocation.value = o.incotermLocation ?: ""
     billingAddress.value = o.billingAddress ?: ""
     shippingAddress.value = o.shippingAddress ?: ""
@@ -154,6 +157,7 @@ internal class SalesAFormDialog(
       o.status = status.value ?: SalesA.SalesAStatus.DRAFT
       o.clientReference = if (clientReference.value.isBlank()) null else clientReference.value
       o.subject = null
+      o.vatRate = vatRate.value ?: BigDecimal.ZERO
       o.currency = selectedCurrency
       o.exchangeRate = BigDecimal.ONE
       o.incoterms = incotermCombo.value?.name

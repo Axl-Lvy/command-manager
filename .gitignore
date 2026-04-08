@@ -20,3 +20,6 @@ application-local.properties
 node_modules/
 src/main/frontend/generated/
 vite.generated.ts
+
+# AI
+.claude/settings.local.json

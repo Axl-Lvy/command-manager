@@ -61,18 +61,20 @@ class OrderAService(
     require(allowed.contains(newStatus)) { "Cannot transition from ${order.status} to $newStatus" }
     order.status = newStatus
     val saved = orderARepository.save(order)
-    val originatingSale = saved.id?.let { salesARepository.findByOrderAId(it) }
-    if (newStatus == OrderA.OrderAStatus.CONFIRMED && originatingSale != null) {
-      val lines = findLines(saved.id!!)
-      val hasMtoLines = lines.any { it.product?.mto == true }
-      if (hasMtoLines) {
-        salesBService.createOrUpdateFromConfirmedOrderA(originatingSale, saved, lines)
-      } else {
-        salesBService.deleteBySalesAId(originatingSale.id!!)
+    val savedId = saved.id ?: return saved
+    val originatingSale = salesARepository.findByOrderAId(savedId)
+    if (originatingSale != null) {
+      val saleId = originatingSale.id ?: return saved
+      if (newStatus == OrderA.OrderAStatus.CONFIRMED) {
+        val lines = findLines(savedId)
+        if (lines.any { it.product?.mto == true }) {
+          salesBService.createOrUpdateFromConfirmedOrderA(originatingSale, saved, lines)
+        } else {
+          salesBService.deleteBySalesAId(saleId)
+        }
+      } else if (newStatus == OrderA.OrderAStatus.CANCELLED) {
+        salesBService.deleteBySalesAId(saleId)
       }
-    }
-    if (newStatus == OrderA.OrderAStatus.CANCELLED && originatingSale != null) {
-      salesBService.deleteBySalesAId(originatingSale.id!!)
     }
     return saved
   }
@@ -179,17 +181,18 @@ class OrderAService(
     saved.purchasePriceExclTax =
       persistedLines.fold(java.math.BigDecimal.ZERO) { acc, line -> acc.add(line.lineTotalExclTax) }
     val persistedOrder = orderARepository.save(saved)
-    val originatingSale = persistedOrder.id?.let { salesARepository.findByOrderAId(it) }
+    val orderId = persistedOrder.id ?: return persistedOrder
+    val originatingSale = salesARepository.findByOrderAId(orderId)
     if (persistedOrder.status == OrderA.OrderAStatus.CONFIRMED && originatingSale != null) {
-      val hasMtoLines = persistedLines.any { it.product?.mto == true }
-      if (hasMtoLines) {
+      val saleId = originatingSale.id ?: return persistedOrder
+      if (persistedLines.any { it.product?.mto == true }) {
         salesBService.createOrUpdateFromConfirmedOrderA(
           originatingSale,
           persistedOrder,
           persistedLines,
         )
       } else {
-        salesBService.deleteBySalesAId(originatingSale.id!!)
+        salesBService.deleteBySalesAId(saleId)
       }
     }
     return persistedOrder

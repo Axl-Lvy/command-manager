@@ -94,7 +94,7 @@ class DocumentLineEditor(
       grid
         .addComponentColumn {
           ComboBox<String>().apply {
-            setItems("EUR", "$")
+            setItems("EUR", "USD")
             value = currencySupplier.invoke() ?: "EUR"
             width = "100px"
             addValueChangeListener { event ->

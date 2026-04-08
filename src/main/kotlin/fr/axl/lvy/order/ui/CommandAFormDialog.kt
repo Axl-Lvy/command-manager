@@ -28,7 +28,7 @@ import java.time.LocalDate
 internal class CommandAFormDialog(
   private val orderAService: OrderAService,
   clientService: ClientService,
-  private val incotermService: IncotermService,
+  incotermService: IncotermService,
   productService: ProductService,
   private val order: OrderA?,
   private val onSave: Runnable,
@@ -51,6 +51,7 @@ internal class CommandAFormDialog(
   private val notes = TextArea("Notes")
   private val conditions = TextArea("Conditions")
   private val lineEditor: DocumentLineEditor
+  private val allIncoterms: List<Incoterm>
 
   init {
     setHeaderTitle(if (order == null) "Nouvelle commande A" else "Modifier commande A")
@@ -61,8 +62,9 @@ internal class CommandAFormDialog(
     orderDate.isRequired = true
     orderNumber.isReadOnly = true
     totalExclTax.isReadOnly = true
-    currency.setItems("EUR", "$")
-    incotermCombo.setItems(incotermService.findAll())
+    currency.setItems("EUR", "USD")
+    allIncoterms = incotermService.findAll()
+    incotermCombo.setItems(allIncoterms)
     incotermCombo.setItemLabelGenerator { it.name }
     status.setItems(*OrderA.OrderAStatus.entries.toTypedArray())
 
@@ -125,7 +127,7 @@ internal class CommandAFormDialog(
     totalExclTax.value = o.totalExclTax
     currency.value = o.currency
     vatRate.value = o.vatRate
-    incotermCombo.value = incotermService.findAll().firstOrNull { it.name == o.incoterms }
+    incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
     incotermLocation.value = o.incotermLocation ?: ""
     billingAddress.value = o.billingAddress ?: ""
     shippingAddress.value = o.shippingAddress ?: ""

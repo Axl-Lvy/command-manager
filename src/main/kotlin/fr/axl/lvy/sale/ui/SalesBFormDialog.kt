@@ -25,7 +25,7 @@ import fr.axl.lvy.sale.SalesBService
 internal class SalesBFormDialog(
   private val salesBService: SalesBService,
   salesAService: SalesAService,
-  private val incotermService: IncotermService,
+  incotermService: IncotermService,
   productService: ProductService,
   private val order: SalesB?,
   private val onSave: Runnable,
@@ -39,6 +39,7 @@ internal class SalesBFormDialog(
   private val incotermLocation = TextField("Emplacement")
   private val notes = TextArea("Notes")
   private val lineEditor: DocumentLineEditor
+  private val allIncoterms: List<Incoterm>
 
   init {
     setHeaderTitle(if (order == null) "Nouvelle vente B" else "Modifier vente B")
@@ -47,7 +48,8 @@ internal class SalesBFormDialog(
 
     orderACombo.isRequired = true
     orderNumber.isReadOnly = true
-    incotermCombo.setItems(incotermService.findAll())
+    allIncoterms = incotermService.findAll()
+    incotermCombo.setItems(allIncoterms)
     incotermCombo.setItemLabelGenerator { it.name }
 
     orderACombo.setItems(salesAService.findAll())
@@ -88,7 +90,7 @@ internal class SalesBFormDialog(
     orderACombo.value = o.salesA
     orderDate.value = o.saleDate
     expectedDeliveryDate.value = o.expectedDeliveryDate
-    incotermCombo.value = incotermService.findAll().firstOrNull { it.name == o.incoterms }
+    incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
     incotermLocation.value = o.incotermLocation ?: ""
     notes.value = o.notes ?: ""
 

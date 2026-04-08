@@ -2,6 +2,7 @@ package fr.axl.lvy.incoterm.ui
 
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
 import com.vaadin.flow.component.notification.Notification
@@ -37,10 +38,18 @@ internal class IncotermListView(private val incotermService: IncotermService) : 
 
         val deleteButton =
           Button("Supprimer") {
-            incoterm.id?.let(incotermService::delete)
-            Notification.show("Incoterm supprimé", 3000, Notification.Position.BOTTOM_END)
-              .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
-            refreshGrid()
+            ConfirmDialog(
+                "Supprimer l'incoterm",
+                "Voulez-vous vraiment supprimer l'incoterm « ${incoterm.name} » ?",
+                "Supprimer",
+              ) {
+                incoterm.id?.let(incotermService::delete)
+                Notification.show("Incoterm supprimé", 3000, Notification.Position.BOTTOM_END)
+                  .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
+                refreshGrid()
+              }
+              .apply { setCancelable(true) }
+              .open()
           }
         deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY)
 

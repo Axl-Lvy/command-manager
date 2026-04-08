@@ -194,6 +194,7 @@ class SalesBService(
       return syncGeneratedOrder(saved, persistedLines)
     }
 
+    saved.orderB?.id?.let { orderBService.delete(it) }
     saved.orderB = null
     return salesBRepository.save(saved)
   }

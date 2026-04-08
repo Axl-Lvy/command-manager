@@ -65,7 +65,13 @@ internal class IncotermFormDialog(
     entity.name = name.value
     entity.label = label.value
 
-    incotermService.save(entity)
+    try {
+      incotermService.save(entity)
+    } catch (e: IllegalArgumentException) {
+      Notification.show(e.message ?: "Erreur", 3000, Notification.Position.BOTTOM_END)
+        .addThemeVariants(NotificationVariant.LUMO_ERROR)
+      return
+    }
     Notification.show("Incoterm enregistré", 3000, Notification.Position.BOTTOM_END)
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
     onSave.run()
