@@ -11,6 +11,10 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Business logic for Netstone sales. Handles creation from a Codig sale's MTO lines, and
+ * generates/syncs the linked [OrderNetstone] when the sale is validated.
+ */
 @Service
 class SalesNetstoneService(
   private val salesNetstoneRepository: SalesNetstoneRepository,
@@ -37,6 +41,10 @@ class SalesNetstoneService(
     salesNetstoneRepository.findById(id).ifPresent { it.softDelete() }
   }
 
+  /**
+   * Creates or updates a Netstone sale from a Codig sale's MTO line items. Only MTO product lines
+   * are copied. Re-activates a previously cancelled sale if needed.
+   */
   @Transactional
   fun createOrUpdateFromSalesCodig(
     salesCodig: SalesCodig,
@@ -75,6 +83,10 @@ class SalesNetstoneService(
     return salesNetstoneRepository.save(savedSale)
   }
 
+  /**
+   * Synchronizes the auto-generated [OrderNetstone] from this Netstone sale. Requires that the
+   * parent Codig sale already has a generated [OrderCodig].
+   */
   @Transactional
   fun syncGeneratedOrder(sale: SalesNetstone, saleLines: List<DocumentLine>): SalesNetstone {
     val sourceOrderCodig =
@@ -103,6 +115,7 @@ class SalesNetstoneService(
     return salesNetstoneRepository.save(sale)
   }
 
+  /** Soft-deletes the Netstone sale (and its generated order) linked to the given Codig sale. */
   @Transactional
   fun deleteBySalesCodigId(salesCodigId: Long) {
     val salesNetstone = salesNetstoneRepository.findBySalesCodigId(salesCodigId) ?: return
@@ -115,6 +128,10 @@ class SalesNetstoneService(
   fun findLines(saleId: Long): List<DocumentLine> =
     documentLineService.findLines(DocumentLine.DocumentType.SALES_NETSTONE, saleId)
 
+  /**
+   * Saves the sale with its lines. If validated, syncs the generated order; otherwise cleans up any
+   * existing order.
+   */
   @Transactional
   fun saveWithLines(sale: SalesNetstone, lines: List<DocumentLine>): SalesNetstone {
     val saved = save(sale)

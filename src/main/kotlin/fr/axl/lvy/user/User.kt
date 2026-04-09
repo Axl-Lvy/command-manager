@@ -8,6 +8,10 @@ import java.time.Instant
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A system user with role-based access. The [companyId] controls which company's data the user can
+ * see (Codig only, Netstone only, or both).
+ */
 @Entity
 @Table(name = "users")
 class User(
@@ -29,6 +33,7 @@ class User(
 
   @Column(name = "last_login") var lastLogin: Instant? = null
 
+  /** Returns true if this user is allowed to see data tagged with [visibleCompany]. */
   fun canSee(visibleCompany: Company): Boolean {
     if (companyId == null || companyId == Company.BOTH) return true
     return companyId == visibleCompany || visibleCompany == Company.BOTH

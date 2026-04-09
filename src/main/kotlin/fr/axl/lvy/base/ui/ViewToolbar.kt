@@ -8,6 +8,10 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.theme.lumo.LumoUtility
 
+/**
+ * Reusable toolbar placed at the top of list/detail views, with a drawer toggle, title, and action
+ * buttons.
+ */
 class ViewToolbar(viewTitle: String?, vararg components: Component) :
   Composite<HorizontalLayout>() {
 

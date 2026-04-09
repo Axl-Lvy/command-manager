@@ -8,6 +8,11 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * The Netstone-side mirror of a [SalesCodig], automatically created when the Codig sale contains
+ * MTO products. Represents what Netstone needs to procure from suppliers. When validated, it
+ * generates a linked [OrderNetstone].
+ */
 @Entity
 @Table(name = "sales_b")
 class SalesNetstone(

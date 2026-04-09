@@ -6,6 +6,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Table
 import jakarta.validation.constraints.NotBlank
 
+/** A currency used in documents and products (e.g. EUR, USD, CNY). */
 @Entity
 @Table(name = "currencies")
 class Currency(

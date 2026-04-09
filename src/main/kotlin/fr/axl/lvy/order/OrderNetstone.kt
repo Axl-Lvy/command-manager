@@ -8,6 +8,12 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A supplier purchase order placed by Netstone, always linked to a parent [OrderCodig]. Follows a
+ * status workflow: SENT -> CONFIRMED -> IN_PRODUCTION -> RECEIVED (or CANCELLED).
+ *
+ * Tracks reception details (date, conformity, reserves) when goods arrive.
+ */
 @Entity
 @Table(name = "orders_netstone")
 class OrderNetstone(

@@ -6,6 +6,7 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/** Manages Codig delivery notes. Links them back to the parent order on save. */
 @Service
 class DeliveryNoteCodigService(
   private val deliveryNoteCodigRepository: DeliveryNoteCodigRepository,

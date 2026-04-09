@@ -4,6 +4,7 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/** Manages the fiscal position reference table. Enforces label uniqueness (case-insensitive). */
 @Service
 class FiscalPositionService(private val fiscalPositionRepository: FiscalPositionRepository) {
 

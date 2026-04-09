@@ -4,6 +4,10 @@ import jakarta.persistence.Column
 import jakarta.persistence.MappedSuperclass
 import java.time.Instant
 
+/**
+ * Entity that supports soft deletion. Instead of being removed from the database, a [deletedAt]
+ * timestamp is set and the record is filtered out by queries.
+ */
 @MappedSuperclass
 abstract class SoftDeletableEntity : BaseEntity() {
   @Column(name = "deleted_at")

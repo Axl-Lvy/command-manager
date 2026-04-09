@@ -8,6 +8,12 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A delivery note for goods received from a supplier (Netstone side). Linked to the originating
+ * [OrderNetstone]. Tracks container, lot, and seals for import logistics.
+ *
+ * Status workflow: IN_TRANSIT -> ARRIVED -> INSPECTED (or INCIDENT at any stage).
+ */
 @Entity
 @Table(name = "delivery_notes_netstone")
 class DeliveryNoteNetstone(

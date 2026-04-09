@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/** A contact person within a [Client] organization. */
 @Entity
 @Table(name = "contacts")
 class Contact(@NotBlank @Column(name = "last_name", nullable = false) var lastName: String) :

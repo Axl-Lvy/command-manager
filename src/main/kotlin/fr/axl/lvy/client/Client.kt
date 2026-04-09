@@ -10,6 +10,14 @@ import java.math.BigDecimal
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A business partner — can be a customer ([ClientRole.CLIENT]), a supplier/producer
+ * ([ClientRole.PRODUCER]), or both. The [visibleCompany] field controls which company (Codig,
+ * Netstone, or both) can see this client in their views.
+ *
+ * Clients of type [ClientType.OWN_COMPANY] represent Codig or Netstone themselves (used as
+ * self-reference in inter-company transactions).
+ */
 @Entity
 @Table(name = "clients")
 class Client(
@@ -70,22 +78,37 @@ class Client(
   @OneToMany(mappedBy = "client", cascade = [CascadeType.ALL], orphanRemoval = true)
   var contacts: MutableList<Contact> = mutableListOf()
 
+  /** Whether this client can appear as a buyer on Codig sales/orders. */
   fun isClient(): Boolean = role == ClientRole.CLIENT || role == ClientRole.BOTH
 
+  /** Whether this client can appear as a supplier/manufacturer. */
   fun isProducer(): Boolean = role == ClientRole.PRODUCER || role == ClientRole.BOTH
 
+  /**
+   * Whether this client can be linked as a product supplier (includes own companies for
+   * inter-company flows).
+   */
   fun isSupplierForProduct(): Boolean = isProducer() || role == ClientRole.OWN_COMPANY
 
   enum class ClientType {
     COMPANY,
     INDIVIDUAL,
+
+    /** Represents Codig or Netstone itself, used in inter-company transactions. */
     OWN_COMPANY,
   }
 
   enum class ClientRole {
+    /** Buys from us. */
     CLIENT,
+
+    /** Supplies / manufactures products for us. */
     PRODUCER,
+
+    /** Acts as both customer and supplier. */
     BOTH,
+
+    /** Internal own-company record (Codig or Netstone). */
     OWN_COMPANY,
   }
 

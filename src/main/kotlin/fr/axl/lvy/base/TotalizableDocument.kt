@@ -5,6 +5,12 @@ import jakarta.persistence.Column
 import jakarta.persistence.MappedSuperclass
 import java.math.BigDecimal
 
+/**
+ * A business document that carries line items and computed financial totals (excl. tax, VAT, incl.
+ * tax). Also holds delivery, incoterm, and purchase-price metadata.
+ *
+ * Call [recalculateTotals] after modifying the associated [DocumentLine] list.
+ */
 @MappedSuperclass
 abstract class TotalizableDocument : SoftDeletableEntity() {
   @Column(name = "expected_delivery_date") var expectedDeliveryDate: java.time.LocalDate? = null

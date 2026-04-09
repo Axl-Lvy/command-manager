@@ -11,6 +11,13 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A supplier invoice received and processed by Netstone. Can be linked to an [OrderNetstone] or
+ * standalone. The [recipientType] distinguishes invoices billed to Codig vs. to an external
+ * producer.
+ *
+ * Status workflow: RECEIVED -> VERIFIED -> PAID (or DISPUTED).
+ */
 @Entity
 @Table(name = "invoices_netstone")
 class InvoiceNetstone(
@@ -56,6 +63,7 @@ class InvoiceNetstone(
 
   @Column(name = "dispute_reason", columnDefinition = "TEXT") var disputeReason: String? = null
 
+  /** Difference between the invoiced amount and the expected amount from the linked order. */
   @Column(name = "amount_discrepancy", precision = 12, scale = 2)
   var amountDiscrepancy: BigDecimal? = null
 
@@ -76,12 +84,18 @@ class InvoiceNetstone(
   @Column(columnDefinition = "TEXT") var notes: String? = null
 
   enum class RecipientType {
+    /** Invoice billed to Codig (inter-company). */
     COMPANY_CODIG,
+
+    /** Invoice billed to an external producer/supplier. */
     PRODUCER,
   }
 
   enum class Origin {
+    /** Created from an existing Netstone order. */
     ORDER_LINKED,
+
+    /** Manually created without a linked order. */
     STANDALONE,
   }
 

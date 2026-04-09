@@ -5,6 +5,10 @@ import fr.axl.lvy.client.Client
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 
+/**
+ * A client-specific reference code for a product. Clients may use their own internal codes to refer
+ * to our products; this maps (product, client) to that external code.
+ */
 @Entity
 @Table(
   name = "product_client_codes",

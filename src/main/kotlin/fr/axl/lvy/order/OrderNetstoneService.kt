@@ -8,6 +8,10 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Business logic for Netstone supplier orders. Handles the status state machine and goods
+ * reception.
+ */
 @Service
 class OrderNetstoneService(
   private val orderNetstoneRepository: OrderNetstoneRepository,
@@ -59,6 +63,10 @@ class OrderNetstoneService(
     return orderNetstoneRepository.save(order)
   }
 
+  /**
+   * Records the reception of goods: sets the date, conformity status, and any reserves, then moves
+   * to RECEIVED.
+   */
   @Transactional
   fun markReceived(
     order: OrderNetstone,

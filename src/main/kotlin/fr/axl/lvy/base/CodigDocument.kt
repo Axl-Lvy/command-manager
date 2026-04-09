@@ -4,6 +4,10 @@ import fr.axl.lvy.client.Client
 import jakarta.persistence.*
 import java.math.BigDecimal
 
+/**
+ * A customer-facing document issued by the Codig company. Extends [TotalizableDocument] with client
+ * reference, addresses, currency / exchange rate, and contractual conditions.
+ */
 @MappedSuperclass
 abstract class CodigDocument(
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
