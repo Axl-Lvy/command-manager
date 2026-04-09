@@ -80,6 +80,7 @@ class SalesAServiceTest {
     sale.incoterms = "FOB"
     salesARepository.saveAndFlush(sale)
 
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SYNC-01")
     val line =
       testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
@@ -87,6 +88,7 @@ class SalesAServiceTest {
         "Widget",
         quantity = BigDecimal("5"),
         unitPrice = BigDecimal("100.00"),
+        product = mtoProduct,
       )
 
     val result = salesAService.syncGeneratedOrder(sale, listOf(line))
@@ -117,14 +119,26 @@ class SalesAServiceTest {
     val sale = createSalesA("SA-SYNC-02", client)
     salesARepository.flush()
 
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SYNC-02")
+
     val line1 =
-      testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget A")
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_A,
+        sale.id!!,
+        "Widget A",
+        product = mtoProduct,
+      )
 
     salesAService.syncGeneratedOrder(sale, listOf(line1))
     val firstOrderId = sale.orderA!!.id!!
 
     val line2 =
-      testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget B")
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_A,
+        sale.id!!,
+        "Widget B",
+        product = mtoProduct,
+      )
 
     salesAService.syncGeneratedOrder(sale, listOf(line2))
 
@@ -184,6 +198,34 @@ class SalesAServiceTest {
 
     val salesB = salesBRepository.findBySalesAId(sale.id!!)
     assertThat(salesB == null || salesB.isDeleted()).isTrue
+    assertThat(sale.orderA).isNull()
+  }
+
+  @Test
+  fun syncGeneratedOrder_does_not_create_orderA_for_service_even_if_mto_flag_is_true() {
+    val client = testData.createClient("CLI-SA-SVC")
+    val sale = createSalesA("SA-SVC-01", client, SalesA.SalesAStatus.VALIDATED)
+    salesARepository.flush()
+
+    val serviceProduct = Product("SRV-SA-01", "Service")
+    serviceProduct.type = Product.ProductType.SERVICE
+    serviceProduct.mto = true
+    serviceProduct.sellingPriceExclTax = BigDecimal("100.00")
+    serviceProduct.purchasePriceExclTax = BigDecimal("60.00")
+    productRepository.saveAndFlush(serviceProduct)
+
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_A,
+        sale.id!!,
+        "Service",
+        product = serviceProduct,
+      )
+
+    val result = salesAService.syncGeneratedOrder(sale, listOf(line))
+
+    assertThat(result.orderA).isNull()
+    assertThat(salesBRepository.findBySalesAId(sale.id!!)).isNull()
   }
 
   @Test
@@ -218,7 +260,9 @@ class SalesAServiceTest {
     val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
     sale.vatRate = BigDecimal("20.00")
 
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SWL")
     val line = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Widget")
+    line.product = mtoProduct
     line.quantity = BigDecimal("5")
     line.unitPriceExclTax = BigDecimal("100.00")
     line.discountPercent = BigDecimal.ZERO
@@ -232,6 +276,29 @@ class SalesAServiceTest {
     val lines = salesAService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)
     assertThat(lines[0].vatRate).isEqualByComparingTo("20.00")
+  }
+
+  @Test
+  fun saveWithLines_does_not_create_orderA_without_mto_product() {
+    val client = testData.createClient("CLI-SA-NO-MTO", "123 Billing St", "456 Shipping Ave")
+    val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
+    sale.vatRate = BigDecimal("20.00")
+
+    val serviceProduct = Product("SRV-SA-02", "Service")
+    serviceProduct.type = Product.ProductType.SERVICE
+    serviceProduct.mto = true
+    serviceProduct.sellingPriceExclTax = BigDecimal("100.00")
+    productRepository.saveAndFlush(serviceProduct)
+
+    val line = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Service")
+    line.product = serviceProduct
+    line.quantity = BigDecimal("1")
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+
+    val saved = salesAService.saveWithLines(sale, listOf(line))
+
+    assertThat(saved.orderA).isNull()
   }
 
   @Test

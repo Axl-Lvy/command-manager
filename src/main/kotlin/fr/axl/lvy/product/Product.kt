@@ -48,6 +48,8 @@ class Product(
       clientProductCodes.firstOrNull { it.client == currentClient }?.code
     }
 
+  fun isMtoProduct(): Boolean = type == ProductType.PRODUCT && mto
+
   @PrePersist
   fun validateOnPersist() {
     if (type == ProductType.SERVICE) mto = false

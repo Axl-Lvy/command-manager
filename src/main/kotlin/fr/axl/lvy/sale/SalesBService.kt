@@ -68,7 +68,7 @@ class SalesBService(
         DocumentLine.DocumentType.SALES_B,
         savedSale.id!!,
         sourceLines,
-        filter = { it.product?.mto == true },
+        filter = { it.product?.isMtoProduct() == true },
       )
 
     savedSale.recalculateTotals(generatedSaleLines)

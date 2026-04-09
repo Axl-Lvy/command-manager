@@ -4,4 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface DeliveryNoteARepository : JpaRepository<DeliveryNoteA, Long> {
   fun findByDeletedAtIsNull(): List<DeliveryNoteA>
+
+  fun findByOrderAIdAndDeletedAtIsNull(orderAId: Long): DeliveryNoteA?
 }

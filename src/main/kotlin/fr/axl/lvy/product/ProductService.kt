@@ -1,11 +1,15 @@
 package fr.axl.lvy.product
 
+import fr.axl.lvy.client.ClientRepository
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class ProductService(private val productRepository: ProductRepository) {
+class ProductService(
+  private val productRepository: ProductRepository,
+  private val clientRepository: ClientRepository,
+) {
 
   @Transactional(readOnly = true)
   fun findAll(): List<Product> = productRepository.findByDeletedAtIsNull()
@@ -22,6 +26,13 @@ class ProductService(private val productRepository: ProductRepository) {
 
   @Transactional
   fun save(product: Product): Product {
+    if (product.clientProductCodes.isNotEmpty()) {
+      val managedEntries =
+        product.clientProductCodes.map { clientProductCode ->
+          clientRepository.getReferenceById(clientProductCode.client.id!!) to clientProductCode.code
+        }
+      product.replaceClientProductCodes(managedEntries)
+    }
     if (product.reference.isBlank()) {
       product.reference = generateNextReference()
     }

@@ -70,7 +70,7 @@ class OrderAService(
       val saleId = originatingSale.id ?: return saved
       if (newStatus == OrderA.OrderAStatus.CONFIRMED) {
         val lines = findLines(savedId)
-        if (lines.any { it.product?.mto == true }) {
+        if (lines.any { it.product?.isMtoProduct() == true }) {
           salesBService.createOrUpdateFromSalesA(
             originatingSale,
             saved.orderDate,
@@ -133,7 +133,7 @@ class OrderAService(
         DocumentLine.DocumentType.ORDER_A,
         order.id!!,
       )
-    val mtoLines = lines.filter { it.product != null && it.product!!.mto }
+    val mtoLines = lines.filter { it.product?.isMtoProduct() == true }
 
     if (mtoLines.isEmpty()) return
 
@@ -185,7 +185,7 @@ class OrderAService(
     val originatingSale = salesARepository.findByOrderAId(orderId)
     if (persistedOrder.status == OrderA.OrderAStatus.CONFIRMED && originatingSale != null) {
       val saleId = originatingSale.id ?: return persistedOrder
-      if (persistedLines.any { it.product?.mto == true }) {
+      if (persistedLines.any { it.product?.isMtoProduct() == true }) {
         salesBService.createOrUpdateFromSalesA(
           originatingSale,
           persistedOrder.orderDate,

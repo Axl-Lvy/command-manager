@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 class SalesAService(
   private val salesARepository: SalesARepository,
   private val orderAService: OrderAService,
+  private val salesBService: SalesBService,
   private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
 ) {
@@ -22,6 +23,10 @@ class SalesAService(
 
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<SalesA> = salesARepository.findById(id)
+
+  @Transactional(readOnly = true)
+  fun findDetailedById(id: Long): Optional<SalesA> =
+    Optional.ofNullable(salesARepository.findDetailedById(id))
 
   @Transactional
   fun save(sale: SalesA): SalesA {
@@ -44,6 +49,13 @@ class SalesAService(
 
   @Transactional
   fun syncGeneratedOrder(sale: SalesA, saleLines: List<DocumentLine>): SalesA {
+    if (saleLines.none { it.product?.isMtoProduct() == true }) {
+      sale.orderA?.id?.let { orderAService.delete(it) }
+      sale.id?.let { salesBService.deleteBySalesAId(it) }
+      sale.orderA = null
+      return salesARepository.save(sale)
+    }
+
     val order = sale.orderA ?: OrderA("", sale.client, sale.saleDate)
 
     order.client = sale.client

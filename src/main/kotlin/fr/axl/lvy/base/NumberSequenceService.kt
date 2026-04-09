@@ -30,6 +30,7 @@ class NumberSequenceService(private val repository: NumberSequenceRepository) {
     const val ORDER_B = "ORDER_B"
     const val SALES_A = "SALES_A"
     const val SALES_B = "SALES_B"
+    const val DELIVERY_A = "DELIVERY_A"
 
     val CONFIGS =
       mapOf(
@@ -38,6 +39,7 @@ class NumberSequenceService(private val repository: NumberSequenceRepository) {
         ORDER_B to SequenceConfig("NST_PO_", 3),
         SALES_A to SequenceConfig("CoD_SO_", 3),
         SALES_B to SequenceConfig("NST_SO_", 3),
+        DELIVERY_A to SequenceConfig("BL-", 6),
       )
   }
 }

@@ -2,6 +2,7 @@ package fr.axl.lvy.product
 
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientRepository
+import jakarta.persistence.EntityManager
 import java.math.BigDecimal
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -16,6 +17,7 @@ class ProductServiceTest {
   @Autowired lateinit var productService: ProductService
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var clientRepository: ClientRepository
+  @Autowired lateinit var entityManager: EntityManager
 
   private fun createClient(code: String): Client =
     clientRepository.save(Client(code, "Client $code"))
@@ -102,6 +104,24 @@ class ProductServiceTest {
 
     val found = productService.findById(product.id!!).orElseThrow()
     assertThat(found.mto).isTrue
+  }
+
+  @Test
+  fun isMtoProduct_returns_false_for_service_even_if_flag_is_true() {
+    val product = Product("REF-SVC-MTO", "Consulting")
+    product.type = Product.ProductType.SERVICE
+    product.mto = true
+
+    assertThat(product.isMtoProduct()).isFalse()
+  }
+
+  @Test
+  fun isMtoProduct_returns_true_only_for_mto_products() {
+    val product = Product("REF-PROD-MTO", "Custom Part")
+    product.type = Product.ProductType.PRODUCT
+    product.mto = true
+
+    assertThat(product.isMtoProduct()).isTrue()
   }
 
   @Test
@@ -220,5 +240,25 @@ class ProductServiceTest {
     val found = productService.findById(product.id!!).orElseThrow()
     assertThat(found.findClientProductCode(clientA)).isEqualTo("A-001")
     assertThat(found.findClientProductCode(clientB)).isEqualTo("B-002")
+  }
+
+  @Test
+  fun save_accepts_detached_client_for_client_product_code() {
+    val client = createClient("CLI-DETACHED")
+    entityManager.flush()
+    entityManager.clear()
+
+    val detachedClient = clientRepository.findById(client.id!!).orElseThrow()
+    entityManager.clear()
+
+    val product = Product(name = "Detached Client Product")
+    product.replaceClientProductCodes(listOf(detachedClient to "DET-CLIENT-001"))
+
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findDetailedById(product.id!!).orElseThrow()
+    assertThat(found.findClientProductCode(found.clientProductCodes.first().client))
+      .isEqualTo("DET-CLIENT-001")
   }
 }
