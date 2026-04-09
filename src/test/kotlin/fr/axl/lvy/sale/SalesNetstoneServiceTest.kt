@@ -33,7 +33,7 @@ class SalesNetstoneServiceTest {
   private fun createSalesCodigWithOrder(
     number: String,
     client: Client,
-    status: SalesCodig.SalesCodigStatus = SalesCodig.SalesCodigStatus.VALIDATED,
+    status: SalesStatus = SalesStatus.VALIDATED,
   ): SalesCodig {
     val sale = SalesCodig(number, client, LocalDate.of(2026, 3, 1))
     sale.status = status
@@ -102,7 +102,7 @@ class SalesNetstoneServiceTest {
         listOf(mtoLine, regularLine),
       )
 
-    assertThat(result.status).isEqualTo(SalesNetstone.SalesNetstoneStatus.DRAFT)
+    assertThat(result.status).isEqualTo(SalesStatus.DRAFT)
     assertThat(result.orderNetstone).isNull()
 
     val salesNetstoneLines =
@@ -167,7 +167,7 @@ class SalesNetstoneServiceTest {
     val mtoProduct = testData.createMtoProduct("PRD-MTO-SB3")
     val salesNetstone = SalesNetstone("SB-SYNC-01", salesCodig)
     salesNetstone.saleDate = LocalDate.of(2026, 3, 1)
-    salesNetstone.status = SalesNetstone.SalesNetstoneStatus.VALIDATED
+    salesNetstone.status = SalesStatus.VALIDATED
     val savedSalesNetstone = salesNetstoneRepository.saveAndFlush(salesNetstone)
 
     val line =
@@ -201,7 +201,7 @@ class SalesNetstoneServiceTest {
     val mtoProduct = testData.createMtoProduct("PRD-MTO-SB4")
     val salesNetstone = SalesNetstone("SB-SYNC-02", salesCodig)
     salesNetstone.saleDate = LocalDate.of(2026, 3, 1)
-    salesNetstone.status = SalesNetstone.SalesNetstoneStatus.VALIDATED
+    salesNetstone.status = SalesStatus.VALIDATED
     val savedSalesNetstone = salesNetstoneRepository.saveAndFlush(salesNetstone)
 
     val line1 =
@@ -236,7 +236,7 @@ class SalesNetstoneServiceTest {
     val mtoProduct = testData.createMtoProduct("PRD-MTO-SB5")
     val salesNetstone = SalesNetstone("SB-DEL-02", salesCodig)
     salesNetstone.saleDate = LocalDate.of(2026, 3, 1)
-    salesNetstone.status = SalesNetstone.SalesNetstoneStatus.VALIDATED
+    salesNetstone.status = SalesStatus.VALIDATED
     val savedSalesNetstone = salesNetstoneRepository.saveAndFlush(salesNetstone)
 
     val line =

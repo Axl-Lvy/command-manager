@@ -21,17 +21,11 @@ class SalesNetstone(
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(nullable = false, columnDefinition = "enum('DRAFT','VALIDATED','CANCELLED')")
-  var status: SalesNetstoneStatus = SalesNetstoneStatus.DRAFT
+  var status: SalesStatus = SalesStatus.DRAFT
 
   @Column(name = "sale_date") var saleDate: LocalDate? = null
 
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "order_netstone_id")
   var orderNetstone: OrderNetstone? = null
-
-  enum class SalesNetstoneStatus {
-    DRAFT,
-    VALIDATED,
-    CANCELLED,
-  }
 }

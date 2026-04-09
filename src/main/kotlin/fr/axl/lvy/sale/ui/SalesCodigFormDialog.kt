@@ -23,6 +23,7 @@ import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
+import fr.axl.lvy.sale.SalesStatus
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -39,7 +40,7 @@ internal class SalesCodigFormDialog(
   private val orderNumber = TextField("N° Vente")
   private val clientCombo = ComboBox<Client>("Client")
   private val orderDate = DatePicker("Date vente")
-  private val status = ComboBox<SalesCodig.SalesCodigStatus>("Statut")
+  private val status = ComboBox<SalesStatus>("Statut")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
   private val clientReference = TextField("Réf. client")
   private val paymentTermCombo = ComboBox<PaymentTerm>("Conditions de paiement")
@@ -66,12 +67,12 @@ internal class SalesCodigFormDialog(
     incotermCombo.setItemLabelGenerator { it.name }
     paymentTermCombo.setItems(paymentTermService.findAll())
     paymentTermCombo.setItemLabelGenerator { it.label }
-    status.setItems(*SalesCodig.SalesCodigStatus.entries.toTypedArray())
+    status.setItems(*SalesStatus.entries.toTypedArray())
     status.setItemLabelGenerator {
       when (it) {
-        SalesCodig.SalesCodigStatus.DRAFT -> "Brouillon"
-        SalesCodig.SalesCodigStatus.VALIDATED -> "Validee"
-        SalesCodig.SalesCodigStatus.CANCELLED -> "Annulee"
+        SalesStatus.DRAFT -> "Brouillon"
+        SalesStatus.VALIDATED -> "Validee"
+        SalesStatus.CANCELLED -> "Annulee"
       }
     }
 
@@ -118,7 +119,7 @@ internal class SalesCodigFormDialog(
     } else {
       orderNumber.value = "(auto)"
       orderDate.value = LocalDate.now()
-      status.value = SalesCodig.SalesCodigStatus.DRAFT
+      status.value = SalesStatus.DRAFT
       selectedCurrency = "EUR"
     }
   }
@@ -160,7 +161,7 @@ internal class SalesCodigFormDialog(
         o.saleDate = orderDate.value
       }
       o.expectedDeliveryDate = expectedDeliveryDate.value
-      o.status = status.value ?: SalesCodig.SalesCodigStatus.DRAFT
+      o.status = status.value ?: SalesStatus.DRAFT
       o.clientReference = if (clientReference.value.isBlank()) null else clientReference.value
       o.subject = null
       o.paymentTerm = paymentTermCombo.value

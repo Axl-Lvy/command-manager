@@ -47,14 +47,14 @@ class SalesNetstoneService(
   ): SalesNetstone {
     val sale =
       salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
-        ?: SalesNetstone("", salesCodig).apply { status = SalesNetstone.SalesNetstoneStatus.DRAFT }
+        ?: SalesNetstone("", salesCodig).apply { status = SalesStatus.DRAFT }
 
     sale.salesCodig = salesCodig
     sale.saleDate = saleDate
     sale.expectedDeliveryDate = expectedDeliveryDate
     sale.notes = notes
-    if (sale.status == SalesNetstone.SalesNetstoneStatus.CANCELLED) {
-      sale.status = SalesNetstone.SalesNetstoneStatus.DRAFT
+    if (sale.status == SalesStatus.CANCELLED) {
+      sale.status = SalesStatus.DRAFT
     }
     sale.purchasePriceExclTax =
       sourceLines.fold(BigDecimal.ZERO) { acc, line ->
@@ -123,7 +123,7 @@ class SalesNetstoneService(
       documentLineService.replaceLines(DocumentLine.DocumentType.SALES_NETSTONE, saved.id!!, lines)
 
     saved.recalculateTotals(persistedLines)
-    if (saved.status == SalesNetstone.SalesNetstoneStatus.VALIDATED) {
+    if (saved.status == SalesStatus.VALIDATED) {
       return syncGeneratedOrder(saved, persistedLines)
     }
 

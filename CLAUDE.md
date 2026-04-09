@@ -99,7 +99,7 @@ This project follows a **feature-based package structure** rather than tradition
 ### Key Architecture Patterns
 
 1. **Feature Packages**: Each feature is self-contained with its own entity, repository, service, UI, and tests
-2. **Entity Hierarchy**: BaseEntity (id, audit fields) → SoftDeletableEntity (adds soft delete) → domain entities
+2. **Entity Hierarchy**: BaseEntity (id, audit fields) → SoftDeletableEntity (adds soft delete) → TotalizableDocument (totals, incoterms, notes) → CodigDocument (client, addresses, currency) → OrderCodig/SalesCodig
 3. **Navigation**: Views use `@Route` and `@Menu` annotations. MainLayout builds navigation automatically
 4. **Service Layer**: `@Transactional` for writes, `@Transactional(readOnly = true)` for reads
 5. **Soft Delete**: Most entities extend SoftDeletableEntity with `softDelete()` and `restore()` methods
