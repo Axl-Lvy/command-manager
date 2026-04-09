@@ -12,6 +12,7 @@ import com.vaadin.flow.component.sidenav.SideNav
 import com.vaadin.flow.component.sidenav.SideNavItem
 import com.vaadin.flow.dom.Style
 import com.vaadin.flow.router.Layout
+import com.vaadin.flow.router.RouterLink
 import com.vaadin.flow.server.menu.MenuConfiguration
 import com.vaadin.flow.server.menu.MenuEntry
 import com.vaadin.flow.theme.lumo.LumoUtility
@@ -35,7 +36,12 @@ class MainLayout : AppLayout() {
 
     val header = VerticalLayout(appLogo, appName)
     header.alignItems = FlexComponent.Alignment.CENTER
-    return header
+
+    val link = RouterLink("", HomeView::class.java)
+    link.add(header)
+    link.style["text-decoration"] = "none"
+    link.style["color"] = "inherit"
+    return link
   }
 
   private fun createSideNav(): SideNav {
