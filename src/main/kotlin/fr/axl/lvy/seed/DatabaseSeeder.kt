@@ -3,9 +3,17 @@ package fr.axl.lvy.seed
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.currency.Currency
+import fr.axl.lvy.currency.CurrencyService
 import fr.axl.lvy.documentline.DocumentLine
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
+import fr.axl.lvy.incoterm.Incoterm
+import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesA
@@ -30,11 +38,12 @@ import org.springframework.stereotype.Component
  * To activate: run the application with `--spring.profiles.active=local,seed`.
  *
  * Seeded data (in dependency order):
- * 1. Users
- * 2. Clients (with contacts)
- * 3. Products
- * 4. Orders A (via [OrderAService] — number sequence auto-generated)
- * 5. Sales A (via [SalesAService] — a VALIDATED sale with an MTO product automatically triggers the
+ * 1. Reference data (currencies, payment terms, incoterms, fiscal positions)
+ * 2. Users
+ * 3. Clients (with contacts)
+ * 4. Products
+ * 5. Orders A (via [OrderAService] — number sequence auto-generated)
+ * 6. Sales A (via [SalesAService] — a VALIDATED sale with an MTO product automatically triggers the
  *    creation of OrderA, SalesB, and OrderB)
  */
 @Component
@@ -45,6 +54,10 @@ class DatabaseSeeder(
   private val productService: ProductService,
   private val orderAService: OrderAService,
   private val salesAService: SalesAService,
+  private val currencyService: CurrencyService,
+  private val paymentTermService: PaymentTermService,
+  private val incotermService: IncotermService,
+  private val fiscalPositionService: FiscalPositionService,
 ) : ApplicationRunner {
 
   private val logger = LoggerFactory.getLogger(DatabaseSeeder::class.java)
@@ -52,13 +65,66 @@ class DatabaseSeeder(
   override fun run(args: ApplicationArguments) {
     logger.info("[Seeder] Starting database seeding...")
 
+    val refData = seedReferenceData()
     seedUsers()
-    val clients = seedClients()
+    val clients = seedClients(refData)
     val products = seedProducts()
     seedOrdersA(clients, products)
-    seedSalesA(clients, products)
+    seedSalesA(clients, products, refData)
 
     logger.info("[Seeder] Database seeding complete.")
+  }
+
+  private data class ReferenceData(
+    val currencies: List<Currency>,
+    val paymentTerms: List<PaymentTerm>,
+    val incoterms: List<Incoterm>,
+    val fiscalPositions: List<FiscalPosition>,
+  )
+
+  private fun seedReferenceData(): ReferenceData {
+    logger.info("[Seeder] Creating reference data...")
+
+    val currencies =
+      listOf(
+          Currency("EUR", "€", "Euro"),
+          Currency("USD", "$", "US Dollar"),
+          Currency("GBP", "£", "British Pound"),
+        )
+        .map { currencyService.save(it) }
+    logger.info("[Seeder] Created ${currencies.size} currencies")
+
+    val paymentTerms =
+      listOf(
+          PaymentTerm("30 jours net"),
+          PaymentTerm("45 jours fin de mois"),
+          PaymentTerm("60 jours net"),
+          PaymentTerm("Comptant"),
+        )
+        .map { paymentTermService.save(it) }
+    logger.info("[Seeder] Created ${paymentTerms.size} payment terms")
+
+    val incoterms =
+      listOf(
+          Incoterm("EXW", "Ex Works"),
+          Incoterm("FOB", "Free On Board"),
+          Incoterm("CIF", "Cost, Insurance and Freight"),
+          Incoterm("DAP", "Delivered At Place"),
+          Incoterm("DDP", "Delivered Duty Paid"),
+        )
+        .map { incotermService.save(it) }
+    logger.info("[Seeder] Created ${incoterms.size} incoterms")
+
+    val fiscalPositions =
+      listOf(
+          FiscalPosition("France métropolitaine"),
+          FiscalPosition("Intra-communautaire"),
+          FiscalPosition("Export hors UE"),
+        )
+        .map { fiscalPositionService.save(it) }
+    logger.info("[Seeder] Created ${fiscalPositions.size} fiscal positions")
+
+    return ReferenceData(currencies, paymentTerms, incoterms, fiscalPositions)
   }
 
   private fun seedUsers() {
@@ -82,8 +148,11 @@ class DatabaseSeeder(
     logger.info("[Seeder] Created 3 users")
   }
 
-  private fun seedClients(): List<Client> {
+  private fun seedClients(refData: ReferenceData): List<Client> {
     logger.info("[Seeder] Creating clients...")
+    val net30 = refData.paymentTerms[0]
+    val net45 = refData.paymentTerms[1]
+    val net60 = refData.paymentTerms[2]
 
     val acme =
       Client(name = "Acme Corp").apply {
@@ -96,7 +165,7 @@ class DatabaseSeeder(
         billingAddress = "10 rue de la Paix\n75001 Paris\nFrance"
         shippingAddress = "10 rue de la Paix\n75001 Paris\nFrance"
         paymentDelay = 30
-        paymentMethod = "Virement"
+        paymentTerm = net30
         contacts.add(
           Contact(this, "Martin").apply {
             firstName = "Jean"
@@ -120,7 +189,8 @@ class DatabaseSeeder(
         billingAddress = "5 avenue de Lyon\n69001 Lyon\nFrance"
         shippingAddress = "5 avenue de Lyon\n69001 Lyon\nFrance"
         paymentDelay = 45
-        paymentMethod = "Virement"
+        paymentTerm = net45
+        defaultDiscount = BigDecimal("5.00")
         contacts.add(
           Contact(this, "Durand").apply {
             firstName = "Marie"
@@ -142,6 +212,7 @@ class DatabaseSeeder(
         phone = "+33 5 67 89 01 23"
         billingAddress = "20 ZI Nord\n59000 Lille\nFrance"
         paymentDelay = 60
+        paymentTerm = net60
       }
     val savedNest = clientService.save(nestSupplier)
     logger.info("[Seeder] Created client: ${savedNest.name} (${savedNest.clientCode})")
@@ -195,6 +266,8 @@ class DatabaseSeeder(
         purchasePriceExclTax = BigDecimal("120.00")
         unit = "pcs"
         specifications = "Custom manufactured part, 7-day lead time"
+        hsCode = "8479.90"
+        madeIn = "France"
       }
     val savedCustomPart = productService.save(customPart)
     logger.info("[Seeder] Created product: ${savedCustomPart.name} (${savedCustomPart.reference})")
@@ -231,22 +304,29 @@ class DatabaseSeeder(
     val widgetA = products[0]
     val widgetB = products[1]
     val consulting = products[3]
+    val vatRate = BigDecimal("20.00")
 
     // Order 1: Acme, CONFIRMED, standard widgets
     val order1 =
       OrderA("", acme, LocalDate.now().minusDays(10)).apply {
         subject = "Standard widget order"
-        vatRate = BigDecimal("20.00")
+        this.vatRate = vatRate
         clientReference = "PO-2024-001"
         expectedDeliveryDate = LocalDate.now().plusDays(14)
+        incoterms = "DAP"
+        incotermLocation = "Paris"
       }
     val order1Lines =
       listOf(
         DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 0L, widgetA, acme).apply {
           quantity = BigDecimal("10")
+          this.vatRate = vatRate
+          recalculate()
         },
         DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 0L, widgetB, acme).apply {
           quantity = BigDecimal("5")
+          this.vatRate = vatRate
+          recalculate()
         },
       )
     val savedOrder1 = orderAService.saveWithLines(order1, order1Lines)
@@ -256,7 +336,7 @@ class DatabaseSeeder(
     val order2 =
       OrderA("", dupont, LocalDate.now().minusDays(20)).apply {
         subject = "Widgets + consulting mission"
-        vatRate = BigDecimal("20.00")
+        this.vatRate = vatRate
         expectedDeliveryDate = LocalDate.now().plusDays(7)
       }
     val order2Lines =
@@ -264,9 +344,13 @@ class DatabaseSeeder(
         DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 0L, widgetA, dupont).apply {
           quantity = BigDecimal("3")
           discountPercent = BigDecimal("10.00")
+          this.vatRate = vatRate
+          recalculate()
         },
         DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 0L, consulting, dupont).apply {
           quantity = BigDecimal("8")
+          this.vatRate = vatRate
+          recalculate()
         },
       )
     var savedOrder2 = orderAService.saveWithLines(order2, order2Lines)
@@ -276,28 +360,35 @@ class DatabaseSeeder(
     )
   }
 
-  private fun seedSalesA(clients: List<Client>, products: List<Product>) {
+  private fun seedSalesA(clients: List<Client>, products: List<Product>, refData: ReferenceData) {
     logger.info("[Seeder] Creating sales A...")
     val acme = clients[0]
     val jeanDupont = clients[3]
     val widgetA = products[0]
     val widgetB = products[1]
     val customPart = products[2]
+    val vatRate = BigDecimal("20.00")
 
     // Sale 1: Acme, DRAFT, non-MTO → generates OrderA only
     val sale1 =
       SalesA("", acme, LocalDate.now().minusDays(5)).apply {
         subject = "Widget bundle quote"
-        vatRate = BigDecimal("20.00")
+        paymentTerm = refData.paymentTerms[0]
+        incoterms = "DAP"
+        incotermLocation = "Paris"
       }
     val sale1Lines =
       listOf(
         DocumentLine.fromProduct(DocumentLine.DocumentType.SALES_A, 0L, widgetA, acme).apply {
           quantity = BigDecimal("20")
           discountPercent = BigDecimal("5.00")
+          this.vatRate = vatRate
+          recalculate()
         },
         DocumentLine.fromProduct(DocumentLine.DocumentType.SALES_A, 0L, widgetB, acme).apply {
           quantity = BigDecimal("10")
+          this.vatRate = vatRate
+          recalculate()
         },
       )
     val savedSale1 = salesAService.saveWithLines(sale1, sale1Lines)
@@ -309,14 +400,17 @@ class DatabaseSeeder(
     val sale2 =
       SalesA("", jeanDupont, LocalDate.now().minusDays(3)).apply {
         subject = "Custom part order"
-        vatRate = BigDecimal("20.00")
         status = SalesA.SalesAStatus.VALIDATED
         expectedDeliveryDate = LocalDate.now().plusDays(10)
       }
     val sale2Lines =
       listOf(
         DocumentLine.fromProduct(DocumentLine.DocumentType.SALES_A, 0L, customPart, jeanDupont)
-          .apply { quantity = BigDecimal("1") }
+          .apply {
+            quantity = BigDecimal("1")
+            this.vatRate = vatRate
+            recalculate()
+          }
       )
     val savedSale2 = salesAService.saveWithLines(sale2, sale2Lines)
     logger.info(
