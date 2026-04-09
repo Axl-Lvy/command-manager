@@ -54,23 +54,23 @@ class ClientServiceTest {
   @Test
   fun findVisibleFor_filters_by_company() {
     val clientA = Client("CLI-A", "Company A Client")
-    clientA.visibleCompany = User.Company.A
+    clientA.visibleCompany = User.Company.CODIG
     clientService.save(clientA)
 
     val clientB = Client("CLI-B", "Company B Client")
-    clientB.visibleCompany = User.Company.B
+    clientB.visibleCompany = User.Company.NETSTONE
     clientService.save(clientB)
 
     val clientAB = Client("CLI-AB", "Both Companies Client")
-    clientAB.visibleCompany = User.Company.AB
+    clientAB.visibleCompany = User.Company.BOTH
     clientService.save(clientAB)
 
-    val visibleForA = clientService.findVisibleFor(User.Company.A)
+    val visibleForA = clientService.findVisibleFor(User.Company.CODIG)
     assertThat(visibleForA).anyMatch { it.clientCode == "CLI-A" }
     assertThat(visibleForA).noneMatch { it.clientCode == "CLI-B" }
     assertThat(visibleForA).anyMatch { it.clientCode == "CLI-AB" }
 
-    val visibleForB = clientService.findVisibleFor(User.Company.B)
+    val visibleForB = clientService.findVisibleFor(User.Company.NETSTONE)
     assertThat(visibleForB).noneMatch { it.clientCode == "CLI-A" }
     assertThat(visibleForB).anyMatch { it.clientCode == "CLI-B" }
     assertThat(visibleForB).anyMatch { it.clientCode == "CLI-AB" }
@@ -80,25 +80,25 @@ class ClientServiceTest {
   fun findClientsVisibleFor_filters_by_role_and_company() {
     val clientOnly = Client("CLI-C", "Client Only")
     clientOnly.role = Client.ClientRole.CLIENT
-    clientOnly.visibleCompany = User.Company.A
+    clientOnly.visibleCompany = User.Company.CODIG
     clientService.save(clientOnly)
 
     val producerOnly = Client("CLI-P", "Producer Only")
     producerOnly.role = Client.ClientRole.PRODUCER
-    producerOnly.visibleCompany = User.Company.A
+    producerOnly.visibleCompany = User.Company.CODIG
     clientService.save(producerOnly)
 
     val both = Client("CLI-BOTH", "Client And Producer")
     both.role = Client.ClientRole.BOTH
-    both.visibleCompany = User.Company.A
+    both.visibleCompany = User.Company.CODIG
     clientService.save(both)
 
-    val clients = clientService.findClientsVisibleFor(User.Company.A)
+    val clients = clientService.findClientsVisibleFor(User.Company.CODIG)
     assertThat(clients).anyMatch { it.clientCode == "CLI-C" }
     assertThat(clients).noneMatch { it.clientCode == "CLI-P" }
     assertThat(clients).anyMatch { it.clientCode == "CLI-BOTH" }
 
-    val producers = clientService.findProducersVisibleFor(User.Company.A)
+    val producers = clientService.findProducersVisibleFor(User.Company.CODIG)
     assertThat(producers).noneMatch { it.clientCode == "CLI-C" }
     assertThat(producers).anyMatch { it.clientCode == "CLI-P" }
     assertThat(producers).anyMatch { it.clientCode == "CLI-BOTH" }
@@ -165,7 +165,7 @@ class ClientServiceTest {
     val client = Client("CLI-DEF", "Defaults")
     assertThat(client.type).isEqualTo(Client.ClientType.COMPANY)
     assertThat(client.role).isEqualTo(Client.ClientRole.CLIENT)
-    assertThat(client.visibleCompany).isEqualTo(User.Company.AB)
+    assertThat(client.visibleCompany).isEqualTo(User.Company.BOTH)
     assertThat(client.status).isEqualTo(Client.Status.ACTIVE)
     assertThat(client.defaultDiscount).isEqualByComparingTo(BigDecimal.ZERO)
   }

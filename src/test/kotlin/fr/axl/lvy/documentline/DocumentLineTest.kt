@@ -10,7 +10,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_computes_line_total_without_discount() {
-    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Widget")
     line.quantity = BigDecimal("10")
     line.unitPriceExclTax = BigDecimal("25.00")
     line.discountPercent = BigDecimal.ZERO
@@ -24,7 +24,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_applies_discount_percentage() {
-    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Widget")
     line.quantity = BigDecimal("10")
     line.unitPriceExclTax = BigDecimal("100.00")
     line.discountPercent = BigDecimal("15.00")
@@ -40,7 +40,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_rounds_to_two_decimals() {
-    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Widget")
     line.quantity = BigDecimal("3")
     line.unitPriceExclTax = BigDecimal("10.33")
     line.discountPercent = BigDecimal.ZERO
@@ -62,7 +62,7 @@ class DocumentLineTest {
     product.madeIn = "France"
     product.replaceClientProductCodes(listOf(client to "CL-BEAM-01"))
 
-    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_A, 1L, product, client)
+    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_CODIG, 1L, product, client)
 
     assertThat(line.designation).isEqualTo("Steel Beam")
     assertThat(line.unitPriceExclTax).isEqualByComparingTo("150.00")
@@ -77,7 +77,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_with_zero_quantity_gives_zero() {
-    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Widget")
     line.quantity = BigDecimal.ZERO
     line.unitPriceExclTax = BigDecimal("100.00")
     line.discountPercent = BigDecimal.ZERO
@@ -97,7 +97,7 @@ class DocumentLineTest {
     product.hsCode = "7408.11"
     product.madeIn = "Germany"
 
-    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.INVOICE_A, 2L, product)
+    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.INVOICE_CODIG, 2L, product)
 
     assertThat(line.clientProductCode).isNull()
     assertThat(line.designation).isEqualTo("Copper Wire")
@@ -111,14 +111,15 @@ class DocumentLineTest {
     val product = Product("REF-003", "Bolt")
     product.sellingPriceExclTax = BigDecimal("2.00")
 
-    val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_B, 3L, product, client)
+    val line =
+      DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_NETSTONE, 3L, product, client)
 
     assertThat(line.clientProductCode).isNull()
   }
 
   @Test
   fun copyFieldsFrom_copies_all_fields() {
-    val source = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Source")
+    val source = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Source")
     source.product = Product("REF-CP", "Copied Product")
     source.description = "A description"
     source.hsCode = "1234.56"
@@ -131,7 +132,7 @@ class DocumentLineTest {
     source.vatRate = BigDecimal("20.00")
     source.recalculate()
 
-    val target = DocumentLine(DocumentLine.DocumentType.SALES_A, 2L, "Target")
+    val target = DocumentLine(DocumentLine.DocumentType.SALES_CODIG, 2L, "Target")
     target.copyFieldsFrom(source)
 
     assertThat(target.designation).isEqualTo("Source")
@@ -151,14 +152,14 @@ class DocumentLineTest {
 
   @Test
   fun copyFieldsFrom_with_overrideVatRate() {
-    val source = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Source")
+    val source = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Source")
     source.quantity = BigDecimal("2")
     source.unitPriceExclTax = BigDecimal("100.00")
     source.discountPercent = BigDecimal.ZERO
     source.vatRate = BigDecimal("20.00")
     source.recalculate()
 
-    val target = DocumentLine(DocumentLine.DocumentType.SALES_A, 2L, "Target")
+    val target = DocumentLine(DocumentLine.DocumentType.SALES_CODIG, 2L, "Target")
     target.copyFieldsFrom(source, overrideVatRate = BigDecimal("5.50"))
 
     assertThat(target.vatRate).isEqualByComparingTo("5.50")
@@ -169,14 +170,14 @@ class DocumentLineTest {
 
   @Test
   fun copyFieldsFrom_with_overrideUnitPrice() {
-    val source = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Source")
+    val source = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Source")
     source.quantity = BigDecimal("3")
     source.unitPriceExclTax = BigDecimal("100.00")
     source.discountPercent = BigDecimal.ZERO
     source.vatRate = BigDecimal("20.00")
     source.recalculate()
 
-    val target = DocumentLine(DocumentLine.DocumentType.ORDER_B, 2L, "Target")
+    val target = DocumentLine(DocumentLine.DocumentType.ORDER_NETSTONE, 2L, "Target")
     target.copyFieldsFrom(source, overrideUnitPrice = BigDecimal("60.00"))
 
     assertThat(target.unitPriceExclTax).isEqualByComparingTo("60.00")
@@ -187,7 +188,7 @@ class DocumentLineTest {
 
   @Test
   fun recalculate_with_100_percent_discount_gives_zero() {
-    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 1L, "Widget")
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Widget")
     line.quantity = BigDecimal("5")
     line.unitPriceExclTax = BigDecimal("200.00")
     line.discountPercent = BigDecimal("100.00")

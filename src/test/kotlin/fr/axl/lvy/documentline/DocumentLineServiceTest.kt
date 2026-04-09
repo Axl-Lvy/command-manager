@@ -16,7 +16,7 @@ class DocumentLineServiceTest {
 
   @Test
   fun replaceLines_deletes_existing_and_creates_new() {
-    val docType = DocumentLine.DocumentType.ORDER_A
+    val docType = DocumentLine.DocumentType.ORDER_CODIG
     val docId = 999L
 
     val existing = DocumentLine(docType, docId, "Old line")
@@ -50,7 +50,7 @@ class DocumentLineServiceTest {
 
   @Test
   fun replaceLines_with_overrideVatRate() {
-    val docType = DocumentLine.DocumentType.SALES_A
+    val docType = DocumentLine.DocumentType.SALES_CODIG
     val docId = 998L
 
     val line = DocumentLine(docType, 0L, "Item")
@@ -74,7 +74,7 @@ class DocumentLineServiceTest {
 
   @Test
   fun replaceLines_with_filter() {
-    val docType = DocumentLine.DocumentType.SALES_B
+    val docType = DocumentLine.DocumentType.SALES_NETSTONE
     val docId = 997L
 
     val line1 = DocumentLine(docType, 0L, "Keep")
@@ -101,7 +101,7 @@ class DocumentLineServiceTest {
 
   @Test
   fun findLines_returns_lines_ordered_by_position() {
-    val docType = DocumentLine.DocumentType.ORDER_B
+    val docType = DocumentLine.DocumentType.ORDER_NETSTONE
     val docId = 996L
 
     val line2 = DocumentLine(docType, docId, "Second")

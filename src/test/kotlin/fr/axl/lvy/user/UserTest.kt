@@ -61,39 +61,39 @@ class UserTest {
     val user = User("NoCompany", "nocomp@example.com", "secret")
     user.companyId = null
 
-    assertThat(user.canSee(User.Company.A)).isTrue
-    assertThat(user.canSee(User.Company.B)).isTrue
-    assertThat(user.canSee(User.Company.AB)).isTrue
+    assertThat(user.canSee(User.Company.CODIG)).isTrue
+    assertThat(user.canSee(User.Company.NETSTONE)).isTrue
+    assertThat(user.canSee(User.Company.BOTH)).isTrue
   }
 
   @Test
   fun canSee_with_AB_company_sees_all() {
     val user = User("ABUser", "ab@example.com", "secret")
-    user.companyId = User.Company.AB
+    user.companyId = User.Company.BOTH
 
-    assertThat(user.canSee(User.Company.A)).isTrue
-    assertThat(user.canSee(User.Company.B)).isTrue
-    assertThat(user.canSee(User.Company.AB)).isTrue
+    assertThat(user.canSee(User.Company.CODIG)).isTrue
+    assertThat(user.canSee(User.Company.NETSTONE)).isTrue
+    assertThat(user.canSee(User.Company.BOTH)).isTrue
   }
 
   @Test
   fun canSee_with_company_A_sees_A_and_AB() {
     val user = User("AUser", "a@example.com", "secret")
-    user.companyId = User.Company.A
+    user.companyId = User.Company.CODIG
 
-    assertThat(user.canSee(User.Company.A)).isTrue
-    assertThat(user.canSee(User.Company.AB)).isTrue
-    assertThat(user.canSee(User.Company.B)).isFalse
+    assertThat(user.canSee(User.Company.CODIG)).isTrue
+    assertThat(user.canSee(User.Company.BOTH)).isTrue
+    assertThat(user.canSee(User.Company.NETSTONE)).isFalse
   }
 
   @Test
   fun canSee_with_company_B_sees_B_and_AB() {
     val user = User("BUser", "b@example.com", "secret")
-    user.companyId = User.Company.B
+    user.companyId = User.Company.NETSTONE
 
-    assertThat(user.canSee(User.Company.B)).isTrue
-    assertThat(user.canSee(User.Company.AB)).isTrue
-    assertThat(user.canSee(User.Company.A)).isFalse
+    assertThat(user.canSee(User.Company.NETSTONE)).isTrue
+    assertThat(user.canSee(User.Company.BOTH)).isTrue
+    assertThat(user.canSee(User.Company.CODIG)).isFalse
   }
 
   @Test

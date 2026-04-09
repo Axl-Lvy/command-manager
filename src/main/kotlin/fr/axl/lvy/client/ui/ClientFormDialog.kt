@@ -80,9 +80,9 @@ internal class ClientFormDialog(
     visibleCompany.setItems(*User.Company.entries.toTypedArray())
     visibleCompany.setItemLabelGenerator {
       when (it) {
-        User.Company.A -> "Société A"
-        User.Company.B -> "Société B"
-        User.Company.AB -> "Tout"
+        User.Company.CODIG -> "Société Codig"
+        User.Company.NETSTONE -> "Société Netstone"
+        User.Company.BOTH -> "Tout"
       }
     }
     if (mode == ClientFormMode.OWN_COMPANY) {
@@ -153,7 +153,7 @@ internal class ClientFormDialog(
       role.value =
         if (mode == ClientFormMode.OWN_COMPANY) Client.ClientRole.OWN_COMPANY
         else Client.ClientRole.CLIENT
-      visibleCompany.value = User.Company.AB
+      visibleCompany.value = User.Company.BOTH
       updateStatusButton(Client.Status.ACTIVE)
     }
   }
@@ -223,7 +223,7 @@ internal class ClientFormDialog(
         if (mode == ClientFormMode.OWN_COMPANY) {
           c.visibleCompany
         } else {
-          visibleCompany.value ?: User.Company.AB
+          visibleCompany.value ?: User.Company.BOTH
         }
       c.email = if (email.value.isBlank()) null else email.value
       c.phone = if (phone.value.isBlank()) null else phone.value

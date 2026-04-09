@@ -120,11 +120,11 @@ class DocumentLine(
   }
 
   enum class DocumentType {
-    SALES_A,
-    SALES_B,
-    ORDER_A,
-    ORDER_B,
-    INVOICE_A,
-    INVOICE_B,
+    SALES_CODIG,
+    SALES_NETSTONE,
+    ORDER_CODIG,
+    ORDER_NETSTONE,
+    INVOICE_CODIG,
+    INVOICE_NETSTONE,
   }
 }
