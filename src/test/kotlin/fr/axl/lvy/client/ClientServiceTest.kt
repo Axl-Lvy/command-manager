@@ -30,6 +30,16 @@ class ClientServiceTest {
   }
 
   @Test
+  fun save_generates_next_available_client_code_when_sequence_is_behind() {
+    clientService.save(Client("C000001", "Existing Client"))
+    val client = Client(name = "Generated Client")
+
+    clientService.save(client)
+
+    assertThat(client.clientCode).isEqualTo("C000002")
+  }
+
+  @Test
   fun soft_delete_excludes_from_findAll() {
     val client = Client("CLI-DEL", "To Delete")
     clientService.save(client)
@@ -95,6 +105,22 @@ class ClientServiceTest {
   }
 
   @Test
+  fun findByType_filters_own_companies() {
+    val ownCompany = Client("CLI-OWN", "My Company A")
+    ownCompany.type = Client.ClientType.OWN_COMPANY
+    clientService.save(ownCompany)
+
+    val regularClient = Client("CLI-REG", "Regular Client")
+    regularClient.type = Client.ClientType.COMPANY
+    clientService.save(regularClient)
+
+    val ownCompanies = clientService.findByType(Client.ClientType.OWN_COMPANY)
+
+    assertThat(ownCompanies).anyMatch { it.clientCode == "CLI-OWN" }
+    assertThat(ownCompanies).noneMatch { it.clientCode == "CLI-REG" }
+  }
+
+  @Test
   fun isClient_and_isProducer_reflect_role() {
     val client = Client("CLI-R1", "Client Role")
     client.role = Client.ClientRole.CLIENT
@@ -110,6 +136,12 @@ class ClientServiceTest {
     both.role = Client.ClientRole.BOTH
     assertThat(both.isClient()).isTrue
     assertThat(both.isProducer()).isTrue
+
+    val ownCompany = Client("CLI-R4", "Own Company")
+    ownCompany.role = Client.ClientRole.OWN_COMPANY
+    assertThat(ownCompany.isClient()).isFalse
+    assertThat(ownCompany.isProducer()).isFalse
+    assertThat(ownCompany.isSupplierForProduct()).isTrue
   }
 
   @Test
@@ -133,6 +165,7 @@ class ClientServiceTest {
     val client = Client("CLI-DEF", "Defaults")
     assertThat(client.type).isEqualTo(Client.ClientType.COMPANY)
     assertThat(client.role).isEqualTo(Client.ClientRole.CLIENT)
+    assertThat(client.visibleCompany).isEqualTo(User.Company.AB)
     assertThat(client.status).isEqualTo(Client.Status.ACTIVE)
     assertThat(client.defaultDiscount).isEqualByComparingTo(BigDecimal.ZERO)
   }

@@ -2,6 +2,7 @@ package fr.axl.lvy.product
 
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientRepository
+import jakarta.persistence.EntityManager
 import java.math.BigDecimal
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -16,6 +17,7 @@ class ProductServiceTest {
   @Autowired lateinit var productService: ProductService
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var clientRepository: ClientRepository
+  @Autowired lateinit var entityManager: EntityManager
 
   private fun createClient(code: String): Client =
     clientRepository.save(Client(code, "Client $code"))
@@ -24,7 +26,9 @@ class ProductServiceTest {
   fun save_and_retrieve_product() {
     val product = Product(name = "Steel Beam")
     product.sellingPriceExclTax = BigDecimal("150.00")
+    product.sellingCurrency = "USD"
     product.purchasePriceExclTax = BigDecimal("80.00")
+    product.purchaseCurrency = "CNY"
     product.unit = "kg"
     productService.save(product)
 
@@ -33,6 +37,8 @@ class ProductServiceTest {
     assertThat(found.get().name).isEqualTo("Steel Beam")
     assertThat(found.get().reference).matches("""P\d{6}""")
     assertThat(found.get().sellingPriceExclTax).isEqualByComparingTo("150.00")
+    assertThat(found.get().sellingCurrency).isEqualTo("USD")
+    assertThat(found.get().purchaseCurrency).isEqualTo("CNY")
   }
 
   @Test
@@ -67,6 +73,20 @@ class ProductServiceTest {
   }
 
   @Test
+  fun findActive_loads_client_product_codes() {
+    val client = createClient("CLI-ACT")
+    val product = Product("REF-CODE", "Product With Client Code")
+    product.replaceClientProductCodes(listOf(client to "C-ACT-001"))
+    productService.save(product)
+    productRepository.flush()
+
+    val activeProduct =
+      productService.findActive().firstOrNull { it.reference == "REF-CODE" } ?: error("not found")
+
+    assertThat(activeProduct.findClientProductCode(client)).isEqualTo("C-ACT-001")
+  }
+
+  @Test
   fun service_product_cannot_be_mto() {
     val product = Product("REF-SVC", "Consulting")
     product.type = Product.ProductType.SERVICE
@@ -88,6 +108,24 @@ class ProductServiceTest {
 
     val found = productService.findById(product.id!!).orElseThrow()
     assertThat(found.mto).isTrue
+  }
+
+  @Test
+  fun isMtoProduct_returns_false_for_service_even_if_flag_is_true() {
+    val product = Product("REF-SVC-MTO", "Consulting")
+    product.type = Product.ProductType.SERVICE
+    product.mto = true
+
+    assertThat(product.isMtoProduct()).isFalse()
+  }
+
+  @Test
+  fun isMtoProduct_returns_true_only_for_mto_products() {
+    val product = Product("REF-PROD-MTO", "Custom Part")
+    product.type = Product.ProductType.PRODUCT
+    product.mto = true
+
+    assertThat(product.isMtoProduct()).isTrue()
   }
 
   @Test
@@ -206,5 +244,42 @@ class ProductServiceTest {
     val found = productService.findById(product.id!!).orElseThrow()
     assertThat(found.findClientProductCode(clientA)).isEqualTo("A-001")
     assertThat(found.findClientProductCode(clientB)).isEqualTo("B-002")
+  }
+
+  @Test
+  fun save_persists_multiple_suppliers() {
+    val supplierA = createClient("CLI-SUP1").apply { role = Client.ClientRole.PRODUCER }
+    val supplierB = createClient("CLI-SUP2").apply { role = Client.ClientRole.BOTH }
+    clientRepository.save(supplierA)
+    clientRepository.save(supplierB)
+    val product = Product(name = "Supplier Product")
+    product.replaceSuppliers(listOf(supplierA, supplierB))
+
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findDetailedById(product.id!!).orElseThrow()
+    assertThat(found.suppliers.map { it.clientCode })
+      .containsExactlyInAnyOrder("CLI-SUP1", "CLI-SUP2")
+  }
+
+  @Test
+  fun save_accepts_detached_client_for_client_product_code() {
+    val client = createClient("CLI-DETACHED")
+    entityManager.flush()
+    entityManager.clear()
+
+    val detachedClient = clientRepository.findById(client.id!!).orElseThrow()
+    entityManager.clear()
+
+    val product = Product(name = "Detached Client Product")
+    product.replaceClientProductCodes(listOf(detachedClient to "DET-CLIENT-001"))
+
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findDetailedById(product.id!!).orElseThrow()
+    assertThat(found.findClientProductCode(found.clientProductCodes.first().client))
+      .isEqualTo("DET-CLIENT-001")
   }
 }

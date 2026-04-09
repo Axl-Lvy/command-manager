@@ -3,6 +3,10 @@ package fr.axl.lvy.order
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.documentline.DocumentLineService
+import fr.axl.lvy.sale.SalesARepository
+import fr.axl.lvy.sale.SalesBService
+import java.math.BigDecimal
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -12,9 +16,14 @@ class OrderAService(
   private val orderARepository: OrderARepository,
   private val orderBRepository: OrderBRepository,
   private val documentLineRepository: DocumentLineRepository,
+  private val documentLineService: DocumentLineService,
+  private val salesARepository: SalesARepository,
+  private val salesBService: SalesBService,
   private val numberSequenceService: NumberSequenceService,
 ) {
   companion object {
+    private val ALLOWED_TRANSITIONS_FROM_DRAFT =
+      setOf(OrderA.OrderAStatus.CONFIRMED, OrderA.OrderAStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
       setOf(OrderA.OrderAStatus.IN_PRODUCTION, OrderA.OrderAStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION =
@@ -54,7 +63,29 @@ class OrderAService(
     val allowed = getAllowedTransitions(order.status)
     require(allowed.contains(newStatus)) { "Cannot transition from ${order.status} to $newStatus" }
     order.status = newStatus
-    return orderARepository.save(order)
+    val saved = orderARepository.save(order)
+    val savedId = saved.id ?: return saved
+    val originatingSale = salesARepository.findByOrderAId(savedId)
+    if (originatingSale != null) {
+      val saleId = originatingSale.id ?: return saved
+      if (newStatus == OrderA.OrderAStatus.CONFIRMED) {
+        val lines = findLines(savedId)
+        if (lines.any { it.product?.isMtoProduct() == true }) {
+          salesBService.createOrUpdateFromSalesA(
+            originatingSale,
+            saved.orderDate,
+            saved.expectedDeliveryDate,
+            saved.notes,
+            lines,
+          )
+        } else {
+          salesBService.deleteBySalesAId(saleId)
+        }
+      } else if (newStatus == OrderA.OrderAStatus.CANCELLED) {
+        salesBService.deleteBySalesAId(saleId)
+      }
+    }
+    return saved
   }
 
   @Transactional
@@ -66,6 +97,8 @@ class OrderAService(
     copy.shippingAddress = source.shippingAddress
     copy.vatRate = source.vatRate
     copy.currency = source.currency
+    copy.exchangeRate = source.exchangeRate
+    copy.purchasePriceExclTax = source.purchasePriceExclTax
     copy.incoterms = source.incoterms
     copy.notes = source.notes
     copy.conditions = source.conditions
@@ -100,7 +133,7 @@ class OrderAService(
         DocumentLine.DocumentType.ORDER_A,
         order.id!!,
       )
-    val mtoLines = lines.filter { it.product != null && it.product!!.mto }
+    val mtoLines = lines.filter { it.product?.isMtoProduct() == true }
 
     if (mtoLines.isEmpty()) return
 
@@ -128,37 +161,48 @@ class OrderAService(
 
   @Transactional(readOnly = true)
   fun findLines(orderId: Long): List<DocumentLine> =
-    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-      DocumentLine.DocumentType.ORDER_A,
-      orderId,
-    )
+    documentLineService.findLines(DocumentLine.DocumentType.ORDER_A, orderId)
 
   @Transactional
   fun saveWithLines(order: OrderA, lines: List<DocumentLine>): OrderA {
     val saved = save(order)
 
-    val existingLines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+    val persistedLines =
+      documentLineService.replaceLines(
         DocumentLine.DocumentType.ORDER_A,
         saved.id!!,
+        lines,
+        overrideVatRate = saved.vatRate,
       )
-    documentLineRepository.deleteAll(existingLines)
 
-    lines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.ORDER_A
-      line.documentId = saved.id!!
-      line.position = i
-      line.vatRate = saved.vatRate
-      line.recalculate()
-      documentLineRepository.save(line)
+    saved.recalculateTotals(persistedLines)
+    saved.purchasePriceExclTax =
+      persistedLines.fold(BigDecimal.ZERO) { acc, line ->
+        acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
+      }
+    val persistedOrder = orderARepository.save(saved)
+    val orderId = persistedOrder.id ?: return persistedOrder
+    val originatingSale = salesARepository.findByOrderAId(orderId)
+    if (persistedOrder.status == OrderA.OrderAStatus.CONFIRMED && originatingSale != null) {
+      val saleId = originatingSale.id ?: return persistedOrder
+      if (persistedLines.any { it.product?.isMtoProduct() == true }) {
+        salesBService.createOrUpdateFromSalesA(
+          originatingSale,
+          persistedOrder.orderDate,
+          persistedOrder.expectedDeliveryDate,
+          persistedOrder.notes,
+          persistedLines,
+        )
+      } else {
+        salesBService.deleteBySalesAId(saleId)
+      }
     }
-
-    saved.recalculateTotals(lines)
-    return orderARepository.save(saved)
+    return persistedOrder
   }
 
   private fun getAllowedTransitions(current: OrderA.OrderAStatus): Set<OrderA.OrderAStatus> =
     when (current) {
+      OrderA.OrderAStatus.DRAFT -> ALLOWED_TRANSITIONS_FROM_DRAFT
       OrderA.OrderAStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
       OrderA.OrderAStatus.IN_PRODUCTION -> ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION
       OrderA.OrderAStatus.READY -> ALLOWED_TRANSITIONS_FROM_READY

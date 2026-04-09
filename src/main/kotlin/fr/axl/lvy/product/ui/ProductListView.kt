@@ -12,6 +12,7 @@ import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.currency.CurrencyService
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
 
@@ -21,6 +22,7 @@ import fr.axl.lvy.product.ProductService
 internal class ProductListView(
   private val productService: ProductService,
   private val clientService: ClientService,
+  private val currencyService: CurrencyService,
 ) : VerticalLayout() {
 
   private val grid: Grid<Product>
@@ -32,8 +34,14 @@ internal class ProductListView(
     grid = Grid()
     grid.addColumn(Product::name).setHeader("Nom").setFlexGrow(1)
     grid.addColumn { it.type.name }.setHeader("Type").setAutoWidth(true)
-    grid.addColumn(Product::sellingPriceExclTax).setHeader("Prix vente HT").setAutoWidth(true)
-    grid.addColumn(Product::purchasePriceExclTax).setHeader("Prix achat HT").setAutoWidth(true)
+    grid
+      .addColumn { "${it.sellingPriceExclTax} ${it.sellingCurrency}" }
+      .setHeader("Prix vente HT")
+      .setAutoWidth(true)
+    grid
+      .addColumn { "${it.purchasePriceExclTax} ${it.purchaseCurrency}" }
+      .setHeader("Prix achat HT")
+      .setAutoWidth(true)
     grid.addColumn { if (it.active) "Actif" else "Inactif" }.setHeader("Statut").setAutoWidth(true)
     grid
       .addComponentColumn { product ->
@@ -75,7 +83,14 @@ internal class ProductListView(
 
   private fun openForm(product: Product?) {
     val loadedProduct = product?.id?.let { productService.findDetailedById(it).orElse(null) }
-    ProductFormDialog(productService, clientService, loadedProduct, this::refreshGrid).open()
+    ProductFormDialog(
+        productService,
+        clientService,
+        currencyService,
+        loadedProduct,
+        this::refreshGrid,
+      )
+      .open()
   }
 
   private fun refreshGrid() {

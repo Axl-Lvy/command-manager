@@ -4,7 +4,10 @@ import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderARepository
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermRepository
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductRepository
 import java.math.BigDecimal
@@ -25,6 +28,7 @@ class SalesAServiceTest {
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var orderARepository: OrderARepository
+  @Autowired lateinit var paymentTermRepository: PaymentTermRepository
   @Autowired lateinit var testData: TestDataFactory
 
   private fun createSalesA(
@@ -34,7 +38,6 @@ class SalesAServiceTest {
   ): SalesA {
     val sale = SalesA(number, client, LocalDate.of(2026, 3, 1))
     sale.status = status
-    sale.vatRate = BigDecimal("20.00")
     return salesARepository.save(sale)
   }
 
@@ -60,6 +63,18 @@ class SalesAServiceTest {
   }
 
   @Test
+  fun save_persists_payment_term() {
+    val client = testData.createClient("CLI-SA02B")
+    val paymentTerm = paymentTermRepository.saveAndFlush(PaymentTerm("30 jours"))
+    val sale = SalesA("SA-PAY-01", client, LocalDate.of(2026, 3, 1))
+    sale.paymentTerm = paymentTerm
+
+    val saved = salesAService.save(sale)
+
+    assertThat(saved.paymentTerm?.id).isEqualTo(paymentTerm.id)
+  }
+
+  @Test
   fun soft_delete_excludes_from_findAll() {
     val client = testData.createClient("CLI-SA03")
     val sale = createSalesA("SA-DEL-01", client)
@@ -79,6 +94,7 @@ class SalesAServiceTest {
     sale.incoterms = "FOB"
     salesARepository.saveAndFlush(sale)
 
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SYNC-01")
     val line =
       testData.createDocumentLine(
         DocumentLine.DocumentType.SALES_A,
@@ -86,6 +102,7 @@ class SalesAServiceTest {
         "Widget",
         quantity = BigDecimal("5"),
         unitPrice = BigDecimal("100.00"),
+        product = mtoProduct,
       )
 
     val result = salesAService.syncGeneratedOrder(sale, listOf(line))
@@ -116,14 +133,26 @@ class SalesAServiceTest {
     val sale = createSalesA("SA-SYNC-02", client)
     salesARepository.flush()
 
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SYNC-02")
+
     val line1 =
-      testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget A")
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_A,
+        sale.id!!,
+        "Widget A",
+        product = mtoProduct,
+      )
 
     salesAService.syncGeneratedOrder(sale, listOf(line1))
     val firstOrderId = sale.orderA!!.id!!
 
     val line2 =
-      testData.createDocumentLine(DocumentLine.DocumentType.SALES_A, sale.id!!, "Widget B")
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_A,
+        sale.id!!,
+        "Widget B",
+        product = mtoProduct,
+      )
 
     salesAService.syncGeneratedOrder(sale, listOf(line2))
 
@@ -131,7 +160,7 @@ class SalesAServiceTest {
   }
 
   @Test
-  fun syncGeneratedOrder_creates_salesB_when_validated_with_mto() {
+  fun syncGeneratedOrder_creates_orderA_in_draft_without_salesB_when_validated_with_mto() {
     val client = testData.createClient("CLI-SA06")
     val sale = createSalesA("SA-MTO-01", client, SalesA.SalesAStatus.VALIDATED)
     salesARepository.flush()
@@ -153,9 +182,10 @@ class SalesAServiceTest {
 
     salesAService.syncGeneratedOrder(sale, listOf(line))
 
+    val savedOrder = orderARepository.findById(sale.orderA!!.id!!).orElseThrow()
+    assertThat(savedOrder.status).isEqualTo(OrderA.OrderAStatus.DRAFT)
     val salesB = salesBRepository.findBySalesAId(sale.id!!)
-    assertThat(salesB).isNotNull
-    assertThat(salesB!!.status).isEqualTo(SalesB.SalesBStatus.VALIDATED)
+    assertThat(salesB).isNull()
   }
 
   @Test
@@ -182,6 +212,34 @@ class SalesAServiceTest {
 
     val salesB = salesBRepository.findBySalesAId(sale.id!!)
     assertThat(salesB == null || salesB.isDeleted()).isTrue
+    assertThat(sale.orderA).isNull()
+  }
+
+  @Test
+  fun syncGeneratedOrder_does_not_create_orderA_for_service_even_if_mto_flag_is_true() {
+    val client = testData.createClient("CLI-SA-SVC")
+    val sale = createSalesA("SA-SVC-01", client, SalesA.SalesAStatus.VALIDATED)
+    salesARepository.flush()
+
+    val serviceProduct = Product("SRV-SA-01", "Service")
+    serviceProduct.type = Product.ProductType.SERVICE
+    serviceProduct.mto = true
+    serviceProduct.sellingPriceExclTax = BigDecimal("100.00")
+    serviceProduct.purchasePriceExclTax = BigDecimal("60.00")
+    productRepository.saveAndFlush(serviceProduct)
+
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_A,
+        sale.id!!,
+        "Service",
+        product = serviceProduct,
+      )
+
+    val result = salesAService.syncGeneratedOrder(sale, listOf(line))
+
+    assertThat(result.orderA).isNull()
+    assertThat(salesBRepository.findBySalesAId(sale.id!!)).isNull()
   }
 
   @Test
@@ -214,12 +272,14 @@ class SalesAServiceTest {
   fun saveWithLines_creates_sale_with_lines_and_syncs_order() {
     val client = testData.createClient("CLI-SA-SWL", "123 Billing St", "456 Shipping Ave")
     val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
-    sale.vatRate = BigDecimal("20.00")
 
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SWL")
     val line = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Widget")
+    line.product = mtoProduct
     line.quantity = BigDecimal("5")
     line.unitPriceExclTax = BigDecimal("100.00")
     line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
 
     val saved = salesAService.saveWithLines(sale, listOf(line))
 
@@ -233,25 +293,50 @@ class SalesAServiceTest {
   }
 
   @Test
+  fun saveWithLines_does_not_create_orderA_without_mto_product() {
+    val client = testData.createClient("CLI-SA-NO-MTO", "123 Billing St", "456 Shipping Ave")
+    val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
+
+    val serviceProduct = Product("SRV-SA-02", "Service")
+    serviceProduct.type = Product.ProductType.SERVICE
+    serviceProduct.mto = true
+    serviceProduct.sellingPriceExclTax = BigDecimal("100.00")
+    productRepository.saveAndFlush(serviceProduct)
+
+    val line = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Service")
+    line.product = serviceProduct
+    line.quantity = BigDecimal("1")
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
+
+    val saved = salesAService.saveWithLines(sale, listOf(line))
+
+    assertThat(saved.orderA).isNull()
+  }
+
+  @Test
   fun saveWithLines_replaces_existing_lines() {
     val client = testData.createClient("CLI-SA-SWL2", "123 Billing St", "456 Shipping Ave")
     val sale = SalesA("SA-SWL-01", client, LocalDate.of(2026, 3, 1))
-    sale.vatRate = BigDecimal("20.00")
 
     val line1 = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Item A")
     line1.quantity = BigDecimal.ONE
     line1.unitPriceExclTax = BigDecimal("100.00")
     line1.discountPercent = BigDecimal.ZERO
+    line1.vatRate = BigDecimal("20.00")
     salesAService.saveWithLines(sale, listOf(line1))
 
     val line2 = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Item B")
     line2.quantity = BigDecimal("2")
     line2.unitPriceExclTax = BigDecimal("50.00")
     line2.discountPercent = BigDecimal.ZERO
+    line2.vatRate = BigDecimal("5.50")
     val saved = salesAService.saveWithLines(sale, listOf(line2))
 
     val lines = salesAService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)
     assertThat(lines[0].designation).isEqualTo("Item B")
+    assertThat(lines[0].vatRate).isEqualByComparingTo("5.50")
   }
 }

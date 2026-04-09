@@ -17,6 +17,8 @@ import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
+import fr.axl.lvy.incoterm.Incoterm
+import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderAService
 import fr.axl.lvy.product.ProductService
@@ -26,6 +28,7 @@ import java.time.LocalDate
 internal class CommandAFormDialog(
   private val orderAService: OrderAService,
   clientService: ClientService,
+  incotermService: IncotermService,
   productService: ProductService,
   private val order: OrderA?,
   private val onSave: Runnable,
@@ -38,15 +41,17 @@ internal class CommandAFormDialog(
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
   private val clientReference = TextField("Réf. client")
   private val subject = TextField("Objet")
-  private val totalExclTax = BigDecimalField("Prix vente HT")
+  private val totalExclTax = BigDecimalField("Prix achat HT")
   private val currency = ComboBox<String>("Devise")
   private val vatRate = BigDecimalField("TVA (%)")
-  private val incoterms = TextField("Incoterms")
+  private val incotermCombo = ComboBox<Incoterm>("Incoterm")
+  private val incotermLocation = TextField("Emplacement")
   private val billingAddress = TextArea("Adresse facturation")
   private val shippingAddress = TextArea("Adresse livraison")
   private val notes = TextArea("Notes")
   private val conditions = TextArea("Conditions")
   private val lineEditor: DocumentLineEditor
+  private val allIncoterms: List<Incoterm>
 
   init {
     setHeaderTitle(if (order == null) "Nouvelle commande A" else "Modifier commande A")
@@ -57,7 +62,10 @@ internal class CommandAFormDialog(
     orderDate.isRequired = true
     orderNumber.isReadOnly = true
     totalExclTax.isReadOnly = true
-    currency.setItems("EUR", "$")
+    currency.setItems("EUR", "USD")
+    allIncoterms = incotermService.findAll()
+    incotermCombo.setItems(allIncoterms)
+    incotermCombo.setItemLabelGenerator { it.name }
     status.setItems(*OrderA.OrderAStatus.entries.toTypedArray())
 
     clientCombo.setItems(clientService.findAll().filter { it.isClient() })
@@ -73,14 +81,19 @@ internal class CommandAFormDialog(
     form.add(orderNumber, clientCombo, orderDate)
     form.add(status, expectedDeliveryDate, clientReference)
     form.add(subject, totalExclTax, currency)
-    form.add(vatRate, incoterms)
+    form.add(vatRate, incotermCombo, incotermLocation)
     form.add(billingAddress, 3)
     form.add(shippingAddress, 3)
     form.add(notes, 3)
     form.add(conditions, 3)
 
     lineEditor =
-      DocumentLineEditor(productService, DocumentLine.DocumentType.ORDER_A) { clientCombo.value }
+      DocumentLineEditor(
+        productService = productService,
+        documentType = DocumentLine.DocumentType.ORDER_A,
+        clientSupplier = { clientCombo.value },
+        usePurchasePrice = true,
+      )
 
     val content = VerticalLayout(form, lineEditor)
     content.isPadding = false
@@ -96,7 +109,7 @@ internal class CommandAFormDialog(
     } else {
       orderNumber.value = "(auto)"
       orderDate.value = LocalDate.now()
-      status.value = OrderA.OrderAStatus.CONFIRMED
+      status.value = OrderA.OrderAStatus.DRAFT
       currency.value = "EUR"
       vatRate.value = BigDecimal("20.00")
       totalExclTax.value = BigDecimal.ZERO
@@ -114,7 +127,8 @@ internal class CommandAFormDialog(
     totalExclTax.value = o.totalExclTax
     currency.value = o.currency
     vatRate.value = o.vatRate
-    incoterms.value = o.incoterms ?: ""
+    incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
+    incotermLocation.value = o.incotermLocation ?: ""
     billingAddress.value = o.billingAddress ?: ""
     shippingAddress.value = o.shippingAddress ?: ""
     notes.value = o.notes ?: ""
@@ -139,13 +153,14 @@ internal class CommandAFormDialog(
       o.client = clientCombo.value
       o.orderDate = orderDate.value
     }
-    o.status = status.value ?: OrderA.OrderAStatus.CONFIRMED
+    o.status = status.value ?: OrderA.OrderAStatus.DRAFT
     o.expectedDeliveryDate = expectedDeliveryDate.value
     o.clientReference = clientReference.value.takeIf { it.isNotBlank() }
     o.subject = subject.value.takeIf { it.isNotBlank() }
     o.currency = currency.value ?: "EUR"
     o.vatRate = vatRate.value ?: BigDecimal.ZERO
-    o.incoterms = incoterms.value.takeIf { it.isNotBlank() }
+    o.incoterms = incotermCombo.value?.name
+    o.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
     o.billingAddress = billingAddress.value.takeIf { it.isNotBlank() }
     o.shippingAddress = shippingAddress.value.takeIf { it.isNotBlank() }
     o.notes = notes.value.takeIf { it.isNotBlank() }

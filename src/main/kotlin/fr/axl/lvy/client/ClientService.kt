@@ -16,6 +16,10 @@ class ClientService(
   fun findAll(): List<Client> = clientRepository.findByDeletedAtIsNull()
 
   @Transactional(readOnly = true)
+  fun findByType(type: Client.ClientType): List<Client> =
+    clientRepository.findByDeletedAtIsNullAndTypeOrderByNameAsc(type)
+
+  @Transactional(readOnly = true)
   fun findVisibleFor(company: User.Company): List<Client> = clientRepository.findVisibleFor(company)
 
   @Transactional(readOnly = true)
@@ -46,6 +50,21 @@ class ClientService(
     clientRepository.findById(id).ifPresent { it.softDelete() }
   }
 
-  private fun generateNextClientCode(): String =
-    numberSequenceService.nextNumber(NumberSequenceService.CLIENT)
+  private fun generateNextClientCode(): String = generateSequenceValue { code ->
+    clientRepository.existsByClientCode(code)
+  }
+
+  private fun generateSequenceValue(exists: (String) -> Boolean): String {
+    repeat(MAX_SEQUENCE_RETRIES) {
+      val nextCode = numberSequenceService.nextNumber(NumberSequenceService.CLIENT)
+      if (!exists(nextCode)) return nextCode
+    }
+    throw IllegalStateException(
+      "Impossible de générer un code client unique après $MAX_SEQUENCE_RETRIES tentatives"
+    )
+  }
+
+  companion object {
+    private const val MAX_SEQUENCE_RETRIES = 100
+  }
 }

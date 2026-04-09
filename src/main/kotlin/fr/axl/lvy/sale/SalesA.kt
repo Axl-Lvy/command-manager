@@ -4,15 +4,18 @@ import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.order.OrderA
+import fr.axl.lvy.paymentterm.PaymentTerm
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
 import java.time.LocalDate
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "sales_a")
 class SalesA(
-  @NotBlank
+  @field:NotBlank
   @Column(name = "sale_number", nullable = false, unique = true, length = 20)
   var saleNumber: String,
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -25,7 +28,8 @@ class SalesA(
   var subject: String? = null
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, length = 20, columnDefinition = "varchar(20)")
   var status: SalesAStatus = SalesAStatus.DRAFT
 
   @Column(name = "expected_delivery_date") var expectedDeliveryDate: LocalDate? = null
@@ -46,12 +50,21 @@ class SalesA(
   var totalInclTax: BigDecimal = BigDecimal.ZERO
     private set
 
-  @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
-  var vatRate: BigDecimal = BigDecimal.ZERO
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "payment_term_id")
+  var paymentTerm: PaymentTerm? = null
 
   @Column(nullable = false, length = 5) var currency: String = "EUR"
 
+  @Column(name = "exchange_rate", nullable = false, precision = 12, scale = 6)
+  var exchangeRate: BigDecimal = BigDecimal.ONE
+
+  @Column(name = "purchase_price_excl_tax", nullable = false, precision = 12, scale = 2)
+  var purchasePriceExclTax: BigDecimal = BigDecimal.ZERO
+
   @Column(length = 10) var incoterms: String? = null
+
+  @Column(name = "incoterm_location", length = 100) var incotermLocation: String? = null
 
   @Column(columnDefinition = "TEXT") var notes: String? = null
 

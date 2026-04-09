@@ -7,6 +7,8 @@ import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
 import java.math.RoundingMode
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(
@@ -15,10 +17,11 @@ import java.math.RoundingMode
 )
 class DocumentLine(
   @Enumerated(EnumType.STRING)
-  @Column(name = "document_type", nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(name = "document_type", nullable = false, length = 20, columnDefinition = "varchar(20)")
   var documentType: DocumentType,
   @Column(name = "document_id", nullable = false) var documentId: Long,
-  @NotBlank @Column(nullable = false) var designation: String,
+  @field:NotBlank @Column(nullable = false) var designation: String,
 ) : BaseEntity() {
   @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "product_id") var product: Product? = null
 

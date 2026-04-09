@@ -37,7 +37,6 @@ class SalesBServiceTest {
   ): SalesA {
     val sale = SalesA(number, client, LocalDate.of(2026, 3, 1))
     sale.status = status
-    sale.vatRate = BigDecimal("20.00")
     val saved = salesARepository.save(sale)
 
     val order = OrderA("", client, LocalDate.of(2026, 3, 1))
@@ -72,7 +71,7 @@ class SalesBServiceTest {
   }
 
   @Test
-  fun createOrUpdateFromValidatedSalesA_creates_salesB_with_mto_lines() {
+  fun createOrUpdateFromSalesA_creates_salesB_with_mto_lines() {
     val client = testData.createClient("CLI-SB03", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-03", client)
 
@@ -95,9 +94,16 @@ class SalesBServiceTest {
       )
 
     val result =
-      salesBService.createOrUpdateFromValidatedSalesA(salesA, listOf(mtoLine, regularLine))
+      salesBService.createOrUpdateFromSalesA(
+        salesA,
+        salesA.saleDate,
+        salesA.expectedDeliveryDate,
+        salesA.notes,
+        listOf(mtoLine, regularLine),
+      )
 
-    assertThat(result.status).isEqualTo(SalesB.SalesBStatus.VALIDATED)
+    assertThat(result.status).isEqualTo(SalesB.SalesBStatus.DRAFT)
+    assertThat(result.orderB).isNull()
 
     val salesBLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
@@ -109,7 +115,7 @@ class SalesBServiceTest {
   }
 
   @Test
-  fun createOrUpdateFromValidatedSalesA_updates_existing_salesB() {
+  fun createOrUpdateFromSalesA_updates_existing_salesB() {
     val client = testData.createClient("CLI-SB04", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-04", client)
 
@@ -122,7 +128,14 @@ class SalesBServiceTest {
         product = mtoProduct,
       )
 
-    val first = salesBService.createOrUpdateFromValidatedSalesA(salesA, listOf(line))
+    val first =
+      salesBService.createOrUpdateFromSalesA(
+        salesA,
+        salesA.saleDate,
+        salesA.expectedDeliveryDate,
+        salesA.notes,
+        listOf(line),
+      )
     val firstId = first.id!!
 
     val line2 =
@@ -134,7 +147,14 @@ class SalesBServiceTest {
         unitPrice = BigDecimal("200.00"),
       )
 
-    val second = salesBService.createOrUpdateFromValidatedSalesA(salesA, listOf(line2))
+    val second =
+      salesBService.createOrUpdateFromSalesA(
+        salesA,
+        salesA.saleDate,
+        salesA.expectedDeliveryDate,
+        salesA.notes,
+        listOf(line2),
+      )
 
     assertThat(second.id).isEqualTo(firstId)
   }
@@ -270,7 +290,7 @@ class SalesBServiceTest {
   }
 
   @Test
-  fun saveWithLines_creates_salesB_with_lines_and_syncs_order() {
+  fun saveWithLines_creates_salesB_with_lines_without_syncing_order_when_not_validated() {
     val client = testData.createClient("CLI-SB-SWL", "123 Billing St", "456 Shipping Ave")
     val salesA = createSalesAWithOrder("SA-SB-SWL", client)
     val salesB = SalesB("", salesA)
@@ -288,7 +308,7 @@ class SalesBServiceTest {
 
     assertThat(saved.saleNumber).startsWith("NST_SO_")
     assertThat(saved.totalExclTax).isEqualByComparingTo("200.00")
-    assertThat(saved.orderB).isNotNull
+    assertThat(saved.orderB).isNull()
 
     val lines = salesBService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)

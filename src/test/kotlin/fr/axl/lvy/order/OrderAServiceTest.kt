@@ -6,6 +6,9 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductRepository
+import fr.axl.lvy.sale.SalesA
+import fr.axl.lvy.sale.SalesARepository
+import fr.axl.lvy.sale.SalesBRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
@@ -24,6 +27,8 @@ class OrderAServiceTest {
   @Autowired lateinit var orderAService: OrderAService
   @Autowired lateinit var orderARepository: OrderARepository
   @Autowired lateinit var orderBRepository: OrderBRepository
+  @Autowired lateinit var salesARepository: SalesARepository
+  @Autowired lateinit var salesBRepository: SalesBRepository
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var testData: TestDataFactory
@@ -44,6 +49,13 @@ class OrderAServiceTest {
     val found = orderAService.findById(order.id!!)
     assertThat(found).isPresent
     assertThat(found.get().orderNumber).isEqualTo("CA-2026-0001")
+  }
+
+  @Test
+  fun default_status_is_draft() {
+    val client = testData.createClient("CLI-OA00")
+    val order = OrderA("CA-DRAFT-001", client, LocalDate.of(2026, 3, 1))
+    assertThat(order.status).isEqualTo(OrderA.OrderAStatus.DRAFT)
   }
 
   @Test
@@ -76,6 +88,146 @@ class OrderAServiceTest {
 
     val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.IN_PRODUCTION)
     assertThat(updated.status).isEqualTo(OrderA.OrderAStatus.IN_PRODUCTION)
+  }
+
+  @Test
+  fun status_transition_draft_to_confirmed_creates_salesB_for_mto_lines_using_purchase_price() {
+    val client = testData.createClient("CLI-OA-DRAFT-CF")
+    val order = createOrderA("CA-ST-DRAFT", client, OrderA.OrderAStatus.DRAFT)
+    val salesA = SalesA("SA-LINK-01", client, LocalDate.of(2026, 3, 1))
+    salesA.orderA = order
+    salesARepository.saveAndFlush(salesA)
+
+    val mtoProduct = Product("PRD-MTO-CF", "Custom Part")
+    mtoProduct.type = Product.ProductType.PRODUCT
+    mtoProduct.mto = true
+    mtoProduct.sellingPriceExclTax = BigDecimal("100.00")
+    mtoProduct.purchasePriceExclTax = BigDecimal("60.00")
+    productRepository.saveAndFlush(mtoProduct)
+
+    val mtoLine = DocumentLine(DocumentLine.DocumentType.ORDER_A, order.id!!, "Custom Part")
+    mtoLine.product = mtoProduct
+    mtoLine.quantity = BigDecimal("3")
+    mtoLine.unitPriceExclTax = BigDecimal("75.00")
+    mtoLine.discountPercent = BigDecimal.ZERO
+    mtoLine.vatRate = BigDecimal("20.00")
+    mtoLine.position = 0
+    mtoLine.recalculate()
+    documentLineRepository.saveAndFlush(mtoLine)
+
+    val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.CONFIRMED)
+
+    assertThat(updated.status).isEqualTo(OrderA.OrderAStatus.CONFIRMED)
+    val salesB = salesBRepository.findBySalesAId(salesA.id!!)
+    assertThat(salesB).isNotNull
+    assertThat(salesB!!.status).isEqualTo(fr.axl.lvy.sale.SalesB.SalesBStatus.DRAFT)
+    val salesBLines =
+      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+        DocumentLine.DocumentType.SALES_B,
+        salesB.id!!,
+      )
+    assertThat(salesBLines).hasSize(1)
+    assertThat(salesBLines[0].unitPriceExclTax).isEqualByComparingTo("75.00")
+  }
+
+  @Test
+  fun status_transition_draft_to_confirmed_deletes_salesB_when_no_mto_lines() {
+    val client = testData.createClient("CLI-OA-DRAFT-NO-MTO")
+    val order = createOrderA("CA-ST-DRAFT-NM", client, OrderA.OrderAStatus.DRAFT)
+    val salesA = SalesA("SA-LINK-NM", client, LocalDate.of(2026, 3, 1))
+    salesA.orderA = order
+    salesARepository.saveAndFlush(salesA)
+
+    val regularProduct = Product("PRD-REG-CF", "Regular Part")
+    regularProduct.type = Product.ProductType.PRODUCT
+    regularProduct.mto = false
+    regularProduct.sellingPriceExclTax = BigDecimal("80.00")
+    productRepository.saveAndFlush(regularProduct)
+
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, order.id!!, "Regular Part")
+    line.product = regularProduct
+    line.quantity = BigDecimal("2")
+    line.unitPriceExclTax = BigDecimal("80.00")
+    line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
+    line.position = 0
+    line.recalculate()
+    documentLineRepository.saveAndFlush(line)
+
+    val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.CONFIRMED)
+
+    assertThat(updated.status).isEqualTo(OrderA.OrderAStatus.CONFIRMED)
+    val salesB = salesBRepository.findBySalesAId(salesA.id!!)
+    assertThat(salesB).isNull()
+  }
+
+  @Test
+  fun status_transition_draft_to_cancelled_deletes_salesB() {
+    val client = testData.createClient("CLI-OA-DRAFT-CAN")
+    val order = createOrderA("CA-ST-DRAFT-CN", client, OrderA.OrderAStatus.DRAFT)
+    val salesA = SalesA("SA-LINK-CN", client, LocalDate.of(2026, 3, 1))
+    salesA.orderA = order
+    salesARepository.saveAndFlush(salesA)
+
+    val updated = orderAService.changeStatus(order, OrderA.OrderAStatus.CANCELLED)
+
+    assertThat(updated.status).isEqualTo(OrderA.OrderAStatus.CANCELLED)
+  }
+
+  @Test
+  fun saveWithLines_with_confirmed_status_creates_salesB_for_mto() {
+    val client = testData.createClient("CLI-OA-SWL-CF")
+    val order = OrderA("", client, LocalDate.of(2026, 3, 1))
+    order.status = OrderA.OrderAStatus.CONFIRMED
+    order.vatRate = BigDecimal("20.00")
+    val savedOrder = orderAService.save(order)
+
+    val salesA = SalesA("SA-LINK-SWL", client, LocalDate.of(2026, 3, 1))
+    salesA.orderA = savedOrder
+    salesARepository.saveAndFlush(salesA)
+
+    val mtoProduct = Product("PRD-MTO-SWL", "MTO Widget")
+    mtoProduct.type = Product.ProductType.PRODUCT
+    mtoProduct.mto = true
+    mtoProduct.sellingPriceExclTax = BigDecimal("100.00")
+    mtoProduct.purchasePriceExclTax = BigDecimal("60.00")
+    productRepository.saveAndFlush(mtoProduct)
+
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "MTO Widget")
+    line.product = mtoProduct
+    line.quantity = BigDecimal("2")
+    line.unitPriceExclTax = BigDecimal("60.00")
+    line.discountPercent = BigDecimal.ZERO
+
+    val saved = orderAService.saveWithLines(savedOrder, listOf(line))
+
+    assertThat(saved.purchasePriceExclTax).isEqualByComparingTo("120.00")
+    val salesB = salesBRepository.findBySalesAId(salesA.id!!)
+    assertThat(salesB).isNotNull
+  }
+
+  @Test
+  fun saveWithLines_with_confirmed_status_deletes_salesB_when_no_mto() {
+    val client = testData.createClient("CLI-OA-SWL-NM")
+    val order = OrderA("", client, LocalDate.of(2026, 3, 1))
+    order.status = OrderA.OrderAStatus.CONFIRMED
+    order.vatRate = BigDecimal("20.00")
+    val savedOrder = orderAService.save(order)
+
+    val salesA = SalesA("SA-LINK-NM2", client, LocalDate.of(2026, 3, 1))
+    salesA.orderA = savedOrder
+    salesARepository.saveAndFlush(salesA)
+
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_A, 0L, "Regular Widget")
+    line.quantity = BigDecimal("2")
+    line.unitPriceExclTax = BigDecimal("50.00")
+    line.discountPercent = BigDecimal.ZERO
+
+    val saved = orderAService.saveWithLines(savedOrder, listOf(line))
+
+    assertThat(saved.totalExclTax).isEqualByComparingTo("100.00")
+    val salesB = salesBRepository.findBySalesAId(salesA.id!!)
+    assertThat(salesB).isNull()
   }
 
   @Test
@@ -182,7 +334,7 @@ class OrderAServiceTest {
     assertThat(copy.clientReference).isEqualTo("CR-DUP")
     assertThat(copy.currency).isEqualTo("USD")
     assertThat(copy.sourceOrder!!.id).isEqualTo(order.id)
-    assertThat(copy.status).isEqualTo(OrderA.OrderAStatus.CONFIRMED)
+    assertThat(copy.status).isEqualTo(OrderA.OrderAStatus.DRAFT)
 
     val copyLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(

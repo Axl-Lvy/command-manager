@@ -8,11 +8,16 @@ interface ClientRepository : JpaRepository<Client, Long> {
 
   fun findByDeletedAtIsNull(): List<Client>
 
+  fun findByDeletedAtIsNullAndTypeOrderByNameAsc(type: Client.ClientType): List<Client>
+
+  fun existsByClientCode(clientCode: String): Boolean
+
   @Query(
     """
       SELECT DISTINCT c
       FROM Client c
       LEFT JOIN FETCH c.contacts
+      LEFT JOIN FETCH c.paymentTerm
       WHERE c.id = :id
     """
   )

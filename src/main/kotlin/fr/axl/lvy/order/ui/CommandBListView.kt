@@ -10,6 +10,7 @@ import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderAService
 import fr.axl.lvy.order.OrderB
 import fr.axl.lvy.order.OrderBService
@@ -17,10 +18,11 @@ import fr.axl.lvy.product.ProductService
 
 @Route("commandes-b")
 @PageTitle("Commandes B")
-@Menu(order = 6.0, icon = "vaadin:cart-o", title = "Commandes B")
+@Menu(order = 6.0, icon = "vaadin:cart-o", title = "Commande/B")
 internal class CommandBListView(
   private val orderBService: OrderBService,
   private val orderAService: OrderAService,
+  private val incotermService: IncotermService,
   private val productService: ProductService,
 ) : VerticalLayout() {
 
@@ -54,7 +56,14 @@ internal class CommandBListView(
   }
 
   private fun openForm(order: OrderB?) {
-    CommandBFormDialog(orderBService, orderAService, productService, order, this::refreshGrid)
+    CommandBFormDialog(
+        orderBService,
+        orderAService,
+        incotermService,
+        productService,
+        order,
+        this::refreshGrid,
+      )
       .open()
   }
 

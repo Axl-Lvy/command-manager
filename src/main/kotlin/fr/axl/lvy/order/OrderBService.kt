@@ -2,7 +2,7 @@ package fr.axl.lvy.order
 
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
-import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.documentline.DocumentLineService
 import java.time.LocalDate
 import java.util.Optional
 import org.springframework.stereotype.Service
@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class OrderBService(
   private val orderBRepository: OrderBRepository,
-  private val documentLineRepository: DocumentLineRepository,
+  private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
 ) {
   companion object {
@@ -68,31 +68,16 @@ class OrderBService(
 
   @Transactional(readOnly = true)
   fun findLines(orderId: Long): List<DocumentLine> =
-    documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-      DocumentLine.DocumentType.ORDER_B,
-      orderId,
-    )
+    documentLineService.findLines(DocumentLine.DocumentType.ORDER_B, orderId)
 
   @Transactional
   fun saveWithLines(order: OrderB, lines: List<DocumentLine>): OrderB {
     val saved = save(order)
 
-    val existingLines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
-        DocumentLine.DocumentType.ORDER_B,
-        saved.id!!,
-      )
-    documentLineRepository.deleteAll(existingLines)
+    val persistedLines =
+      documentLineService.replaceLines(DocumentLine.DocumentType.ORDER_B, saved.id!!, lines)
 
-    lines.forEachIndexed { i, line ->
-      line.documentType = DocumentLine.DocumentType.ORDER_B
-      line.documentId = saved.id!!
-      line.position = i
-      line.recalculate()
-      documentLineRepository.save(line)
-    }
-
-    saved.recalculateTotals(lines)
+    saved.recalculateTotals(persistedLines)
     return orderBRepository.save(saved)
   }
 

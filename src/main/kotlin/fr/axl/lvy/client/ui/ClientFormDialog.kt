@@ -11,20 +11,22 @@ import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
-import com.vaadin.flow.component.textfield.BigDecimalField
 import com.vaadin.flow.component.textfield.IntegerField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.user.User
-import java.math.BigDecimal
 
 internal class ClientFormDialog(
   private val clientService: ClientService,
+  paymentTermService: PaymentTermService,
   private val client: Client?,
   private val onSave: Runnable,
+  private val mode: ClientFormMode = ClientFormMode.CLIENT,
 ) : Dialog() {
 
   private val name = TextField("Nom")
@@ -39,30 +41,54 @@ internal class ClientFormDialog(
   private val billingAddress = TextArea("Adresse facturation")
   private val shippingAddress = TextArea("Adresse livraison")
   private val paymentDelay = IntegerField("Délai paiement (jours)")
-  private val paymentMethod = TextField("Mode de paiement")
-  private val defaultDiscount = BigDecimalField("Remise par défaut (%)")
+  private val paymentTerm = ComboBox<PaymentTerm>("Conditions de paiement")
   private val statusToggle = Button()
   private val notes = TextArea("Notes")
 
   private val contacts = mutableListOf<Contact>()
   private val contactGrid = Grid<Contact>()
+  private val availablePaymentTerms = paymentTermService.findAll()
 
   init {
-    setHeaderTitle(if (client == null) "Nouveau client" else "Modifier client")
+    setHeaderTitle(
+      if (client == null) {
+        if (mode == ClientFormMode.OWN_COMPANY) "Nouvelle société" else "Nouveau client"
+      } else {
+        if (mode == ClientFormMode.OWN_COMPANY) "Modifier société" else "Modifier client"
+      }
+    )
     setWidth("750px")
     setHeight("80%")
 
     type.setItems(*Client.ClientType.entries.toTypedArray())
-    type.setItemLabelGenerator { if (it == Client.ClientType.COMPANY) "Société" else "Particulier" }
+    type.setItemLabelGenerator {
+      when (it) {
+        Client.ClientType.COMPANY -> "Société"
+        Client.ClientType.INDIVIDUAL -> "Particulier"
+        Client.ClientType.OWN_COMPANY -> "Mes sociétés"
+      }
+    }
     role.setItems(*Client.ClientRole.entries.toTypedArray())
     role.setItemLabelGenerator {
       when (it) {
         Client.ClientRole.CLIENT -> "Client"
         Client.ClientRole.PRODUCER -> "Producteur"
         Client.ClientRole.BOTH -> "Les deux"
+        Client.ClientRole.OWN_COMPANY -> "Ma société"
       }
     }
     visibleCompany.setItems(*User.Company.entries.toTypedArray())
+    visibleCompany.setItemLabelGenerator {
+      when (it) {
+        User.Company.A -> "Société A"
+        User.Company.B -> "Société B"
+        User.Company.AB -> "Tout"
+      }
+    }
+    if (mode == ClientFormMode.OWN_COMPANY) {
+      type.isVisible = false
+      visibleCompany.isVisible = false
+    }
     statusToggle.addClickListener {
       val currentStatus = statusToggle.element.getProperty("data-status")
       val nextStatus =
@@ -72,16 +98,23 @@ internal class ClientFormDialog(
     }
 
     name.isRequired = true
+    paymentTerm.setItems(availablePaymentTerms)
+    paymentTerm.setItemLabelGenerator { it.label }
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
-    form.add(name, type)
-    form.add(role, visibleCompany)
+    if (mode == ClientFormMode.OWN_COMPANY) {
+      form.add(name, role)
+    } else {
+      form.add(name, type)
+    }
+    if (mode != ClientFormMode.OWN_COMPANY) {
+      form.add(role, visibleCompany)
+    }
     form.add(statusToggle, email)
     form.add(phone, website)
     form.add(siret, vatNumber)
-    form.add(paymentMethod, paymentDelay)
-    form.add(defaultDiscount)
+    form.add(paymentTerm, paymentDelay)
     form.add(billingAddress, 2)
     form.add(shippingAddress, 2)
     form.add(notes, 2)
@@ -114,16 +147,20 @@ internal class ClientFormDialog(
     if (client != null) {
       populateForm(client)
     } else {
-      type.value = Client.ClientType.COMPANY
-      role.value = Client.ClientRole.CLIENT
-      visibleCompany.value = User.Company.A
+      type.value =
+        if (mode == ClientFormMode.OWN_COMPANY) Client.ClientType.OWN_COMPANY
+        else Client.ClientType.COMPANY
+      role.value =
+        if (mode == ClientFormMode.OWN_COMPANY) Client.ClientRole.OWN_COMPANY
+        else Client.ClientRole.CLIENT
+      visibleCompany.value = User.Company.AB
       updateStatusButton(Client.Status.ACTIVE)
     }
   }
 
   private fun populateForm(c: Client) {
     name.value = c.name
-    type.value = c.type
+    type.value = if (mode == ClientFormMode.OWN_COMPANY) Client.ClientType.OWN_COMPANY else c.type
     role.value = c.role
     visibleCompany.value = c.visibleCompany
     email.value = c.email ?: ""
@@ -134,8 +171,7 @@ internal class ClientFormDialog(
     billingAddress.value = c.billingAddress ?: ""
     shippingAddress.value = c.shippingAddress ?: ""
     paymentDelay.value = c.paymentDelay
-    paymentMethod.value = c.paymentMethod ?: ""
-    defaultDiscount.value = c.defaultDiscount
+    paymentTerm.value = c.paymentTerm
     updateStatusButton(c.status)
     notes.value = c.notes ?: ""
     contacts.addAll(c.contacts)
@@ -166,42 +202,69 @@ internal class ClientFormDialog(
       return
     }
 
-    val c = client ?: Client(name = name.value)
-    if (client != null) {
-      c.name = name.value
-    }
-    c.type = type.value
-    c.role = role.value
-    c.visibleCompany = visibleCompany.value
-    c.email = if (email.value.isBlank()) null else email.value
-    c.phone = if (phone.value.isBlank()) null else phone.value
-    c.website = if (website.value.isBlank()) null else website.value
-    c.siret = if (siret.value.isBlank()) null else siret.value
-    c.vatNumber = if (vatNumber.value.isBlank()) null else vatNumber.value
-    c.billingAddress = if (billingAddress.value.isBlank()) null else billingAddress.value
-    c.shippingAddress = if (shippingAddress.value.isBlank()) null else shippingAddress.value
-    c.paymentDelay = paymentDelay.value
-    c.paymentMethod = if (paymentMethod.value.isBlank()) null else paymentMethod.value
-    c.defaultDiscount = defaultDiscount.value ?: BigDecimal.ZERO
-    c.status =
-      if (statusToggle.element.getProperty("data-status") == Client.Status.INACTIVE.name) {
-        Client.Status.INACTIVE
+    try {
+      val c = client ?: Client(name = name.value)
+      if (client != null) {
+        c.name = name.value
       } else {
-        Client.Status.ACTIVE
+        c.status = Client.Status.ACTIVE
       }
-    c.notes = if (notes.value.isBlank()) null else notes.value
+      c.type =
+        if (mode == ClientFormMode.OWN_COMPANY) Client.ClientType.OWN_COMPANY
+        else type.value ?: Client.ClientType.COMPANY
+      c.role =
+        role.value
+          ?: if (mode == ClientFormMode.OWN_COMPANY) {
+            Client.ClientRole.OWN_COMPANY
+          } else {
+            Client.ClientRole.CLIENT
+          }
+      c.visibleCompany =
+        if (mode == ClientFormMode.OWN_COMPANY) {
+          c.visibleCompany
+        } else {
+          visibleCompany.value ?: User.Company.AB
+        }
+      c.email = if (email.value.isBlank()) null else email.value
+      c.phone = if (phone.value.isBlank()) null else phone.value
+      c.website = if (website.value.isBlank()) null else website.value
+      c.siret = if (siret.value.isBlank()) null else siret.value
+      c.vatNumber = if (vatNumber.value.isBlank()) null else vatNumber.value
+      c.billingAddress = if (billingAddress.value.isBlank()) null else billingAddress.value
+      c.shippingAddress = if (shippingAddress.value.isBlank()) null else shippingAddress.value
+      c.paymentDelay = paymentDelay.value
+      c.paymentTerm = paymentTerm.value
+      c.status =
+        if (statusToggle.element.getProperty("data-status") == Client.Status.INACTIVE.name) {
+          Client.Status.INACTIVE
+        } else {
+          Client.Status.ACTIVE
+        }
+      c.notes = if (notes.value.isBlank()) null else notes.value
 
-    c.contacts.clear()
-    for (contact in contacts) {
-      contact.client = c
-      c.contacts.add(contact)
+      c.contacts.clear()
+      for (contact in contacts) {
+        contact.client = c
+        c.contacts.add(contact)
+      }
+
+      clientService.save(c)
+      Notification.show(
+          if (mode == ClientFormMode.OWN_COMPANY) "Société enregistrée" else "Client enregistré",
+          3000,
+          Notification.Position.BOTTOM_END,
+        )
+        .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
+      onSave.run()
+      close()
+    } catch (e: Exception) {
+      Notification.show(
+          e.message ?: "Erreur lors de l'enregistrement",
+          5000,
+          Notification.Position.BOTTOM_END,
+        )
+        .addThemeVariants(NotificationVariant.LUMO_ERROR)
     }
-
-    clientService.save(c)
-    Notification.show("Client enregistré", 3000, Notification.Position.BOTTOM_END)
-      .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
-    onSave.run()
-    close()
   }
 
   private fun updateStatusButton(status: Client.Status) {
@@ -213,5 +276,10 @@ internal class ClientFormDialog(
     } else {
       statusToggle.addThemeVariants(ButtonVariant.LUMO_CONTRAST)
     }
+  }
+
+  enum class ClientFormMode {
+    CLIENT,
+    OWN_COMPANY,
   }
 }
