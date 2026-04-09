@@ -5,6 +5,8 @@ import fr.axl.lvy.order.OrderNetstone
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.time.LocalDate
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "sales_b")
@@ -17,7 +19,8 @@ class SalesNetstone(
   var salesCodig: SalesCodig,
 ) : TotalizableDocument() {
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, columnDefinition = "enum('DRAFT','VALIDATED','CANCELLED')")
   var status: SalesNetstoneStatus = SalesNetstoneStatus.DRAFT
 
   @Column(name = "sale_date") var saleDate: LocalDate? = null

@@ -29,7 +29,7 @@ class SalesCodig(
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(nullable = false, length = 20, columnDefinition = "varchar(20)")
+  @Column(nullable = false, columnDefinition = "enum('DRAFT','VALIDATED','CANCELLED')")
   var status: SalesCodigStatus = SalesCodigStatus.DRAFT
 
   @Column(name = "expected_delivery_date") var expectedDeliveryDate: LocalDate? = null

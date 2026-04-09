@@ -18,7 +18,12 @@ import org.hibernate.type.SqlTypes
 class DocumentLine(
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(name = "document_type", nullable = false, length = 20, columnDefinition = "varchar(20)")
+  @Column(
+    name = "document_type",
+    nullable = false,
+    columnDefinition =
+      "enum('SALES_CODIG','SALES_NETSTONE','ORDER_CODIG','ORDER_NETSTONE','INVOICE_CODIG','INVOICE_NETSTONE')",
+  )
   var documentType: DocumentType,
   @Column(name = "document_id", nullable = false) var documentId: Long,
   @field:NotBlank @Column(nullable = false) var designation: String,

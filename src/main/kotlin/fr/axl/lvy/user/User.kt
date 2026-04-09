@@ -5,6 +5,8 @@ import jakarta.persistence.*
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import java.time.Instant
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "users")
@@ -13,9 +15,15 @@ class User(
   @NotBlank @Email @Column(nullable = false, unique = true) var email: String,
   @NotBlank @Column(nullable = false) var password: String,
 ) : BaseEntity() {
-  @Enumerated(EnumType.STRING) @Column(nullable = false) var role: Role = Role.COLLABORATOR
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, columnDefinition = "enum('ADMIN','COLLABORATOR','ACCOUNTANT')")
+  var role: Role = Role.COLLABORATOR
 
-  @Enumerated(EnumType.STRING) @Column(name = "company_id") var companyId: Company? = null
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(name = "company_id", columnDefinition = "enum('CODIG','NETSTONE','BOTH')")
+  var companyId: Company? = null
 
   var active: Boolean = true
 

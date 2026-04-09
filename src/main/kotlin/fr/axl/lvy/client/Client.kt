@@ -20,17 +20,21 @@ class Client(
 ) : SoftDeletableEntity() {
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(nullable = false, length = 20, columnDefinition = "varchar(20)")
+  @Column(nullable = false, columnDefinition = "enum('COMPANY','INDIVIDUAL','OWN_COMPANY')")
   var type: ClientType = ClientType.COMPANY
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(nullable = false, length = 20, columnDefinition = "varchar(20)")
+  @Column(nullable = false, columnDefinition = "enum('CLIENT','PRODUCER','BOTH','OWN_COMPANY')")
   var role: ClientRole = ClientRole.CLIENT
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(name = "visible_company", nullable = false, length = 20, columnDefinition = "varchar(20)")
+  @Column(
+    name = "visible_company",
+    nullable = false,
+    columnDefinition = "enum('CODIG','NETSTONE','BOTH')",
+  )
   var visibleCompany: User.Company = User.Company.BOTH
 
   var email: String? = null
@@ -58,7 +62,7 @@ class Client(
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(nullable = false, length = 10, columnDefinition = "varchar(10)")
+  @Column(nullable = false, columnDefinition = "enum('ACTIVE','INACTIVE')")
   var status: Status = Status.ACTIVE
 
   @Column(columnDefinition = "TEXT") var notes: String? = null

@@ -43,7 +43,11 @@ class OrderCodig(
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(nullable = false, length = 20, columnDefinition = "varchar(20)")
+  @Column(
+    nullable = false,
+    columnDefinition =
+      "enum('DRAFT','CONFIRMED','IN_PRODUCTION','READY','DELIVERED','INVOICED','CANCELLED')",
+  )
   var status: OrderCodigStatus = OrderCodigStatus.DRAFT
 
   @Column(name = "expected_delivery_date") var expectedDeliveryDate: LocalDate? = null
