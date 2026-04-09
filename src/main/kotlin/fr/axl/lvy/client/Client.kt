@@ -2,6 +2,7 @@ package fr.axl.lvy.client
 
 import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.user.User
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
@@ -48,7 +49,9 @@ class Client(
 
   @Column(name = "payment_delay") var paymentDelay: Int? = null
 
-  @Column(name = "payment_method", length = 50) var paymentMethod: String? = null
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "payment_term_id")
+  var paymentTerm: PaymentTerm? = null
 
   @Column(name = "default_discount", nullable = false, precision = 5, scale = 2)
   var defaultDiscount: BigDecimal = BigDecimal.ZERO
