@@ -357,6 +357,7 @@ class DatabaseSeeder(
           },
       )
     var savedOrder2 = orderCodigService.saveWithLines(order2, order2Lines)
+    savedOrder2 = orderCodigService.changeStatus(savedOrder2, OrderCodig.OrderCodigStatus.CONFIRMED)
     savedOrder2 =
       orderCodigService.changeStatus(savedOrder2, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
     logger.info(
