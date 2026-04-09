@@ -4,6 +4,7 @@ import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.order.OrderA
+import fr.axl.lvy.paymentterm.PaymentTerm
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
@@ -49,8 +50,9 @@ class SalesA(
   var totalInclTax: BigDecimal = BigDecimal.ZERO
     private set
 
-  @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
-  var vatRate: BigDecimal = BigDecimal.ZERO
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "payment_term_id")
+  var paymentTerm: PaymentTerm? = null
 
   @Column(nullable = false, length = 5) var currency: String = "EUR"
 

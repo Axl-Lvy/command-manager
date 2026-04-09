@@ -33,6 +33,10 @@ class ProductService(
         }
       product.replaceClientProductCodes(managedEntries)
     }
+    if (product.suppliers.isNotEmpty()) {
+      val managedSuppliers = product.suppliers.map { clientRepository.getReferenceById(it.id!!) }
+      product.replaceSuppliers(managedSuppliers)
+    }
     if (product.reference.isBlank()) {
       product.reference = generateNextReference()
     }

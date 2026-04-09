@@ -17,6 +17,7 @@ import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.delivery.DeliveryNoteAService
 import fr.axl.lvy.delivery.ui.DeliveryNoteAFormDialog
 import fr.axl.lvy.incoterm.IncotermService
+import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesA
 import fr.axl.lvy.sale.SalesAService
@@ -28,6 +29,7 @@ internal class SalesAListView(
   private val salesAService: SalesAService,
   private val clientService: ClientService,
   private val incotermService: IncotermService,
+  private val paymentTermService: PaymentTermService,
   private val productService: ProductService,
   private val deliveryNoteAService: DeliveryNoteAService,
 ) : VerticalLayout() {
@@ -78,12 +80,14 @@ internal class SalesAListView(
   }
 
   private fun openForm(order: SalesA?) {
+    val loadedOrder = order?.id?.let { salesAService.findDetailedById(it).orElse(null) }
     SalesAFormDialog(
         salesAService,
         clientService,
         incotermService,
+        paymentTermService,
         productService,
-        order,
+        loadedOrder,
         this::refreshGrid,
       )
       .open()

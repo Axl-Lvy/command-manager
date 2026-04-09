@@ -66,7 +66,6 @@ class SalesAService(
     order.currency = sale.currency
     order.exchangeRate = sale.exchangeRate
     order.purchasePriceExclTax = sale.purchasePriceExclTax
-    order.vatRate = sale.vatRate
     order.incoterms = sale.incoterms
     order.billingAddress = sale.billingAddress
     order.shippingAddress = sale.shippingAddress
@@ -82,7 +81,6 @@ class SalesAService(
         DocumentLine.DocumentType.ORDER_A,
         savedOrder.id!!,
         saleLines,
-        overrideVatRate = sale.vatRate,
       )
 
     savedOrder.recalculateTotals(generatedLines)
@@ -101,12 +99,7 @@ class SalesAService(
     val saved = save(sale)
 
     val persistedLines =
-      documentLineService.replaceLines(
-        DocumentLine.DocumentType.SALES_A,
-        saved.id!!,
-        lines,
-        overrideVatRate = saved.vatRate,
-      )
+      documentLineService.replaceLines(DocumentLine.DocumentType.SALES_A, saved.id!!, lines)
 
     saved.purchasePriceExclTax =
       persistedLines.fold(BigDecimal.ZERO) { acc, line ->

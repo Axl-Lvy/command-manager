@@ -32,8 +32,14 @@ internal class ProductListView(
     grid = Grid()
     grid.addColumn(Product::name).setHeader("Nom").setFlexGrow(1)
     grid.addColumn { it.type.name }.setHeader("Type").setAutoWidth(true)
-    grid.addColumn(Product::sellingPriceExclTax).setHeader("Prix vente HT").setAutoWidth(true)
-    grid.addColumn(Product::purchasePriceExclTax).setHeader("Prix achat HT").setAutoWidth(true)
+    grid
+      .addColumn { "${it.sellingPriceExclTax} ${it.sellingCurrency}" }
+      .setHeader("Prix vente HT")
+      .setAutoWidth(true)
+    grid
+      .addColumn { "${it.purchasePriceExclTax} ${it.purchaseCurrency}" }
+      .setHeader("Prix achat HT")
+      .setAutoWidth(true)
     grid.addColumn { if (it.active) "Actif" else "Inactif" }.setHeader("Statut").setAutoWidth(true)
     grid
       .addComponentColumn { product ->

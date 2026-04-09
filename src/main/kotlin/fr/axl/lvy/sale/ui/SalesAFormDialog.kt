@@ -18,6 +18,8 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
 import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.incoterm.IncotermService
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesA
 import fr.axl.lvy.sale.SalesAService
@@ -28,6 +30,7 @@ internal class SalesAFormDialog(
   private val salesAService: SalesAService,
   clientService: ClientService,
   incotermService: IncotermService,
+  paymentTermService: PaymentTermService,
   productService: ProductService,
   private val order: SalesA?,
   private val onSave: Runnable,
@@ -39,7 +42,7 @@ internal class SalesAFormDialog(
   private val status = ComboBox<SalesA.SalesAStatus>("Statut")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
   private val clientReference = TextField("Réf. client")
-  private val vatRate = com.vaadin.flow.component.textfield.BigDecimalField("TVA (%)")
+  private val paymentTermCombo = ComboBox<PaymentTerm>("Conditions de paiement")
   private val incotermCombo = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
   private val billingAddress = TextArea("Adresse facturation")
@@ -61,6 +64,8 @@ internal class SalesAFormDialog(
     allIncoterms = incotermService.findAll()
     incotermCombo.setItems(allIncoterms)
     incotermCombo.setItemLabelGenerator { it.name }
+    paymentTermCombo.setItems(paymentTermService.findAll())
+    paymentTermCombo.setItemLabelGenerator { it.label }
     status.setItems(*SalesA.SalesAStatus.entries.toTypedArray())
     status.setItemLabelGenerator {
       when (it) {
@@ -82,7 +87,7 @@ internal class SalesAFormDialog(
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 3))
     form.add(orderNumber, clientCombo, orderDate)
     form.add(status, expectedDeliveryDate, clientReference)
-    form.add(vatRate, incotermCombo, incotermLocation)
+    form.add(paymentTermCombo, incotermCombo, incotermLocation)
     form.add(billingAddress, 3)
     form.add(shippingAddress, 3)
     form.add(notes, 3)
@@ -95,6 +100,8 @@ internal class SalesAFormDialog(
         clientSupplier = { clientCombo.value },
         currencySupplier = { selectedCurrency },
         currencyUpdater = { selectedCurrency = it },
+        lineTaxMode = DocumentLineEditor.LineTaxMode.VAT,
+        defaultVatRate = BigDecimal("20.00"),
       )
 
     val content = VerticalLayout(form, lineEditor)
@@ -113,7 +120,6 @@ internal class SalesAFormDialog(
       orderDate.value = LocalDate.now()
       status.value = SalesA.SalesAStatus.DRAFT
       selectedCurrency = "EUR"
-      vatRate.value = BigDecimal("20.00")
     }
   }
 
@@ -124,7 +130,7 @@ internal class SalesAFormDialog(
     status.value = o.status
     expectedDeliveryDate.value = o.expectedDeliveryDate
     clientReference.value = o.clientReference ?: ""
-    vatRate.value = o.vatRate
+    paymentTermCombo.value = o.paymentTerm
     selectedCurrency = o.currency
     incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
     incotermLocation.value = o.incotermLocation ?: ""
@@ -157,7 +163,7 @@ internal class SalesAFormDialog(
       o.status = status.value ?: SalesA.SalesAStatus.DRAFT
       o.clientReference = if (clientReference.value.isBlank()) null else clientReference.value
       o.subject = null
-      o.vatRate = vatRate.value ?: BigDecimal.ZERO
+      o.paymentTerm = paymentTermCombo.value
       o.currency = selectedCurrency
       o.exchangeRate = BigDecimal.ONE
       o.incoterms = incotermCombo.value?.name

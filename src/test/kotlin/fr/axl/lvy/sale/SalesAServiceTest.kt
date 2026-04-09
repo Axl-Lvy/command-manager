@@ -6,6 +6,8 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderA
 import fr.axl.lvy.order.OrderARepository
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermRepository
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductRepository
 import java.math.BigDecimal
@@ -26,6 +28,7 @@ class SalesAServiceTest {
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var orderARepository: OrderARepository
+  @Autowired lateinit var paymentTermRepository: PaymentTermRepository
   @Autowired lateinit var testData: TestDataFactory
 
   private fun createSalesA(
@@ -35,7 +38,6 @@ class SalesAServiceTest {
   ): SalesA {
     val sale = SalesA(number, client, LocalDate.of(2026, 3, 1))
     sale.status = status
-    sale.vatRate = BigDecimal("20.00")
     return salesARepository.save(sale)
   }
 
@@ -58,6 +60,18 @@ class SalesAServiceTest {
 
     assertThat(saved.billingAddress).isEqualTo("123 Billing St")
     assertThat(saved.shippingAddress).isEqualTo("456 Shipping Ave")
+  }
+
+  @Test
+  fun save_persists_payment_term() {
+    val client = testData.createClient("CLI-SA02B")
+    val paymentTerm = paymentTermRepository.saveAndFlush(PaymentTerm("30 jours"))
+    val sale = SalesA("SA-PAY-01", client, LocalDate.of(2026, 3, 1))
+    sale.paymentTerm = paymentTerm
+
+    val saved = salesAService.save(sale)
+
+    assertThat(saved.paymentTerm?.id).isEqualTo(paymentTerm.id)
   }
 
   @Test
@@ -258,7 +272,6 @@ class SalesAServiceTest {
   fun saveWithLines_creates_sale_with_lines_and_syncs_order() {
     val client = testData.createClient("CLI-SA-SWL", "123 Billing St", "456 Shipping Ave")
     val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
-    sale.vatRate = BigDecimal("20.00")
 
     val mtoProduct = testData.createMtoProduct("PRD-SA-SWL")
     val line = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Widget")
@@ -266,6 +279,7 @@ class SalesAServiceTest {
     line.quantity = BigDecimal("5")
     line.unitPriceExclTax = BigDecimal("100.00")
     line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
 
     val saved = salesAService.saveWithLines(sale, listOf(line))
 
@@ -282,7 +296,6 @@ class SalesAServiceTest {
   fun saveWithLines_does_not_create_orderA_without_mto_product() {
     val client = testData.createClient("CLI-SA-NO-MTO", "123 Billing St", "456 Shipping Ave")
     val sale = SalesA("", client, LocalDate.of(2026, 3, 1))
-    sale.vatRate = BigDecimal("20.00")
 
     val serviceProduct = Product("SRV-SA-02", "Service")
     serviceProduct.type = Product.ProductType.SERVICE
@@ -295,6 +308,7 @@ class SalesAServiceTest {
     line.quantity = BigDecimal("1")
     line.unitPriceExclTax = BigDecimal("100.00")
     line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
 
     val saved = salesAService.saveWithLines(sale, listOf(line))
 
@@ -305,22 +319,24 @@ class SalesAServiceTest {
   fun saveWithLines_replaces_existing_lines() {
     val client = testData.createClient("CLI-SA-SWL2", "123 Billing St", "456 Shipping Ave")
     val sale = SalesA("SA-SWL-01", client, LocalDate.of(2026, 3, 1))
-    sale.vatRate = BigDecimal("20.00")
 
     val line1 = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Item A")
     line1.quantity = BigDecimal.ONE
     line1.unitPriceExclTax = BigDecimal("100.00")
     line1.discountPercent = BigDecimal.ZERO
+    line1.vatRate = BigDecimal("20.00")
     salesAService.saveWithLines(sale, listOf(line1))
 
     val line2 = DocumentLine(DocumentLine.DocumentType.SALES_A, 0L, "Item B")
     line2.quantity = BigDecimal("2")
     line2.unitPriceExclTax = BigDecimal("50.00")
     line2.discountPercent = BigDecimal.ZERO
+    line2.vatRate = BigDecimal("5.50")
     val saved = salesAService.saveWithLines(sale, listOf(line2))
 
     val lines = salesAService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)
     assertThat(lines[0].designation).isEqualTo("Item B")
+    assertThat(lines[0].vatRate).isEqualByComparingTo("5.50")
   }
 }

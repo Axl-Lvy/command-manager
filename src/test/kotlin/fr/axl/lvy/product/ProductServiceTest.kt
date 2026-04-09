@@ -26,7 +26,9 @@ class ProductServiceTest {
   fun save_and_retrieve_product() {
     val product = Product(name = "Steel Beam")
     product.sellingPriceExclTax = BigDecimal("150.00")
+    product.sellingCurrency = "USD"
     product.purchasePriceExclTax = BigDecimal("80.00")
+    product.purchaseCurrency = "CNY"
     product.unit = "kg"
     productService.save(product)
 
@@ -35,6 +37,8 @@ class ProductServiceTest {
     assertThat(found.get().name).isEqualTo("Steel Beam")
     assertThat(found.get().reference).matches("""P\d{6}""")
     assertThat(found.get().sellingPriceExclTax).isEqualByComparingTo("150.00")
+    assertThat(found.get().sellingCurrency).isEqualTo("USD")
+    assertThat(found.get().purchaseCurrency).isEqualTo("CNY")
   }
 
   @Test
@@ -240,6 +244,23 @@ class ProductServiceTest {
     val found = productService.findById(product.id!!).orElseThrow()
     assertThat(found.findClientProductCode(clientA)).isEqualTo("A-001")
     assertThat(found.findClientProductCode(clientB)).isEqualTo("B-002")
+  }
+
+  @Test
+  fun save_persists_multiple_suppliers() {
+    val supplierA = createClient("CLI-SUP1").apply { role = Client.ClientRole.PRODUCER }
+    val supplierB = createClient("CLI-SUP2").apply { role = Client.ClientRole.BOTH }
+    clientRepository.save(supplierA)
+    clientRepository.save(supplierB)
+    val product = Product(name = "Supplier Product")
+    product.replaceSuppliers(listOf(supplierA, supplierB))
+
+    productService.save(product)
+    productRepository.flush()
+
+    val found = productService.findDetailedById(product.id!!).orElseThrow()
+    assertThat(found.suppliers.map { it.clientCode })
+      .containsExactlyInAnyOrder("CLI-SUP1", "CLI-SUP2")
   }
 
   @Test

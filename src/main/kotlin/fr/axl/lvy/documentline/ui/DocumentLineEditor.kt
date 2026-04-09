@@ -24,6 +24,8 @@ class DocumentLineEditor(
   private val currencySupplier: (() -> String?)? = null,
   private val currencyUpdater: ((String) -> Unit)? = null,
   private val usePurchasePrice: Boolean = false,
+  private val lineTaxMode: LineTaxMode = LineTaxMode.DISCOUNT,
+  private val defaultVatRate: BigDecimal = BigDecimal.ZERO,
 ) : VerticalLayout() {
 
   private val lines = mutableListOf<DocumentLine>()
@@ -107,22 +109,42 @@ class DocumentLineEditor(
         .setHeader("Devise")
         .setAutoWidth(true)
     }
-    grid
-      .addComponentColumn { line ->
-        BigDecimalField().apply {
-          value = line.discountPercent
-          placeholder = "Remise %"
-          width = "120px"
-          valueChangeMode = ValueChangeMode.EAGER
-          addValueChangeListener {
-            line.discountPercent = it.value ?: BigDecimal.ZERO
-            line.recalculate()
-            refreshGrid()
+    when (lineTaxMode) {
+      LineTaxMode.DISCOUNT ->
+        grid
+          .addComponentColumn { line ->
+            BigDecimalField().apply {
+              value = line.discountPercent
+              placeholder = "Remise %"
+              width = "120px"
+              valueChangeMode = ValueChangeMode.EAGER
+              addValueChangeListener {
+                line.discountPercent = it.value ?: BigDecimal.ZERO
+                line.recalculate()
+                refreshGrid()
+              }
+            }
           }
-        }
-      }
-      .setHeader("Remise %")
-      .setAutoWidth(true)
+          .setHeader("Remise %")
+          .setAutoWidth(true)
+      LineTaxMode.VAT ->
+        grid
+          .addComponentColumn { line ->
+            BigDecimalField().apply {
+              value = line.vatRate
+              placeholder = "TVA %"
+              width = "120px"
+              valueChangeMode = ValueChangeMode.EAGER
+              addValueChangeListener {
+                line.vatRate = it.value ?: BigDecimal.ZERO
+                line.recalculate()
+                refreshGrid()
+              }
+            }
+          }
+          .setHeader("TVA %")
+          .setAutoWidth(true)
+    }
     grid.addColumn(DocumentLine::lineTotalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid
       .addComponentColumn { line ->
@@ -168,8 +190,11 @@ class DocumentLineEditor(
     val line = DocumentLine.fromProduct(documentType, 0L, product, clientSupplier?.invoke())
     if (usePurchasePrice) {
       line.unitPriceExclTax = product.purchasePriceExclTax
-      line.recalculate()
     }
+    if (lineTaxMode == LineTaxMode.VAT) {
+      line.vatRate = defaultVatRate
+    }
+    line.recalculate()
     line.position = lines.size
     lines.add(line)
     refreshGrid()
@@ -180,7 +205,7 @@ class DocumentLineEditor(
     line.quantity = BigDecimal.ONE
     line.unitPriceExclTax = BigDecimal.ZERO
     line.discountPercent = BigDecimal.ZERO
-    line.vatRate = BigDecimal.ZERO
+    line.vatRate = defaultVatRate
     line.position = lines.size
     line.recalculate()
     lines.add(line)
@@ -197,5 +222,10 @@ class DocumentLineEditor(
 
   private fun refreshGrid() {
     grid.setItems(ArrayList(lines))
+  }
+
+  enum class LineTaxMode {
+    DISCOUNT,
+    VAT,
   }
 }

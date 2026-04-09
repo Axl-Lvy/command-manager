@@ -13,6 +13,7 @@ interface SalesARepository : JpaRepository<SalesA, Long> {
       SELECT s
       FROM SalesA s
       LEFT JOIN FETCH s.client
+      LEFT JOIN FETCH s.paymentTerm
       LEFT JOIN FETCH s.orderA o
       LEFT JOIN FETCH o.deliveryNote
       WHERE s.id = :id

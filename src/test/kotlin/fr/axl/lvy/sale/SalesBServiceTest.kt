@@ -37,7 +37,6 @@ class SalesBServiceTest {
   ): SalesA {
     val sale = SalesA(number, client, LocalDate.of(2026, 3, 1))
     sale.status = status
-    sale.vatRate = BigDecimal("20.00")
     val saved = salesARepository.save(sale)
 
     val order = OrderA("", client, LocalDate.of(2026, 3, 1))

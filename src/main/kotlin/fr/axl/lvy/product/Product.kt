@@ -21,8 +21,14 @@ class Product(
   @Column(name = "selling_price_excl_tax", nullable = false, precision = 12, scale = 2)
   var sellingPriceExclTax: BigDecimal = BigDecimal.ZERO
 
+  @Column(name = "selling_currency", nullable = false, length = 3)
+  var sellingCurrency: String = "EUR"
+
   @Column(name = "purchase_price_excl_tax", nullable = false, precision = 12, scale = 2)
   var purchasePriceExclTax: BigDecimal = BigDecimal.ZERO
+
+  @Column(name = "purchase_currency", nullable = false, length = 3)
+  var purchaseCurrency: String = "EUR"
 
   @Column(length = 20) var unit: String? = null
 
@@ -34,6 +40,14 @@ class Product(
 
   @OneToMany(mappedBy = "product", cascade = [CascadeType.ALL], orphanRemoval = true)
   var clientProductCodes: MutableList<ProductClientCode> = mutableListOf()
+
+  @ManyToMany
+  @JoinTable(
+    name = "product_suppliers",
+    joinColumns = [JoinColumn(name = "product_id")],
+    inverseJoinColumns = [JoinColumn(name = "client_id")],
+  )
+  var suppliers: MutableSet<Client> = linkedSetOf()
 
   fun replaceClientProductCodes(entries: List<Pair<Client, String>>) {
     clientProductCodes.clear()
@@ -47,6 +61,11 @@ class Product(
     client?.let { currentClient ->
       clientProductCodes.firstOrNull { it.client == currentClient }?.code
     }
+
+  fun replaceSuppliers(clients: Collection<Client>) {
+    suppliers.clear()
+    suppliers.addAll(clients)
+  }
 
   fun isMtoProduct(): Boolean = type == ProductType.PRODUCT && mto
 

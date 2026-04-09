@@ -4,6 +4,7 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.combobox.ComboBox
+import com.vaadin.flow.component.combobox.MultiSelectComboBox
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.notification.Notification
@@ -11,6 +12,7 @@ import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
+import com.vaadin.flow.component.select.Select
 import com.vaadin.flow.component.textfield.BigDecimalField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
@@ -32,7 +34,10 @@ internal class ProductFormDialog(
   private val type = ComboBox<Product.ProductType>("Type")
   private val mto = Checkbox("Fabrication sur commande (MTO)")
   private val sellingPrice = BigDecimalField("Prix vente HT")
+  private val sellingCurrency = Select<String>()
   private val purchasePrice = BigDecimalField("Prix achat HT")
+  private val purchaseCurrency = Select<String>()
+  private val suppliers = MultiSelectComboBox<Client>("Fournisseurs")
   private val unitOption = ComboBox<String>("Unité")
   private val customUnit = TextField("Autre unité")
   private val hsCode = TextField("Code HS")
@@ -40,6 +45,8 @@ internal class ProductFormDialog(
   private val active = Checkbox("Actif")
   private val clientCodeRows = VerticalLayout()
   private val availableClients: List<Client> = clientService.findAll().filter { it.isClient() }
+  private val availableSuppliers: List<Client> =
+    clientService.findAll().filter { it.isSupplierForProduct() }
   private val clientCodeEntries = mutableListOf<ClientCodeRow>()
 
   init {
@@ -49,6 +56,14 @@ internal class ProductFormDialog(
     type.setItems(*Product.ProductType.entries.toTypedArray())
     type.setItemLabelGenerator { if (it == Product.ProductType.PRODUCT) "Produit" else "Service" }
     type.addValueChangeListener { e -> updateFieldsForType(e.value) }
+    sellingCurrency.label = "Devise vente"
+    sellingCurrency.setItems(*CURRENCIES)
+    sellingCurrency.value = "EUR"
+    purchaseCurrency.label = "Devise achat"
+    purchaseCurrency.setItems(*CURRENCIES)
+    purchaseCurrency.value = "EUR"
+    suppliers.setItems(availableSuppliers)
+    suppliers.setItemLabelGenerator { "${it.clientCode} - ${it.name}" }
 
     unitOption.setItems(UNIT_MT, UNIT_KG, UNIT_OTHER)
     customUnit.placeholder = "Saisir l'unité"
@@ -67,7 +82,9 @@ internal class ProductFormDialog(
     form.add(name, type)
     form.add(specifications, 2)
     form.add(unitOption, customUnit)
-    form.add(sellingPrice, purchasePrice)
+    form.add(sellingPrice, sellingCurrency)
+    form.add(purchasePrice, purchaseCurrency)
+    form.add(suppliers, 2)
     form.add(hsCode, madeIn)
     form.add(mto)
     form.add(active)
@@ -98,7 +115,10 @@ internal class ProductFormDialog(
     type.value = p.type
     mto.value = p.mto
     sellingPrice.value = p.sellingPriceExclTax
+    sellingCurrency.value = p.sellingCurrency
     purchasePrice.value = p.purchasePriceExclTax
+    purchaseCurrency.value = p.purchaseCurrency
+    suppliers.select(p.suppliers)
     applyUnitValue(p.type, p.unit)
     hsCode.value = p.hsCode ?: ""
     madeIn.value = p.madeIn
@@ -136,11 +156,14 @@ internal class ProductFormDialog(
     p.type = type.value
     p.mto = type.value == Product.ProductType.PRODUCT && mto.value
     p.sellingPriceExclTax = sellingPrice.value ?: BigDecimal.ZERO
+    p.sellingCurrency = sellingCurrency.value ?: "EUR"
     p.purchasePriceExclTax = purchasePrice.value ?: BigDecimal.ZERO
+    p.purchaseCurrency = purchaseCurrency.value ?: "EUR"
     p.unit = resolveUnitValue()
     p.hsCode = if (hsCode.value.isBlank()) null else hsCode.value
     p.madeIn = madeIn.value
     p.replaceClientProductCodes(collectClientCodes())
+    p.replaceSuppliers(suppliers.selectedItems)
     p.active = active.value
 
     productService.save(p)
@@ -199,6 +222,7 @@ internal class ProductFormDialog(
   }
 
   companion object {
+    private val CURRENCIES = arrayOf("EUR", "USD", "CNY", "THB")
     private const val UNIT_MT = "Mt"
     private const val UNIT_KG = "kg"
     private const val UNIT_OTHER = "Other"
