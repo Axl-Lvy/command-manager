@@ -22,8 +22,8 @@ class User(
   @Column(name = "last_login") var lastLogin: Instant? = null
 
   fun canSee(visibleCompany: Company): Boolean {
-    if (companyId == null || companyId == Company.AB) return true
-    return companyId == visibleCompany || visibleCompany == Company.AB
+    if (companyId == null || companyId == Company.BOTH) return true
+    return companyId == visibleCompany || visibleCompany == Company.BOTH
   }
 
   enum class Role {
@@ -33,8 +33,8 @@ class User(
   }
 
   enum class Company {
-    A,
-    B,
-    AB,
+    CODIG,
+    NETSTONE,
+    BOTH,
   }
 }

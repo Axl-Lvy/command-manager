@@ -26,20 +26,20 @@ class NumberSequenceService(private val repository: NumberSequenceRepository) {
 
   companion object {
     const val CLIENT = "CLIENT"
-    const val ORDER_A = "ORDER_A"
-    const val ORDER_B = "ORDER_B"
-    const val SALES_A = "SALES_A"
-    const val SALES_B = "SALES_B"
-    const val DELIVERY_A = "DELIVERY_A"
+    const val ORDER_CODIG = "ORDER_CODIG"
+    const val ORDER_NETSTONE = "ORDER_NETSTONE"
+    const val SALES_CODIG = "SALES_CODIG"
+    const val SALES_NETSTONE = "SALES_NETSTONE"
+    const val DELIVERY_CODIG = "DELIVERY_CODIG"
 
     val CONFIGS =
       mapOf(
         CLIENT to SequenceConfig("C", 6),
-        ORDER_A to SequenceConfig("CoD_PO_", 3),
-        ORDER_B to SequenceConfig("NST_PO_", 3),
-        SALES_A to SequenceConfig("CoD_SO_", 3),
-        SALES_B to SequenceConfig("NST_SO_", 3),
-        DELIVERY_A to SequenceConfig("BL-", 6),
+        ORDER_CODIG to SequenceConfig("CoD_PO_", 3),
+        ORDER_NETSTONE to SequenceConfig("NST_PO_", 3),
+        SALES_CODIG to SequenceConfig("CoD_SO_", 3),
+        SALES_NETSTONE to SequenceConfig("NST_SO_", 3),
+        DELIVERY_CODIG to SequenceConfig("BL-", 6),
       )
   }
 }

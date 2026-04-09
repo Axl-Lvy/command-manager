@@ -13,11 +13,11 @@ import com.vaadin.flow.router.Route
 import com.vaadin.flow.router.RouterLink
 import com.vaadin.flow.theme.lumo.LumoUtility
 import fr.axl.lvy.client.ui.ClientListView
-import fr.axl.lvy.order.ui.CommandAListView
-import fr.axl.lvy.order.ui.CommandBListView
+import fr.axl.lvy.order.ui.CommandCodigListView
+import fr.axl.lvy.order.ui.CommandNetstoneListView
 import fr.axl.lvy.product.ui.ProductListView
-import fr.axl.lvy.sale.ui.SalesAListView
-import fr.axl.lvy.sale.ui.SalesBListView
+import fr.axl.lvy.sale.ui.SalesCodigListView
+import fr.axl.lvy.sale.ui.SalesNetstoneListView
 
 @Route("")
 @PageTitle("Accueil")
@@ -48,14 +48,14 @@ internal class HomeView : VerticalLayout() {
         groupTile(
           "Ventes",
           "vaadin:cart",
-          "A" to SalesAListView::class.java,
-          "B" to SalesBListView::class.java,
+          "Codig" to SalesCodigListView::class.java,
+          "Netstone" to SalesNetstoneListView::class.java,
         ),
         groupTile(
           "Commandes",
           "vaadin:clipboard-text",
-          "A" to CommandAListView::class.java,
-          "B" to CommandBListView::class.java,
+          "Codig" to CommandCodigListView::class.java,
+          "Netstone" to CommandNetstoneListView::class.java,
         ),
       )
 

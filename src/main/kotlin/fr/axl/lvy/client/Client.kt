@@ -30,8 +30,8 @@ class Client(
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(name = "visible_company", nullable = false, length = 5, columnDefinition = "varchar(5)")
-  var visibleCompany: User.Company = User.Company.AB
+  @Column(name = "visible_company", nullable = false, length = 20, columnDefinition = "varchar(20)")
+  var visibleCompany: User.Company = User.Company.BOTH
 
   var email: String? = null
 
