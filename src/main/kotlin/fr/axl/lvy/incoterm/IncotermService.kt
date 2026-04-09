@@ -18,8 +18,8 @@ class IncotermService(private val incotermRepository: IncotermRepository) {
     incoterm.name = incoterm.name.trim().uppercase()
     incoterm.label = incoterm.label.trim()
     val existing = incotermRepository.findByNameIgnoreCase(incoterm.name)
-    if (existing.isPresent && existing.get().id != incoterm.id) {
-      throw IllegalArgumentException("Un incoterm avec le nom '${incoterm.name}' existe déjà")
+    require(!(existing.isPresent && existing.get().id != incoterm.id)) {
+      "Un incoterm avec le nom '${incoterm.name}' existe déjà"
     }
     return incotermRepository.save(incoterm)
   }

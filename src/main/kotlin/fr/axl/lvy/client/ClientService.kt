@@ -55,10 +55,16 @@ class ClientService(
   }
 
   private fun generateSequenceValue(exists: (String) -> Boolean): String {
-    var nextCode: String
-    do {
-      nextCode = numberSequenceService.nextNumber(NumberSequenceService.CLIENT)
-    } while (exists(nextCode))
-    return nextCode
+    repeat(MAX_SEQUENCE_RETRIES) {
+      val nextCode = numberSequenceService.nextNumber(NumberSequenceService.CLIENT)
+      if (!exists(nextCode)) return nextCode
+    }
+    throw IllegalStateException(
+      "Impossible de générer un code client unique après $MAX_SEQUENCE_RETRIES tentatives"
+    )
+  }
+
+  companion object {
+    private const val MAX_SEQUENCE_RETRIES = 100
   }
 }

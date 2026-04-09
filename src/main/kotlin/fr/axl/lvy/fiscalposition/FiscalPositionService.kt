@@ -17,10 +17,8 @@ class FiscalPositionService(private val fiscalPositionRepository: FiscalPosition
   fun save(fiscalPosition: FiscalPosition): FiscalPosition {
     fiscalPosition.position = fiscalPosition.position.trim()
     val existing = fiscalPositionRepository.findByPositionIgnoreCase(fiscalPosition.position)
-    if (existing.isPresent && existing.get().id != fiscalPosition.id) {
-      throw IllegalArgumentException(
-        "Une position fiscale avec le libellé '${fiscalPosition.position}' existe déjà"
-      )
+    require(!(existing.isPresent && existing.get().id != fiscalPosition.id)) {
+      "Une position fiscale avec le libellé '${fiscalPosition.position}' existe déjà"
     }
     return fiscalPositionRepository.save(fiscalPosition)
   }

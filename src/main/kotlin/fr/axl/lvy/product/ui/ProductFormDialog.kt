@@ -18,6 +18,7 @@ import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.currency.CurrencyService
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
 import java.math.BigDecimal
@@ -25,6 +26,7 @@ import java.math.BigDecimal
 internal class ProductFormDialog(
   private val productService: ProductService,
   private val clientService: ClientService,
+  private val currencyService: CurrencyService,
   private val product: Product?,
   private val onSave: Runnable,
 ) : Dialog() {
@@ -56,11 +58,12 @@ internal class ProductFormDialog(
     type.setItems(*Product.ProductType.entries.toTypedArray())
     type.setItemLabelGenerator { if (it == Product.ProductType.PRODUCT) "Produit" else "Service" }
     type.addValueChangeListener { e -> updateFieldsForType(e.value) }
+    val currencyCodes = currencyService.findAll().map { it.code }
     sellingCurrency.label = "Devise vente"
-    sellingCurrency.setItems(*CURRENCIES)
+    sellingCurrency.setItems(currencyCodes)
     sellingCurrency.value = "EUR"
     purchaseCurrency.label = "Devise achat"
-    purchaseCurrency.setItems(*CURRENCIES)
+    purchaseCurrency.setItems(currencyCodes)
     purchaseCurrency.value = "EUR"
     suppliers.setItems(availableSuppliers)
     suppliers.setItemLabelGenerator { "${it.clientCode} - ${it.name}" }
@@ -222,7 +225,6 @@ internal class ProductFormDialog(
   }
 
   companion object {
-    private val CURRENCIES = arrayOf("EUR", "USD", "CNY", "THB")
     private const val UNIT_MT = "Mt"
     private const val UNIT_KG = "kg"
     private const val UNIT_OTHER = "Other"

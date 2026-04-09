@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 class CurrencyServiceTest {
 
   @Autowired lateinit var currencyService: CurrencyService
+  @Autowired lateinit var currencyRepository: CurrencyRepository
 
   @Test
   fun save_normalizes_and_persists_currency() {
@@ -41,5 +42,15 @@ class CurrencyServiceTest {
     val currencies = currencyService.findAll()
 
     assertThat(currencies.map { it.code }).containsExactly("EUR", "USD")
+  }
+
+  @Test
+  fun delete_removes_currency() {
+    val currency = currencyService.save(Currency("GBP", "£", "British Pound"))
+
+    currencyService.delete(currency.id!!)
+    currencyRepository.flush()
+
+    assertThat(currencyService.findById(currency.id!!)).isEmpty
   }
 }

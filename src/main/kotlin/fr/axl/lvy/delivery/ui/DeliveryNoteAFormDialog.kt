@@ -44,9 +44,9 @@ internal class DeliveryNoteAFormDialog(
     status.setItems(*DeliveryNoteA.DeliveryNoteAStatus.entries.toTypedArray())
     status.setItemLabelGenerator {
       when (it) {
-        DeliveryNoteA.DeliveryNoteAStatus.PREPARED -> "Preparee"
-        DeliveryNoteA.DeliveryNoteAStatus.SHIPPED -> "Expediee"
-        DeliveryNoteA.DeliveryNoteAStatus.DELIVERED -> "Livree"
+        DeliveryNoteA.DeliveryNoteAStatus.PREPARED -> "Préparée"
+        DeliveryNoteA.DeliveryNoteAStatus.SHIPPED -> "Expédiée"
+        DeliveryNoteA.DeliveryNoteAStatus.DELIVERED -> "Livrée"
         DeliveryNoteA.DeliveryNoteAStatus.INCIDENT -> "Incident"
       }
     }
@@ -107,7 +107,7 @@ internal class DeliveryNoteAFormDialog(
     val saved = deliveryNoteAService.save(deliveryNote)
     noteNumber.value = saved.deliveryNoteNumber
 
-    Notification.show("Livraison enregistree", 3000, Notification.Position.BOTTOM_END)
+    Notification.show("Livraison enregistrée", 3000, Notification.Position.BOTTOM_END)
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
     onSave.run()
     close()

@@ -102,7 +102,7 @@ internal class ClientFormDialog(
     } else {
       form.add(name, type)
     }
-    if (mode == ClientFormMode.OWN_COMPANY) {} else {
+    if (mode != ClientFormMode.OWN_COMPANY) {
       form.add(role, visibleCompany)
     }
     form.add(statusToggle, email)

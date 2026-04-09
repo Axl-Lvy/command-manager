@@ -17,10 +17,8 @@ class PaymentTermService(private val paymentTermRepository: PaymentTermRepositor
   fun save(paymentTerm: PaymentTerm): PaymentTerm {
     paymentTerm.label = paymentTerm.label.trim()
     val existing = paymentTermRepository.findByLabelIgnoreCase(paymentTerm.label)
-    if (existing.isPresent && existing.get().id != paymentTerm.id) {
-      throw IllegalArgumentException(
-        "Un délai de paiement avec le libellé '${paymentTerm.label}' existe déjà"
-      )
+    require(!(existing.isPresent && existing.get().id != paymentTerm.id)) {
+      "Un délai de paiement avec le libellé '${paymentTerm.label}' existe déjà"
     }
     return paymentTermRepository.save(paymentTerm)
   }

@@ -20,8 +20,8 @@ class CurrencyService(private val currencyRepository: CurrencyRepository) {
     currency.name = currency.name.trim()
 
     val existing = currencyRepository.findByCodeIgnoreCase(currency.code)
-    if (existing.isPresent && existing.get().id != currency.id) {
-      throw IllegalArgumentException("Une devise avec le code '${currency.code}' existe déjà")
+    require(!(existing.isPresent && existing.get().id != currency.id)) {
+      "Une devise avec le code '${currency.code}' existe déjà"
     }
     return currencyRepository.save(currency)
   }

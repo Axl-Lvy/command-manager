@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 class PaymentTermServiceTest {
 
   @Autowired lateinit var paymentTermService: PaymentTermService
+  @Autowired lateinit var paymentTermRepository: PaymentTermRepository
 
   @Test
   fun save_normalizes_and_persists_payment_term() {
@@ -39,5 +40,15 @@ class PaymentTermServiceTest {
     val paymentTerms = paymentTermService.findAll()
 
     assertThat(paymentTerms.map { it.label }).containsExactly("30 jours", "60 jours")
+  }
+
+  @Test
+  fun delete_removes_payment_term() {
+    val paymentTerm = paymentTermService.save(PaymentTerm("45 jours"))
+
+    paymentTermService.delete(paymentTerm.id!!)
+    paymentTermRepository.flush()
+
+    assertThat(paymentTermService.findById(paymentTerm.id!!)).isEmpty
   }
 }

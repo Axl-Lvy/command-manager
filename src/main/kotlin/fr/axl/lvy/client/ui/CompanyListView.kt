@@ -2,8 +2,11 @@ package fr.axl.lvy.client.ui
 
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
+import com.vaadin.flow.component.notification.Notification
+import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.dom.Style
@@ -37,9 +40,19 @@ internal class CompanyListView(private val clientService: ClientService) : Verti
 
         val archiveButton =
           Button("Archiver") {
-            company.status = Client.Status.INACTIVE
-            clientService.save(company)
-            refreshGrid()
+            ConfirmDialog(
+                "Archiver la société",
+                "Voulez-vous vraiment archiver la société « ${company.name} » ?",
+                "Archiver",
+              ) {
+                company.status = Client.Status.INACTIVE
+                clientService.save(company)
+                Notification.show("Société archivée", 3000, Notification.Position.BOTTOM_END)
+                  .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
+                refreshGrid()
+              }
+              .apply { setCancelable(true) }
+              .open()
           }
         archiveButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY)
         archiveButton.isEnabled = company.status != Client.Status.INACTIVE
