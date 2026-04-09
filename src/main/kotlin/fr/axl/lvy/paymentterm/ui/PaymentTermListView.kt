@@ -18,19 +18,19 @@ import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 
 @Route("parametres/delais-paiement")
-@PageTitle("Délais de paiement")
-@Menu(order = 102.0, icon = "vaadin:clock", title = "Paramètres/Délais de paiement")
+@PageTitle("Conditions de paiement")
+@Menu(order = 102.0, icon = "vaadin:clock", title = "Paramètres/Conditions de paiement")
 internal class PaymentTermListView(private val paymentTermService: PaymentTermService) :
   VerticalLayout() {
 
   private val grid: Grid<PaymentTerm>
 
   init {
-    val addBtn = Button("Nouveau délai") { openForm(null) }
+    val addBtn = Button("Nouvelle condition") { openForm(null) }
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
-    grid.addColumn(PaymentTerm::label).setHeader("Délai de paiement").setFlexGrow(1)
+    grid.addColumn(PaymentTerm::label).setHeader("Condition de paiement").setFlexGrow(1)
     grid
       .addComponentColumn { paymentTerm ->
         val editButton = Button("Modifier") { openForm(paymentTerm) }
@@ -39,13 +39,13 @@ internal class PaymentTermListView(private val paymentTermService: PaymentTermSe
         val deleteButton =
           Button("Supprimer") {
             ConfirmDialog(
-                "Supprimer le délai de paiement",
+                "Supprimer la condition de paiement",
                 "Voulez-vous vraiment supprimer « ${paymentTerm.label} » ?",
                 "Supprimer",
               ) {
                 paymentTerm.id?.let(paymentTermService::delete)
                 Notification.show(
-                    "Délai de paiement supprimé",
+                    "Condition de paiement supprimée",
                     3000,
                     Notification.Position.BOTTOM_END,
                   )
@@ -65,7 +65,7 @@ internal class PaymentTermListView(private val paymentTermService: PaymentTermSe
       .setHeader("Actions")
       .setAutoWidth(true)
       .setFlexGrow(0)
-    grid.setEmptyStateText("Aucun délai de paiement")
+    grid.setEmptyStateText("Aucune condition de paiement")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
     grid.addItemDoubleClickListener { openForm(it.item) }
@@ -77,7 +77,7 @@ internal class PaymentTermListView(private val paymentTermService: PaymentTermSe
     isSpacing = false
     style.setOverflow(Style.Overflow.HIDDEN)
 
-    add(ViewToolbar("Délais de paiement", addBtn))
+    add(ViewToolbar("Conditions de paiement", addBtn))
     add(grid)
   }
 

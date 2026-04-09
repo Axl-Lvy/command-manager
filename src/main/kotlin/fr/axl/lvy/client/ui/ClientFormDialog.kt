@@ -1,5 +1,6 @@
 package fr.axl.lvy.client.ui
 
+import com.vaadin.flow.component.UI
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.combobox.ComboBox
@@ -17,10 +18,14 @@ import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermService
+import fr.axl.lvy.paymentterm.ui.PaymentTermListView
 import fr.axl.lvy.user.User
 
 internal class ClientFormDialog(
   private val clientService: ClientService,
+  paymentTermService: PaymentTermService,
   private val client: Client?,
   private val onSave: Runnable,
   private val mode: ClientFormMode = ClientFormMode.CLIENT,
@@ -38,12 +43,14 @@ internal class ClientFormDialog(
   private val billingAddress = TextArea("Adresse facturation")
   private val shippingAddress = TextArea("Adresse livraison")
   private val paymentDelay = IntegerField("Délai paiement (jours)")
-  private val paymentMethod = TextField("Mode de paiement")
+  private val paymentTerm = ComboBox<PaymentTerm>("Conditions de paiement")
+  private val paymentTermButton = Button("Ouvrir la liste")
   private val statusToggle = Button()
   private val notes = TextArea("Notes")
 
   private val contacts = mutableListOf<Contact>()
   private val contactGrid = Grid<Contact>()
+  private val availablePaymentTerms = paymentTermService.findAll()
 
   init {
     setHeaderTitle(
@@ -94,6 +101,13 @@ internal class ClientFormDialog(
     }
 
     name.isRequired = true
+    paymentTerm.setItems(availablePaymentTerms)
+    paymentTerm.setItemLabelGenerator { it.label }
+    paymentTermButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+    paymentTermButton.addClickListener {
+      close()
+      UI.getCurrent().navigate(PaymentTermListView::class.java)
+    }
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
@@ -108,7 +122,10 @@ internal class ClientFormDialog(
     form.add(statusToggle, email)
     form.add(phone, website)
     form.add(siret, vatNumber)
-    form.add(paymentMethod, paymentDelay)
+    form.add(
+      HorizontalLayout(paymentTerm, paymentTermButton).apply { setWidthFull() },
+      paymentDelay,
+    )
     form.add(billingAddress, 2)
     form.add(shippingAddress, 2)
     form.add(notes, 2)
@@ -165,7 +182,8 @@ internal class ClientFormDialog(
     billingAddress.value = c.billingAddress ?: ""
     shippingAddress.value = c.shippingAddress ?: ""
     paymentDelay.value = c.paymentDelay
-    paymentMethod.value = c.paymentMethod ?: ""
+    paymentTerm.value =
+      availablePaymentTerms.firstOrNull { it.label.equals(c.paymentMethod, ignoreCase = true) }
     updateStatusButton(c.status)
     notes.value = c.notes ?: ""
     contacts.addAll(c.contacts)
@@ -227,7 +245,7 @@ internal class ClientFormDialog(
       c.billingAddress = if (billingAddress.value.isBlank()) null else billingAddress.value
       c.shippingAddress = if (shippingAddress.value.isBlank()) null else shippingAddress.value
       c.paymentDelay = paymentDelay.value
-      c.paymentMethod = if (paymentMethod.value.isBlank()) null else paymentMethod.value
+      c.paymentMethod = paymentTerm.value?.label
       c.status =
         if (statusToggle.element.getProperty("data-status") == Client.Status.INACTIVE.name) {
           Client.Status.INACTIVE

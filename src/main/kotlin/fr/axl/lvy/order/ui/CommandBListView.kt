@@ -18,7 +18,7 @@ import fr.axl.lvy.product.ProductService
 
 @Route("commandes-b")
 @PageTitle("Commandes B")
-@Menu(order = 6.0, icon = "vaadin:cart-o", title = "Commandes B")
+@Menu(order = 6.0, icon = "vaadin:cart-o", title = "Commande/B")
 internal class CommandBListView(
   private val orderBService: OrderBService,
   private val orderAService: OrderAService,

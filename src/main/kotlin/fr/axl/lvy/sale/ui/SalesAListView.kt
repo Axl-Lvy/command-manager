@@ -24,7 +24,7 @@ import fr.axl.lvy.sale.SalesAService
 
 @Route("ventes-a")
 @PageTitle("Ventes A")
-@Menu(order = 3.0, icon = "vaadin:cart", title = "Ventes A")
+@Menu(order = 3.0, icon = "vaadin:cart", title = "Vente/A")
 internal class SalesAListView(
   private val salesAService: SalesAService,
   private val clientService: ClientService,

@@ -22,7 +22,8 @@ internal class PaymentTermFormDialog(
 
   init {
     setHeaderTitle(
-      if (paymentTerm == null) "Nouveau délai de paiement" else "Modifier délai de paiement"
+      if (paymentTerm == null) "Nouvelle condition de paiement"
+      else "Modifier condition de paiement"
     )
     setWidth("520px")
 

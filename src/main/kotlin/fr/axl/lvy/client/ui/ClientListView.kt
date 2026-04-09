@@ -13,11 +13,15 @@ import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.paymentterm.PaymentTermService
 
 @Route("clients")
 @PageTitle("Clients")
 @Menu(order = 1.0, icon = "vaadin:users", title = "Clients")
-internal class ClientListView(private val clientService: ClientService) : VerticalLayout() {
+internal class ClientListView(
+  private val clientService: ClientService,
+  private val paymentTermService: PaymentTermService,
+) : VerticalLayout() {
 
   private val grid: Grid<Client>
 
@@ -72,7 +76,7 @@ internal class ClientListView(private val clientService: ClientService) : Vertic
 
   private fun openForm(client: Client?) {
     val loadedClient = client?.id?.let { clientService.findDetailedById(it).orElse(null) }
-    ClientFormDialog(clientService, loadedClient, this::refreshGrid).open()
+    ClientFormDialog(clientService, paymentTermService, loadedClient, this::refreshGrid).open()
   }
 
   private fun refreshGrid() {

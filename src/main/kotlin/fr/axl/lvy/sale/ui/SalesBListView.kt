@@ -18,7 +18,7 @@ import fr.axl.lvy.sale.SalesBService
 
 @Route("ventes-b")
 @PageTitle("Ventes B")
-@Menu(order = 4.0, icon = "vaadin:truck", title = "Ventes B")
+@Menu(order = 4.0, icon = "vaadin:truck", title = "Vente/B")
 internal class SalesBListView(
   private val salesBService: SalesBService,
   private val salesAService: SalesAService,
