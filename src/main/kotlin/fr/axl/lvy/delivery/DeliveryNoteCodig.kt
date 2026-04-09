@@ -6,6 +6,8 @@ import fr.axl.lvy.order.OrderCodig
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.time.LocalDate
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "delivery_notes_codig")
@@ -21,7 +23,8 @@ class DeliveryNoteCodig(
   var client: Client,
 ) : SoftDeletableEntity() {
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, columnDefinition = "enum('PREPARED','SHIPPED','DELIVERED','INCIDENT')")
   var status: DeliveryNoteCodigStatus = DeliveryNoteCodigStatus.PREPARED
 
   @Column(name = "shipping_date") var shippingDate: LocalDate? = null

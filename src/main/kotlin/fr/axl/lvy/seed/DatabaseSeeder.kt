@@ -18,6 +18,7 @@ import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
+import fr.axl.lvy.sale.SalesStatus
 import fr.axl.lvy.user.User
 import fr.axl.lvy.user.UserRepository
 import java.math.BigDecimal
@@ -410,7 +411,7 @@ class DatabaseSeeder(
     val sale2 =
       SalesCodig("", jeanDupont, LocalDate.now().minusDays(3)).apply {
         subject = "Custom part order"
-        status = SalesCodig.SalesCodigStatus.VALIDATED
+        status = SalesStatus.VALIDATED
         expectedDeliveryDate = LocalDate.now().plusDays(10)
       }
     val sale2Lines =

@@ -5,6 +5,8 @@ import fr.axl.lvy.order.OrderNetstone
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.time.LocalDate
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "delivery_notes_netstone")
@@ -17,7 +19,11 @@ class DeliveryNoteNetstone(
   var orderNetstone: OrderNetstone,
 ) : SoftDeletableEntity() {
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(
+    nullable = false,
+    columnDefinition = "enum('IN_TRANSIT','ARRIVED','INSPECTED','INCIDENT')",
+  )
   var status: DeliveryNoteNetstoneStatus = DeliveryNoteNetstoneStatus.IN_TRANSIT
 
   @Column(name = "shipping_date") var shippingDate: LocalDate? = null

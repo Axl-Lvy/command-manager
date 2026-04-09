@@ -8,6 +8,8 @@ import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
 import java.time.LocalDate
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "invoices_codig")
@@ -37,7 +39,11 @@ class InvoiceCodig(
   @Column(name = "client_vat_number", length = 20) var clientVatNumber: String? = null
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(
+    nullable = false,
+    columnDefinition = "enum('DRAFT','ISSUED','OVERDUE','PAID','CANCELLED','CREDIT_NOTE')",
+  )
   var status: InvoiceCodigStatus = InvoiceCodigStatus.DRAFT
 
   @Column(name = "due_date") var dueDate: LocalDate? = null

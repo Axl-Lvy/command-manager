@@ -5,6 +5,8 @@ import fr.axl.lvy.client.Client
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "products")
@@ -14,7 +16,10 @@ class Product(
 ) : SoftDeletableEntity() {
   @Column(name = "description", columnDefinition = "TEXT") var specifications: String? = null
 
-  @Enumerated(EnumType.STRING) @Column(nullable = false) var type: ProductType = ProductType.PRODUCT
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, columnDefinition = "enum('PRODUCT','SERVICE')")
+  var type: ProductType = ProductType.PRODUCT
 
   @Column(name = "is_mto", nullable = false) var mto: Boolean = false
 

@@ -8,6 +8,8 @@ import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
 import java.time.LocalDate
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "invoices_netstone")
@@ -16,7 +18,12 @@ class InvoiceNetstone(
   @Column(name = "internal_invoice_number", nullable = false, unique = true, length = 20)
   var internalInvoiceNumber: String,
   @Enumerated(EnumType.STRING)
-  @Column(name = "recipient_type", nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(
+    name = "recipient_type",
+    nullable = false,
+    columnDefinition = "enum('COMPANY_CODIG','PRODUCER')",
+  )
   var recipientType: RecipientType,
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "recipient_id", nullable = false)
@@ -29,10 +36,14 @@ class InvoiceNetstone(
   @JoinColumn(name = "order_netstone_id")
   var orderNetstone: OrderNetstone? = null
 
-  @Enumerated(EnumType.STRING) @Column(nullable = false) var origin: Origin = Origin.ORDER_LINKED
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, columnDefinition = "enum('ORDER_LINKED','STANDALONE')")
+  var origin: Origin = Origin.ORDER_LINKED
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, columnDefinition = "enum('RECEIVED','VERIFIED','PAID','DISPUTED')")
   var status: InvoiceNetstoneStatus = InvoiceNetstoneStatus.RECEIVED
 
   @Column(name = "due_date") var dueDate: LocalDate? = null

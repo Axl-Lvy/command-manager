@@ -1,6 +1,6 @@
 package fr.axl.lvy.order
 
-import fr.axl.lvy.base.SoftDeletableEntity
+import fr.axl.lvy.base.CodigDocument
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.delivery.DeliveryNoteCodig
 import fr.axl.lvy.documentline.DocumentLine
@@ -18,11 +18,9 @@ class OrderCodig(
   @field:NotBlank
   @Column(name = "order_number", nullable = false, unique = true, length = 20)
   var orderNumber: String,
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "client_id", nullable = false)
-  var client: Client,
+  client: Client,
   @Column(name = "order_date", nullable = false) var orderDate: LocalDate,
-) : SoftDeletableEntity() {
+) : CodigDocument(client) {
   companion object {
     private val EDITABLE =
       setOf(
@@ -37,32 +35,14 @@ class OrderCodig(
   @JoinColumn(name = "source_order_id")
   var sourceOrder: OrderCodig? = null
 
-  @Column(name = "client_reference", length = 100) var clientReference: String? = null
-
-  var subject: String? = null
-
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(nullable = false, length = 20, columnDefinition = "varchar(20)")
+  @Column(
+    nullable = false,
+    columnDefinition =
+      "enum('DRAFT','CONFIRMED','IN_PRODUCTION','READY','DELIVERED','INVOICED','CANCELLED')",
+  )
   var status: OrderCodigStatus = OrderCodigStatus.DRAFT
-
-  @Column(name = "expected_delivery_date") var expectedDeliveryDate: LocalDate? = null
-
-  @Column(name = "billing_address", columnDefinition = "TEXT") var billingAddress: String? = null
-
-  @Column(name = "shipping_address", columnDefinition = "TEXT") var shippingAddress: String? = null
-
-  @Column(name = "total_excl_tax", nullable = false, precision = 12, scale = 2)
-  var totalExclTax: BigDecimal = BigDecimal.ZERO
-    private set
-
-  @Column(name = "total_vat", nullable = false, precision = 12, scale = 2)
-  var totalVat: BigDecimal = BigDecimal.ZERO
-    private set
-
-  @Column(name = "total_incl_tax", nullable = false, precision = 12, scale = 2)
-  var totalInclTax: BigDecimal = BigDecimal.ZERO
-    private set
 
   @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
   var vatRate: BigDecimal = BigDecimal.ZERO
@@ -70,22 +50,6 @@ class OrderCodig(
   @Column(name = "margin_excl_tax", nullable = false, precision = 12, scale = 2)
   var marginExclTax: BigDecimal = BigDecimal.ZERO
     private set
-
-  @Column(nullable = false, length = 5) var currency: String = "EUR"
-
-  @Column(name = "exchange_rate", nullable = false, precision = 12, scale = 6)
-  var exchangeRate: BigDecimal = BigDecimal.ONE
-
-  @Column(name = "purchase_price_excl_tax", nullable = false, precision = 12, scale = 2)
-  var purchasePriceExclTax: BigDecimal = BigDecimal.ZERO
-
-  @Column(length = 10) var incoterms: String? = null
-
-  @Column(name = "incoterm_location", length = 100) var incotermLocation: String? = null
-
-  @Column(columnDefinition = "TEXT") var notes: String? = null
-
-  @Column(columnDefinition = "TEXT") var conditions: String? = null
 
   @OneToOne(mappedBy = "orderCodig", fetch = FetchType.LAZY)
   var orderNetstone: OrderNetstone? = null
@@ -100,11 +64,8 @@ class OrderCodig(
 
   fun isEditable(): Boolean = EDITABLE.contains(status)
 
-  fun recalculateTotals(lines: List<DocumentLine>) {
-    val totals = DocumentLine.computeTotals(lines)
-    totalExclTax = totals.exclTax
-    totalVat = totals.vat
-    totalInclTax = totals.inclTax
+  override fun recalculateTotals(lines: List<DocumentLine>) {
+    super.recalculateTotals(lines)
     marginExclTax = BigDecimal.ZERO
   }
 

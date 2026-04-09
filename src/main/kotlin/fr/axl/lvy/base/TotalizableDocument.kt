@@ -30,7 +30,7 @@ abstract class TotalizableDocument : SoftDeletableEntity() {
 
   @Column(columnDefinition = "TEXT") var notes: String? = null
 
-  fun recalculateTotals(lines: List<DocumentLine>) {
+  open fun recalculateTotals(lines: List<DocumentLine>) {
     val totals = DocumentLine.computeTotals(lines)
     totalExclTax = totals.exclTax
     totalVat = totals.vat

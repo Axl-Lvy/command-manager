@@ -138,8 +138,7 @@ class OrderCodigServiceTest {
     assertThat(updated.status).isEqualTo(OrderCodig.OrderCodigStatus.CONFIRMED)
     val salesNetstone = salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
     assertThat(salesNetstone).isNotNull
-    assertThat(salesNetstone!!.status)
-      .isEqualTo(fr.axl.lvy.sale.SalesNetstone.SalesNetstoneStatus.DRAFT)
+    assertThat(salesNetstone!!.status).isEqualTo(fr.axl.lvy.sale.SalesStatus.DRAFT)
     val salesNetstoneLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
         DocumentLine.DocumentType.SALES_NETSTONE,

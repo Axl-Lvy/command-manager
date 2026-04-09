@@ -21,6 +21,7 @@ import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
+import fr.axl.lvy.sale.SalesStatus
 
 @Route("ventes-codig")
 @PageTitle("Ventes Codig")
@@ -54,7 +55,7 @@ internal class SalesCodigListView(
 
         val deliveryButton = Button("Livraison") { openDeliveryForm(sale) }
         deliveryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
-        deliveryButton.isEnabled = sale.status == SalesCodig.SalesCodigStatus.VALIDATED
+        deliveryButton.isEnabled = sale.status == SalesStatus.VALIDATED
 
         HorizontalLayout(editButton, deliveryButton).apply {
           isPadding = false
@@ -96,11 +97,7 @@ internal class SalesCodigListView(
   private fun openDeliveryForm(sale: SalesCodig) {
     val loadedSale = sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }
     val orderCodig = loadedSale?.orderCodig
-    if (
-      loadedSale == null ||
-        loadedSale.status != SalesCodig.SalesCodigStatus.VALIDATED ||
-        orderCodig == null
-    ) {
+    if (loadedSale == null || loadedSale.status != SalesStatus.VALIDATED || orderCodig == null) {
       Notification.show(
           "La livraison n'est disponible que pour une vente validee avec commande Codig",
           3000,

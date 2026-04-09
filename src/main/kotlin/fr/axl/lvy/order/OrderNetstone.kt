@@ -5,6 +5,8 @@ import fr.axl.lvy.invoice.InvoiceNetstone
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.time.LocalDate
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "orders_netstone")
@@ -17,7 +19,11 @@ class OrderNetstone(
   var orderCodig: OrderCodig,
 ) : TotalizableDocument() {
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(
+    nullable = false,
+    columnDefinition = "enum('SENT','CONFIRMED','IN_PRODUCTION','RECEIVED','CANCELLED')",
+  )
   var status: OrderNetstoneStatus = OrderNetstoneStatus.SENT
 
   @Column(name = "order_date") var orderDate: LocalDate? = null

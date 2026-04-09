@@ -4,6 +4,8 @@ import fr.axl.lvy.base.BaseEntity
 import fr.axl.lvy.client.Client
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 
 @Entity
 @Table(name = "contacts")
@@ -23,7 +25,10 @@ class Contact(@NotBlank @Column(name = "last_name", nullable = false) var lastNa
 
   @Column(name = "job_title", length = 100) var jobTitle: String? = null
 
-  @Enumerated(EnumType.STRING) @Column(nullable = false) var role: ContactRole = ContactRole.OTHER
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.VARCHAR)
+  @Column(nullable = false, columnDefinition = "enum('PRIMARY','BILLING','TECHNICAL','OTHER')")
+  var role: ContactRole = ContactRole.OTHER
 
   var active: Boolean = true
 

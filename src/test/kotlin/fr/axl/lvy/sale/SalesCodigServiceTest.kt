@@ -34,7 +34,7 @@ class SalesCodigServiceTest {
   private fun createSalesCodig(
     number: String,
     client: Client,
-    status: SalesCodig.SalesCodigStatus = SalesCodig.SalesCodigStatus.DRAFT,
+    status: SalesStatus = SalesStatus.DRAFT,
   ): SalesCodig {
     val sale = SalesCodig(number, client, LocalDate.of(2026, 3, 1))
     sale.status = status
@@ -162,7 +162,7 @@ class SalesCodigServiceTest {
   @Test
   fun syncGeneratedOrder_creates_orderCodig_in_draft_without_salesNetstone_when_validated_with_mto() {
     val client = testData.createClient("CLI-SA06")
-    val sale = createSalesCodig("SA-MTO-01", client, SalesCodig.SalesCodigStatus.VALIDATED)
+    val sale = createSalesCodig("SA-MTO-01", client, SalesStatus.VALIDATED)
     salesCodigRepository.flush()
 
     val mtoProduct = Product("PRD-MTO-SA", "Custom Part")
@@ -191,7 +191,7 @@ class SalesCodigServiceTest {
   @Test
   fun syncGeneratedOrder_deletes_salesNetstone_when_no_mto_lines() {
     val client = testData.createClient("CLI-SA07")
-    val sale = createSalesCodig("SA-MTO-02", client, SalesCodig.SalesCodigStatus.VALIDATED)
+    val sale = createSalesCodig("SA-MTO-02", client, SalesStatus.VALIDATED)
     salesCodigRepository.flush()
 
     val regularProduct = Product("PRD-REG-SA", "Standard Part")
@@ -218,7 +218,7 @@ class SalesCodigServiceTest {
   @Test
   fun syncGeneratedOrder_does_not_create_orderCodig_for_service_even_if_mto_flag_is_true() {
     val client = testData.createClient("CLI-SA-SVC")
-    val sale = createSalesCodig("SA-SVC-01", client, SalesCodig.SalesCodigStatus.VALIDATED)
+    val sale = createSalesCodig("SA-SVC-01", client, SalesStatus.VALIDATED)
     salesCodigRepository.flush()
 
     val serviceProduct = Product("SRV-SA-01", "Service")
