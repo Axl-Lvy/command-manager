@@ -14,7 +14,7 @@ import org.hibernate.type.SqlTypes
 
 /**
  * A customer purchase order managed by Codig. Follows a status workflow: DRAFT -> CONFIRMED ->
- * IN_PRODUCTION -> READY -> DELIVERED -> INVOICED (or CANCELLED at most stages).
+ * DELIVERED -> INVOICED (or CANCELLED at most stages).
  *
  * When the order contains MTO products, a linked [OrderNetstone] is created to place the
  * corresponding supplier order. A [sourceOrder] link tracks duplicated orders.
@@ -29,13 +29,7 @@ class OrderCodig(
   @Column(name = "order_date", nullable = false) var orderDate: LocalDate,
 ) : CodigDocument(client) {
   companion object {
-    private val EDITABLE =
-      setOf(
-        OrderCodigStatus.DRAFT,
-        OrderCodigStatus.CONFIRMED,
-        OrderCodigStatus.IN_PRODUCTION,
-        OrderCodigStatus.READY,
-      )
+    private val EDITABLE = setOf(OrderCodigStatus.DRAFT, OrderCodigStatus.CONFIRMED)
   }
 
   @ManyToOne(fetch = FetchType.LAZY)
@@ -46,8 +40,7 @@ class OrderCodig(
   @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(
     nullable = false,
-    columnDefinition =
-      "enum('DRAFT','CONFIRMED','IN_PRODUCTION','READY','DELIVERED','INVOICED','CANCELLED')",
+    columnDefinition = "enum('DRAFT','CONFIRMED','DELIVERED','INVOICED','CANCELLED')",
   )
   var status: OrderCodigStatus = OrderCodigStatus.DRAFT
 
@@ -82,8 +75,6 @@ class OrderCodig(
   enum class OrderCodigStatus {
     DRAFT,
     CONFIRMED,
-    IN_PRODUCTION,
-    READY,
     DELIVERED,
     INVOICED,
     CANCELLED,
