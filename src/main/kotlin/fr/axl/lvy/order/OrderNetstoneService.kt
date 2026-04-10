@@ -25,11 +25,6 @@ class OrderNetstoneService(
         OrderNetstone.OrderNetstoneStatus.CANCELLED,
       )
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
-      setOf(
-        OrderNetstone.OrderNetstoneStatus.IN_PRODUCTION,
-        OrderNetstone.OrderNetstoneStatus.CANCELLED,
-      )
-    private val ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION =
       setOf(OrderNetstone.OrderNetstoneStatus.RECEIVED, OrderNetstone.OrderNetstoneStatus.CANCELLED)
   }
 
@@ -102,7 +97,6 @@ class OrderNetstoneService(
     when (current) {
       OrderNetstone.OrderNetstoneStatus.SENT -> ALLOWED_TRANSITIONS_FROM_SENT
       OrderNetstone.OrderNetstoneStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
-      OrderNetstone.OrderNetstoneStatus.IN_PRODUCTION -> ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION
       else -> emptySet()
     }
 

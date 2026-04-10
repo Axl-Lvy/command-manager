@@ -30,10 +30,6 @@ class OrderCodigService(
     private val ALLOWED_TRANSITIONS_FROM_DRAFT =
       setOf(OrderCodig.OrderCodigStatus.CONFIRMED, OrderCodig.OrderCodigStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
-      setOf(OrderCodig.OrderCodigStatus.IN_PRODUCTION, OrderCodig.OrderCodigStatus.CANCELLED)
-    private val ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION =
-      setOf(OrderCodig.OrderCodigStatus.READY, OrderCodig.OrderCodigStatus.CANCELLED)
-    private val ALLOWED_TRANSITIONS_FROM_READY =
       setOf(OrderCodig.OrderCodigStatus.DELIVERED, OrderCodig.OrderCodigStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_DELIVERED = setOf(OrderCodig.OrderCodigStatus.INVOICED)
   }
@@ -229,8 +225,6 @@ class OrderCodigService(
     when (current) {
       OrderCodig.OrderCodigStatus.DRAFT -> ALLOWED_TRANSITIONS_FROM_DRAFT
       OrderCodig.OrderCodigStatus.CONFIRMED -> ALLOWED_TRANSITIONS_FROM_CONFIRMED
-      OrderCodig.OrderCodigStatus.IN_PRODUCTION -> ALLOWED_TRANSITIONS_FROM_IN_PRODUCTION
-      OrderCodig.OrderCodigStatus.READY -> ALLOWED_TRANSITIONS_FROM_READY
       OrderCodig.OrderCodigStatus.DELIVERED -> ALLOWED_TRANSITIONS_FROM_DELIVERED
       else -> emptySet()
     }

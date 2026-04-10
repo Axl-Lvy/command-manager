@@ -74,8 +74,8 @@ This project follows a **feature-based package structure** rather than tradition
   - `ui/`: QuoteListView, QuoteFormDialog
 
 - **`fr.axl.lvy.order`**: Order management
-  - `OrderCodig.kt`: Customer order (CONFIRMED → IN_PRODUCTION → READY → DELIVERED → INVOICED)
-  - `OrderNetstone.kt`: Supplier/MTO order (SENT → CONFIRMED → IN_PRODUCTION → RECEIVED)
+  - `OrderCodig.kt`: Customer order (DRAFT → CONFIRMED → DELIVERED → INVOICED or CANCELLED)
+  - `OrderNetstone.kt`: Supplier/MTO order (SENT → CONFIRMED → RECEIVED or CANCELLED)
   - Services with state machines, duplicate(), handleMto()
   - `ui/`: CommandCodigListView, CommandCodigFormDialog, CommandNetstoneListView, CommandNetstoneFormDialog
 
