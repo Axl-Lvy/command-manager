@@ -77,24 +77,10 @@ class OrderNetstoneServiceTest {
   }
 
   @Test
-  fun status_transition_confirmed_to_in_production() {
+  fun status_transition_confirmed_to_received() {
     val orderCodig = createOrderCodig("CA-OB-04")
     val orderNetstone =
       createOrderNetstone("CB-ST-02", orderCodig, OrderNetstone.OrderNetstoneStatus.CONFIRMED)
-
-    val updated =
-      orderNetstoneService.changeStatus(
-        orderNetstone,
-        OrderNetstone.OrderNetstoneStatus.IN_PRODUCTION,
-      )
-    assertThat(updated.status).isEqualTo(OrderNetstone.OrderNetstoneStatus.IN_PRODUCTION)
-  }
-
-  @Test
-  fun status_transition_in_production_to_received() {
-    val orderCodig = createOrderCodig("CA-OB-05")
-    val orderNetstone =
-      createOrderNetstone("CB-ST-03", orderCodig, OrderNetstone.OrderNetstoneStatus.IN_PRODUCTION)
 
     val updated =
       orderNetstoneService.changeStatus(orderNetstone, OrderNetstone.OrderNetstoneStatus.RECEIVED)
@@ -143,7 +129,7 @@ class OrderNetstoneServiceTest {
   fun markReceived_sets_reception_data() {
     val orderCodig = createOrderCodig("CA-OB-08")
     val orderNetstone =
-      createOrderNetstone("CB-REC-01", orderCodig, OrderNetstone.OrderNetstoneStatus.IN_PRODUCTION)
+      createOrderNetstone("CB-REC-01", orderCodig, OrderNetstone.OrderNetstoneStatus.CONFIRMED)
 
     val received =
       orderNetstoneService.markReceived(
