@@ -10,7 +10,7 @@ import org.hibernate.type.SqlTypes
 
 /**
  * A supplier purchase order placed by Netstone, always linked to a parent [OrderCodig]. Follows a
- * status workflow: SENT -> CONFIRMED -> IN_PRODUCTION -> RECEIVED (or CANCELLED).
+ * status workflow: SENT -> CONFIRMED -> RECEIVED (or CANCELLED).
  *
  * Tracks reception details (date, conformity, reserves) when goods arrive.
  */
@@ -26,10 +26,7 @@ class OrderNetstone(
 ) : TotalizableDocument() {
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
-  @Column(
-    nullable = false,
-    columnDefinition = "enum('SENT','CONFIRMED','IN_PRODUCTION','RECEIVED','CANCELLED')",
-  )
+  @Column(nullable = false, columnDefinition = "enum('SENT','CONFIRMED','RECEIVED','CANCELLED')")
   var status: OrderNetstoneStatus = OrderNetstoneStatus.SENT
 
   @Column(name = "order_date") var orderDate: LocalDate? = null
@@ -48,7 +45,6 @@ class OrderNetstone(
   enum class OrderNetstoneStatus {
     SENT,
     CONFIRMED,
-    IN_PRODUCTION,
     RECEIVED,
     CANCELLED,
   }

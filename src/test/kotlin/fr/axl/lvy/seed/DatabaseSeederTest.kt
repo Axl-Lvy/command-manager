@@ -60,7 +60,7 @@ class DatabaseSeederTest {
     val orders = orderCodigRepository.findAll()
     assertThat(orders).hasSizeGreaterThanOrEqualTo(2)
     assertThat(orders.map { it.status })
-      .contains(OrderCodig.OrderCodigStatus.DRAFT, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
+      .contains(OrderCodig.OrderCodigStatus.DRAFT, OrderCodig.OrderCodigStatus.CONFIRMED)
   }
 
   @Test

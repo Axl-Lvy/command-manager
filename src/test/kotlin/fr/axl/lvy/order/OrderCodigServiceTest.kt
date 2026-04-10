@@ -74,38 +74,34 @@ class OrderCodigServiceTest {
   }
 
   @Test
-  fun isEditable_for_confirmed_in_production_ready() {
+  fun isEditable_for_draft_and_confirmed() {
     val client = testData.createClient("CLI-OA03")
 
+    assertThat(createOrderCodig("CA-E1", client, OrderCodig.OrderCodigStatus.DRAFT).isEditable())
+      .isTrue
     assertThat(
-        createOrderCodig("CA-E1", client, OrderCodig.OrderCodigStatus.CONFIRMED).isEditable()
+        createOrderCodig("CA-E2", client, OrderCodig.OrderCodigStatus.CONFIRMED).isEditable()
       )
       .isTrue
     assertThat(
-        createOrderCodig("CA-E2", client, OrderCodig.OrderCodigStatus.IN_PRODUCTION).isEditable()
-      )
-      .isTrue
-    assertThat(createOrderCodig("CA-E3", client, OrderCodig.OrderCodigStatus.READY).isEditable())
-      .isTrue
-    assertThat(
-        createOrderCodig("CA-E4", client, OrderCodig.OrderCodigStatus.DELIVERED).isEditable()
+        createOrderCodig("CA-E3", client, OrderCodig.OrderCodigStatus.DELIVERED).isEditable()
       )
       .isFalse
-    assertThat(createOrderCodig("CA-E5", client, OrderCodig.OrderCodigStatus.INVOICED).isEditable())
+    assertThat(createOrderCodig("CA-E4", client, OrderCodig.OrderCodigStatus.INVOICED).isEditable())
       .isFalse
     assertThat(
-        createOrderCodig("CA-E6", client, OrderCodig.OrderCodigStatus.CANCELLED).isEditable()
+        createOrderCodig("CA-E5", client, OrderCodig.OrderCodigStatus.CANCELLED).isEditable()
       )
       .isFalse
   }
 
   @Test
-  fun status_transition_confirmed_to_in_production() {
+  fun status_transition_confirmed_to_delivered() {
     val client = testData.createClient("CLI-OA04")
     val order = createOrderCodig("CA-ST-01", client, OrderCodig.OrderCodigStatus.CONFIRMED)
 
-    val updated = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
-    assertThat(updated.status).isEqualTo(OrderCodig.OrderCodigStatus.IN_PRODUCTION)
+    val updated = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.DELIVERED)
+    assertThat(updated.status).isEqualTo(OrderCodig.OrderCodigStatus.DELIVERED)
   }
 
   @Test
@@ -246,24 +242,6 @@ class OrderCodigServiceTest {
     assertThat(saved.totalExclTax).isEqualByComparingTo("100.00")
     val salesNetstone = salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
     assertThat(salesNetstone).isNull()
-  }
-
-  @Test
-  fun status_transition_in_production_to_ready() {
-    val client = testData.createClient("CLI-OA05")
-    val order = createOrderCodig("CA-ST-02", client, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
-
-    val updated = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.READY)
-    assertThat(updated.status).isEqualTo(OrderCodig.OrderCodigStatus.READY)
-  }
-
-  @Test
-  fun status_transition_ready_to_delivered() {
-    val client = testData.createClient("CLI-OA06")
-    val order = createOrderCodig("CA-ST-03", client, OrderCodig.OrderCodigStatus.READY)
-
-    val updated = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.DELIVERED)
-    assertThat(updated.status).isEqualTo(OrderCodig.OrderCodigStatus.DELIVERED)
   }
 
   @Test

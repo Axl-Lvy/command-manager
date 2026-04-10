@@ -335,7 +335,7 @@ class DatabaseSeeder(
       "[Seeder] Created order Codig: ${savedOrder1.orderNumber} for ${acme.name} (CONFIRMED)"
     )
 
-    // Order 2: Dupont, IN_PRODUCTION, widgets + consulting
+    // Order 2: Dupont, CONFIRMED, widgets + consulting
     val order2 =
       OrderCodig("", dupont, LocalDate.now().minusDays(20)).apply {
         subject = "Widgets + consulting mission"
@@ -359,10 +359,8 @@ class DatabaseSeeder(
       )
     var savedOrder2 = orderCodigService.saveWithLines(order2, order2Lines)
     savedOrder2 = orderCodigService.changeStatus(savedOrder2, OrderCodig.OrderCodigStatus.CONFIRMED)
-    savedOrder2 =
-      orderCodigService.changeStatus(savedOrder2, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
     logger.info(
-      "[Seeder] Created order Codig: ${savedOrder2.orderNumber} for ${dupont.name} (IN_PRODUCTION)"
+      "[Seeder] Created order Codig: ${savedOrder2.orderNumber} for ${dupont.name} (CONFIRMED)"
     )
   }
 
