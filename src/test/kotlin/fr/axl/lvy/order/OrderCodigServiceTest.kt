@@ -56,6 +56,17 @@ class OrderCodigServiceTest {
   }
 
   @Test
+  fun save_uses_client_delivery_port_when_blank() {
+    val client = testData.createClient("CLI-OA-DELIVERY")
+    client.deliveryPort = "Port de Bordeaux"
+    val order = OrderCodig("CA-DELIVERY-001", client, LocalDate.of(2026, 3, 1))
+
+    val saved = orderCodigService.save(order)
+
+    assertThat(saved.deliveryLocation).isEqualTo("Port de Bordeaux")
+  }
+
+  @Test
   fun default_status_is_draft() {
     val client = testData.createClient("CLI-OA00")
     val order = OrderCodig("CA-DRAFT-001", client, LocalDate.of(2026, 3, 1))

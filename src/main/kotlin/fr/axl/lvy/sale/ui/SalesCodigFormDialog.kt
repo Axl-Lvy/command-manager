@@ -29,12 +29,13 @@ import java.time.LocalDate
 
 internal class SalesCodigFormDialog(
   private val salesCodigService: SalesCodigService,
-  clientService: ClientService,
+  private val clientService: ClientService,
   incotermService: IncotermService,
   paymentTermService: PaymentTermService,
   productService: ProductService,
   private val order: SalesCodig?,
   private val onSave: Runnable,
+  private val onOpenLinkedOrder: ((SalesCodig) -> Unit)? = null,
 ) : Dialog() {
 
   private val orderNumber = TextField("N° Vente")
@@ -55,7 +56,7 @@ internal class SalesCodigFormDialog(
   private var selectedCurrency: String = order?.currency ?: "EUR"
 
   init {
-    headerTitle = if (order == null) "Nouvelle vente Codig" else "Modifier vente Codig"
+    headerTitle = if (order == null) "Nouvelle vente CoDIG" else "Vente CoDIG"
     width = "900px"
     height = "90%"
 
@@ -77,11 +78,10 @@ internal class SalesCodigFormDialog(
     }
 
     clientCombo.setItems(clientService.findAll().filter { it.isClient() })
-    clientCombo.setItemLabelGenerator { "${it.clientCode} - ${it.name}" }
+    clientCombo.setItemLabelGenerator { it.name }
     clientCombo.addValueChangeListener { event ->
       val client = event.value ?: return@addValueChangeListener
-      billingAddress.value = client.billingAddress ?: ""
-      shippingAddress.value = client.shippingAddress ?: ""
+      applyClientDefaults(client)
     }
 
     val form = FormLayout()
@@ -102,7 +102,7 @@ internal class SalesCodigFormDialog(
         currencySupplier = { selectedCurrency },
         currencyUpdater = { selectedCurrency = it },
         lineTaxMode = DocumentLineEditor.LineTaxMode.VAT,
-        defaultVatRate = BigDecimal("20.00"),
+        defaultVatRate = BigDecimal.ZERO,
       )
 
     val content = VerticalLayout(form, lineEditor)
@@ -112,7 +112,18 @@ internal class SalesCodigFormDialog(
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
-    footer.add(HorizontalLayout(saveBtn, cancelBtn))
+    val actions = HorizontalLayout()
+    if (order?.orderCodig != null && onOpenLinkedOrder != null) {
+      val purchaseButton =
+        Button("Achat") {
+          close()
+          onOpenLinkedOrder.invoke(order)
+        }
+      purchaseButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+      actions.add(purchaseButton)
+    }
+    actions.add(saveBtn, cancelBtn)
+    footer.add(actions)
 
     if (order != null) {
       populateForm(order)
@@ -141,6 +152,15 @@ internal class SalesCodigFormDialog(
     conditions.value = o.conditions ?: ""
 
     lineEditor.setLines(salesCodigService.findLines(o.id!!))
+  }
+
+  private fun applyClientDefaults(client: Client) {
+    val detailedClient =
+      client.id?.let { clientService.findDetailedById(it).orElse(client) } ?: client
+    billingAddress.value = detailedClient.billingAddress ?: ""
+    shippingAddress.value = detailedClient.shippingAddress ?: ""
+    incotermCombo.value = allIncoterms.firstOrNull { it.id == detailedClient.incoterm?.id }
+    incotermLocation.value = detailedClient.incotermLocation ?: ""
   }
 
   private fun save() {

@@ -17,6 +17,8 @@ import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.incoterm.Incoterm
+import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.user.User
@@ -24,6 +26,7 @@ import fr.axl.lvy.user.User
 internal class ClientFormDialog(
   private val clientService: ClientService,
   paymentTermService: PaymentTermService,
+  incotermService: IncotermService,
   private val client: Client?,
   private val onSave: Runnable,
   private val mode: ClientFormMode = ClientFormMode.CLIENT,
@@ -42,12 +45,16 @@ internal class ClientFormDialog(
   private val shippingAddress = TextArea("Adresse livraison")
   private val paymentDelay = IntegerField("Délai paiement (jours)")
   private val paymentTerm = ComboBox<PaymentTerm>("Conditions de paiement")
+  private val incoterm = ComboBox<Incoterm>("Incoterm")
+  private val incotermLocation = TextField("Emplacement")
+  private val deliveryPort = TextField("Port de livraison")
   private val statusToggle = Button()
   private val notes = TextArea("Notes")
 
   private val contacts = mutableListOf<Contact>()
   private val contactGrid = Grid<Contact>()
   private val availablePaymentTerms = paymentTermService.findAll()
+  private val availableIncoterms = incotermService.findAll()
 
   init {
     setHeaderTitle(
@@ -100,6 +107,8 @@ internal class ClientFormDialog(
     name.isRequired = true
     paymentTerm.setItems(availablePaymentTerms)
     paymentTerm.setItemLabelGenerator { it.label }
+    incoterm.setItems(availableIncoterms)
+    incoterm.setItemLabelGenerator { "${it.name} - ${it.label}" }
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
@@ -115,6 +124,8 @@ internal class ClientFormDialog(
     form.add(phone, website)
     form.add(siret, vatNumber)
     form.add(paymentTerm, paymentDelay)
+    form.add(incoterm, incotermLocation)
+    form.add(deliveryPort, 2)
     form.add(billingAddress, 2)
     form.add(shippingAddress, 2)
     form.add(notes, 2)
@@ -172,6 +183,9 @@ internal class ClientFormDialog(
     shippingAddress.value = c.shippingAddress ?: ""
     paymentDelay.value = c.paymentDelay
     paymentTerm.value = c.paymentTerm
+    incoterm.value = c.incoterm
+    incotermLocation.value = c.incotermLocation ?: ""
+    deliveryPort.value = c.deliveryPort ?: ""
     updateStatusButton(c.status)
     notes.value = c.notes ?: ""
     contacts.addAll(c.contacts)
@@ -234,6 +248,9 @@ internal class ClientFormDialog(
       c.shippingAddress = if (shippingAddress.value.isBlank()) null else shippingAddress.value
       c.paymentDelay = paymentDelay.value
       c.paymentTerm = paymentTerm.value
+      c.incoterm = incoterm.value
+      c.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
+      c.deliveryPort = deliveryPort.value.takeIf { it.isNotBlank() }
       c.status =
         if (statusToggle.element.getProperty("data-status") == Client.Status.INACTIVE.name) {
           Client.Status.INACTIVE

@@ -1,6 +1,8 @@
 package fr.axl.lvy.client
 
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.incoterm.Incoterm
+import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.user.User
 import java.math.BigDecimal
 import org.assertj.core.api.Assertions.assertThat
@@ -15,6 +17,7 @@ class ClientServiceTest {
 
   @Autowired lateinit var clientService: ClientService
   @Autowired lateinit var clientRepository: ClientRepository
+  @Autowired lateinit var incotermService: IncotermService
 
   @Test
   fun save_and_retrieve_client() {
@@ -121,6 +124,39 @@ class ClientServiceTest {
   }
 
   @Test
+  fun findDefaultCodigSupplier_prefers_netstone_own_company() {
+    val codig = Client("CLI-OWN-A", "Société A")
+    codig.type = Client.ClientType.OWN_COMPANY
+    codig.role = Client.ClientRole.OWN_COMPANY
+    codig.visibleCompany = User.Company.CODIG
+    clientService.save(codig)
+
+    val netstone = Client("CLI-OWN-B", "Netstone")
+    netstone.type = Client.ClientType.OWN_COMPANY
+    netstone.role = Client.ClientRole.OWN_COMPANY
+    netstone.visibleCompany = User.Company.NETSTONE
+    clientService.save(netstone)
+
+    val defaultSupplier = clientService.findDefaultCodigSupplier()
+
+    assertThat(defaultSupplier).isPresent
+    assertThat(defaultSupplier.get().id).isEqualTo(netstone.id)
+  }
+
+  @Test
+  fun findDefaultCodigSupplier_does_not_fallback_to_codig_own_company() {
+    val codig = Client("CLI-OWN-CODIG", "Société A")
+    codig.type = Client.ClientType.OWN_COMPANY
+    codig.role = Client.ClientRole.OWN_COMPANY
+    codig.visibleCompany = User.Company.CODIG
+    clientService.save(codig)
+
+    val defaultSupplier = clientService.findDefaultCodigSupplier()
+
+    assertThat(defaultSupplier).isEmpty
+  }
+
+  @Test
   fun isClient_and_isProducer_reflect_role() {
     val client = Client("CLI-R1", "Client Role")
     client.role = Client.ClientRole.CLIENT
@@ -178,5 +214,22 @@ class ClientServiceTest {
     val found = clientService.findDetailedById(client.id!!)
     assertThat(found).isPresent
     assertThat(found.get().name).isEqualTo("Detailed Client")
+  }
+
+  @Test
+  fun findDetailedById_returns_default_delivery_terms() {
+    val incoterm = incotermService.save(Incoterm("DAP-CLIENT", "Delivered at place client"))
+    val client = Client("CLI-DET-02", "Delivery Terms Client")
+    client.incoterm = incoterm
+    client.incotermLocation = "Paris"
+    client.deliveryPort = "Le Havre"
+    clientService.save(client)
+
+    val found = clientService.findDetailedById(client.id!!)
+
+    assertThat(found).isPresent
+    assertThat(found.get().incoterm?.name).isEqualTo("DAP-CLIENT")
+    assertThat(found.get().incotermLocation).isEqualTo("Paris")
+    assertThat(found.get().deliveryPort).isEqualTo("Le Havre")
   }
 }

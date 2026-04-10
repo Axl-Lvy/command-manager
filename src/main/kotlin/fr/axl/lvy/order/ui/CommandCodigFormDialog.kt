@@ -27,15 +27,17 @@ import java.time.LocalDate
 
 internal class CommandCodigFormDialog(
   private val orderCodigService: OrderCodigService,
-  clientService: ClientService,
+  private val clientService: ClientService,
   incotermService: IncotermService,
   productService: ProductService,
   private val order: OrderCodig?,
   private val onSave: Runnable,
+  private val hasLinkedSale: Boolean = false,
+  private val onOpenLinkedSale: ((OrderCodig) -> Unit)? = null,
 ) : Dialog() {
 
   private val orderNumber = TextField("N° Commande")
-  private val clientCombo = ComboBox<Client>("Client")
+  private val clientCombo = ComboBox<Client>("Fournisseur")
   private val orderDate = DatePicker("Date commande")
   private val status = ComboBox<OrderCodig.OrderCodigStatus>("Statut")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
@@ -46,6 +48,7 @@ internal class CommandCodigFormDialog(
   private val vatRate = BigDecimalField("TVA (%)")
   private val incotermCombo = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
+  private val deliveryLocation = TextField("Livrer à")
   private val billingAddress = TextArea("Adresse facturation")
   private val shippingAddress = TextArea("Adresse livraison")
   private val notes = TextArea("Notes")
@@ -54,7 +57,7 @@ internal class CommandCodigFormDialog(
   private val allIncoterms: List<Incoterm>
 
   init {
-    setHeaderTitle(if (order == null) "Nouvelle commande Codig" else "Modifier commande Codig")
+    setHeaderTitle(if (order == null) "Nouvelle commande CoDIG" else "Commande CoDIG")
     setWidth("900px")
     setHeight("90%")
 
@@ -68,12 +71,11 @@ internal class CommandCodigFormDialog(
     incotermCombo.setItemLabelGenerator { it.name }
     status.setItems(*OrderCodig.OrderCodigStatus.entries.toTypedArray())
 
-    clientCombo.setItems(clientService.findAll().filter { it.isClient() })
-    clientCombo.setItemLabelGenerator { "${it.clientCode} - ${it.name}" }
+    clientCombo.setItems(clientService.findAll().filter { it.isSupplierForProduct() })
+    clientCombo.setItemLabelGenerator { it.name }
     clientCombo.addValueChangeListener { event ->
       val client = event.value ?: return@addValueChangeListener
-      billingAddress.value = client.billingAddress ?: ""
-      shippingAddress.value = client.shippingAddress ?: ""
+      applyClientDefaults(client)
     }
 
     val form = FormLayout()
@@ -82,6 +84,7 @@ internal class CommandCodigFormDialog(
     form.add(status, expectedDeliveryDate, clientReference)
     form.add(subject, totalExclTax, currency)
     form.add(vatRate, incotermCombo, incotermLocation)
+    form.add(deliveryLocation, 3)
     form.add(billingAddress, 3)
     form.add(shippingAddress, 3)
     form.add(notes, 3)
@@ -102,7 +105,18 @@ internal class CommandCodigFormDialog(
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
-    footer.add(HorizontalLayout(saveBtn, cancelBtn))
+    val actions = HorizontalLayout()
+    if (order != null && hasLinkedSale && onOpenLinkedSale != null) {
+      val saleButton =
+        Button("Vente") {
+          close()
+          onOpenLinkedSale.invoke(order)
+        }
+      saleButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+      actions.add(saleButton)
+    }
+    actions.add(saveBtn, cancelBtn)
+    footer.add(actions)
 
     if (order != null) {
       populateForm(order)
@@ -113,6 +127,7 @@ internal class CommandCodigFormDialog(
       currency.value = "EUR"
       vatRate.value = BigDecimal("20.00")
       totalExclTax.value = BigDecimal.ZERO
+      clientService.findDefaultCodigSupplier().ifPresent { clientCombo.value = it }
     }
   }
 
@@ -129,12 +144,23 @@ internal class CommandCodigFormDialog(
     vatRate.value = o.vatRate
     incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
     incotermLocation.value = o.incotermLocation ?: ""
+    deliveryLocation.value = o.deliveryLocation ?: ""
     billingAddress.value = o.billingAddress ?: ""
     shippingAddress.value = o.shippingAddress ?: ""
     notes.value = o.notes ?: ""
     conditions.value = o.conditions ?: ""
 
     lineEditor.setLines(orderCodigService.findLines(o.id!!))
+  }
+
+  private fun applyClientDefaults(client: Client) {
+    val detailedClient =
+      client.id?.let { clientService.findDetailedById(it).orElse(client) } ?: client
+    billingAddress.value = detailedClient.billingAddress ?: ""
+    shippingAddress.value = detailedClient.shippingAddress ?: ""
+    incotermCombo.value = allIncoterms.firstOrNull { it.id == detailedClient.incoterm?.id }
+    incotermLocation.value = detailedClient.incotermLocation ?: ""
+    deliveryLocation.value = detailedClient.deliveryPort ?: ""
   }
 
   private fun save() {
@@ -161,6 +187,7 @@ internal class CommandCodigFormDialog(
     o.vatRate = vatRate.value ?: BigDecimal.ZERO
     o.incoterms = incotermCombo.value?.name
     o.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
+    o.deliveryLocation = deliveryLocation.value.takeIf { it.isNotBlank() }
     o.billingAddress = billingAddress.value.takeIf { it.isNotBlank() }
     o.shippingAddress = shippingAddress.value.takeIf { it.isNotBlank() }
     o.notes = notes.value.takeIf { it.isNotBlank() }

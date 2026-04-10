@@ -54,6 +54,8 @@ class OrderCodig(
   @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
   var vatRate: BigDecimal = BigDecimal.ZERO
 
+  @Column(name = "delivery_location", length = 100) var deliveryLocation: String? = null
+
   @Column(name = "margin_excl_tax", nullable = false, precision = 12, scale = 2)
   var marginExclTax: BigDecimal = BigDecimal.ZERO
     private set

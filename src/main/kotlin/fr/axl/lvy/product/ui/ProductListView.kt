@@ -34,6 +34,7 @@ internal class ProductListView(
     grid = Grid()
     grid.addColumn(Product::name).setHeader("Nom").setFlexGrow(1)
     grid.addColumn { it.type.name }.setHeader("Type").setAutoWidth(true)
+    grid.addColumn { it.priceType ?: "" }.setHeader("Conditions prix achat").setAutoWidth(true)
     grid
       .addColumn { "${it.sellingPriceExclTax} ${it.sellingCurrency}" }
       .setHeader("Prix vente HT")

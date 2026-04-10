@@ -4,6 +4,7 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
+import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
@@ -17,6 +18,9 @@ import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.delivery.DeliveryNoteCodigService
 import fr.axl.lvy.delivery.ui.DeliveryNoteCodigFormDialog
 import fr.axl.lvy.incoterm.IncotermService
+import fr.axl.lvy.order.OrderCodig
+import fr.axl.lvy.order.OrderCodigService
+import fr.axl.lvy.order.ui.CommandCodigFormDialog
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
@@ -33,6 +37,7 @@ internal class SalesCodigListView(
   private val paymentTermService: PaymentTermService,
   private val productService: ProductService,
   private val deliveryNoteCodigService: DeliveryNoteCodigService,
+  private val orderCodigService: OrderCodigService,
 ) : VerticalLayout() {
 
   private val grid: Grid<SalesCodig>
@@ -50,14 +55,15 @@ internal class SalesCodigListView(
     grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
     grid
       .addComponentColumn { sale ->
-        val editButton = Button("Modifier") { openForm(sale) }
-        editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+        val viewButton = Button("Vue") { openForm(sale) }
+        viewButton.icon = VaadinIcon.EYE.create()
+        viewButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
 
         val deliveryButton = Button("Livraison") { openDeliveryForm(sale) }
         deliveryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
         deliveryButton.isEnabled = sale.status == SalesStatus.VALIDATED
 
-        HorizontalLayout(editButton, deliveryButton).apply {
+        HorizontalLayout(viewButton, deliveryButton).apply {
           isPadding = false
           isSpacing = true
         }
@@ -90,8 +96,37 @@ internal class SalesCodigListView(
         productService,
         loadedOrder,
         this::refreshGrid,
+        this::openLinkedOrder,
       )
       .open()
+  }
+
+  private fun openLinkedOrder(sale: SalesCodig) {
+    val linkedOrder =
+      sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }?.orderCodig
+        ?: sale.orderCodig
+        ?: return
+    val loadedOrder =
+      linkedOrder.id?.let { orderCodigService.findDetailedById(it).orElse(linkedOrder) }
+        ?: linkedOrder
+
+    CommandCodigFormDialog(
+        orderCodigService,
+        clientService,
+        incotermService,
+        productService,
+        loadedOrder,
+        this::refreshGrid,
+        true,
+        this::openLinkedSale,
+      )
+      .open()
+  }
+
+  private fun openLinkedSale(order: OrderCodig) {
+    val linkedSale =
+      order.id?.let { salesCodigService.findByOrderCodigId(it).orElse(null) } ?: return
+    openForm(linkedSale)
   }
 
   private fun openDeliveryForm(sale: SalesCodig) {

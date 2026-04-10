@@ -2,6 +2,7 @@ package fr.axl.lvy.client
 
 import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.user.User
 import jakarta.persistence.*
@@ -64,6 +65,14 @@ class Client(
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "payment_term_id")
   var paymentTerm: PaymentTerm? = null
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "incoterm_id")
+  var incoterm: Incoterm? = null
+
+  @Column(name = "incoterm_location", length = 100) var incotermLocation: String? = null
+
+  @Column(name = "delivery_port", length = 100) var deliveryPort: String? = null
 
   @Column(name = "default_discount", nullable = false, precision = 5, scale = 2)
   var defaultDiscount: BigDecimal = BigDecimal.ZERO

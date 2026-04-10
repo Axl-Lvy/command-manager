@@ -34,6 +34,7 @@ internal class ProductFormDialog(
   private val name = TextField("Nom")
   private val specifications = TextArea("Spécifications")
   private val type = ComboBox<Product.ProductType>("Type")
+  private val priceType = TextField("Conditions prix achat")
   private val mto = Checkbox("Fabrication sur commande (MTO)")
   private val sellingPrice = BigDecimalField("Prix vente HT")
   private val sellingCurrency = Select<String>()
@@ -83,13 +84,13 @@ internal class ProductFormDialog(
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
     form.add(name, type)
+    form.add(priceType, mto)
     form.add(specifications, 2)
     form.add(unitOption, customUnit)
     form.add(sellingPrice, sellingCurrency)
     form.add(purchasePrice, purchaseCurrency)
     form.add(suppliers, 2)
     form.add(hsCode, madeIn)
-    form.add(mto)
     form.add(active)
 
     val addClientCodeButton = Button("Ajouter code client") { addClientCodeRow() }
@@ -116,6 +117,7 @@ internal class ProductFormDialog(
     name.value = p.name
     specifications.value = p.specifications ?: ""
     type.value = p.type
+    priceType.value = p.priceType ?: ""
     mto.value = p.mto
     sellingPrice.value = p.sellingPriceExclTax
     sellingCurrency.value = p.sellingCurrency
@@ -153,27 +155,37 @@ internal class ProductFormDialog(
       return
     }
 
-    val p = product ?: Product(name = name.value)
-    p.name = name.value
-    p.specifications = if (specifications.value.isBlank()) null else specifications.value
-    p.type = type.value
-    p.mto = type.value == Product.ProductType.PRODUCT && mto.value
-    p.sellingPriceExclTax = sellingPrice.value ?: BigDecimal.ZERO
-    p.sellingCurrency = sellingCurrency.value ?: "EUR"
-    p.purchasePriceExclTax = purchasePrice.value ?: BigDecimal.ZERO
-    p.purchaseCurrency = purchaseCurrency.value ?: "EUR"
-    p.unit = resolveUnitValue()
-    p.hsCode = if (hsCode.value.isBlank()) null else hsCode.value
-    p.madeIn = madeIn.value
-    p.replaceClientProductCodes(collectClientCodes())
-    p.replaceSuppliers(suppliers.selectedItems)
-    p.active = active.value
+    try {
+      val p = product ?: Product(name = name.value)
+      p.name = name.value
+      p.specifications = if (specifications.value.isBlank()) null else specifications.value
+      p.type = type.value
+      p.priceType = priceType.value.takeIf { it.isNotBlank() }
+      p.mto = type.value == Product.ProductType.PRODUCT && mto.value
+      p.sellingPriceExclTax = sellingPrice.value ?: BigDecimal.ZERO
+      p.sellingCurrency = sellingCurrency.value ?: "EUR"
+      p.purchasePriceExclTax = purchasePrice.value ?: BigDecimal.ZERO
+      p.purchaseCurrency = purchaseCurrency.value ?: "EUR"
+      p.unit = resolveUnitValue()
+      p.hsCode = if (hsCode.value.isBlank()) null else hsCode.value
+      p.madeIn = madeIn.value
+      p.replaceClientProductCodes(collectClientCodes())
+      p.replaceSuppliers(suppliers.selectedItems)
+      p.active = active.value
 
-    productService.save(p)
-    Notification.show("Produit enregistré", 3000, Notification.Position.BOTTOM_END)
-      .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
-    onSave.run()
-    close()
+      productService.save(p)
+      Notification.show("Produit enregistré", 3000, Notification.Position.BOTTOM_END)
+        .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
+      onSave.run()
+      close()
+    } catch (e: Exception) {
+      Notification.show(
+          e.message ?: "Erreur lors de l'enregistrement du produit",
+          5000,
+          Notification.Position.BOTTOM_END,
+        )
+        .addThemeVariants(NotificationVariant.LUMO_ERROR)
+    }
   }
 
   private fun updateFieldsForType(productType: Product.ProductType?) {

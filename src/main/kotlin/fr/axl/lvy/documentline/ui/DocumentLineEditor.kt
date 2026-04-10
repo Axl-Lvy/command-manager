@@ -195,6 +195,9 @@ class DocumentLineEditor(
     if (usePurchasePrice) {
       line.unitPriceExclTax = product.purchasePriceExclTax
     }
+    currencyUpdater?.invoke(
+      if (usePurchasePrice) product.purchaseCurrency else product.sellingCurrency
+    )
     if (lineTaxMode == LineTaxMode.VAT) {
       line.vatRate = defaultVatRate
     }

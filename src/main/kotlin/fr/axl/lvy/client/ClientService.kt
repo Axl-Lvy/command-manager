@@ -2,6 +2,7 @@ package fr.axl.lvy.client
 
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.user.User
+import java.util.Locale
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,6 +20,18 @@ class ClientService(
   @Transactional(readOnly = true)
   fun findByType(type: Client.ClientType): List<Client> =
     clientRepository.findByDeletedAtIsNullAndTypeOrderByNameAsc(type)
+
+  @Transactional(readOnly = true)
+  fun findDefaultCodigSupplier(): Optional<Client> {
+    val ownCompanies = findByType(Client.ClientType.OWN_COMPANY)
+    return Optional.ofNullable(
+      ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("netstone") }
+        ?: ownCompanies.firstOrNull { it.name.equals("B", ignoreCase = true) }
+        ?: ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("société b") }
+        ?: ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("societe b") }
+        ?: ownCompanies.firstOrNull { it.visibleCompany == User.Company.NETSTONE }
+    )
+  }
 
   @Transactional(readOnly = true)
   fun findVisibleFor(company: User.Company): List<Client> = clientRepository.findVisibleFor(company)
