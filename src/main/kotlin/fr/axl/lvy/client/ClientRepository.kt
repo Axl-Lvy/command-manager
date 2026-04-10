@@ -12,6 +12,7 @@ interface ClientRepository : JpaRepository<Client, Long> {
 
   fun existsByClientCode(clientCode: String): Boolean
 
+  /** Eagerly fetches contacts and payment term for the detail/edit form. */
   @Query(
     """
       SELECT DISTINCT c

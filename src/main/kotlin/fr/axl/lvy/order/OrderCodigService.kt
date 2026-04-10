@@ -11,6 +11,11 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Business logic for Codig customer orders. Handles the status state machine, order duplication,
+ * MTO supplier order generation, and synchronization with the originating sale's Netstone
+ * counterpart.
+ */
 @Service
 class OrderCodigService(
   private val orderCodigRepository: OrderCodigRepository,
@@ -58,6 +63,11 @@ class OrderCodigService(
     orderCodigRepository.findById(id).ifPresent { it.softDelete() }
   }
 
+  /**
+   * Transitions the order to [newStatus] following the allowed state machine. On CONFIRMED:
+   * creates/updates a Netstone sale if MTO products are present. On CANCELLED: cleans up the linked
+   * Netstone sale.
+   */
   @Transactional
   fun changeStatus(order: OrderCodig, newStatus: OrderCodig.OrderCodigStatus): OrderCodig {
     val allowed = getAllowedTransitions(order.status)
@@ -88,6 +98,10 @@ class OrderCodigService(
     return saved
   }
 
+  /**
+   * Creates a deep copy of [source] (including all line items) with a new order number and DRAFT
+   * status.
+   */
   @Transactional
   fun duplicate(source: OrderCodig, newOrderNumber: String): OrderCodig {
     var copy = OrderCodig(newOrderNumber, source.client, source.orderDate)
@@ -126,6 +140,10 @@ class OrderCodigService(
     return orderCodigRepository.save(copy)
   }
 
+  /**
+   * Creates a Netstone supplier order for all MTO (made-to-order) line items. Lines are copied with
+   * their purchase price instead of selling price.
+   */
   @Transactional
   fun handleMto(order: OrderCodig, orderNetstoneNumber: String) {
     val lines =
@@ -164,6 +182,10 @@ class OrderCodigService(
   fun findLines(orderId: Long): List<DocumentLine> =
     documentLineService.findLines(DocumentLine.DocumentType.ORDER_CODIG, orderId)
 
+  /**
+   * Saves the order and replaces its line items atomically. Recalculates totals and purchase price,
+   * and synchronizes the linked Netstone sale if the order is confirmed.
+   */
   @Transactional
   fun saveWithLines(order: OrderCodig, lines: List<DocumentLine>): OrderCodig {
     val saved = save(order)

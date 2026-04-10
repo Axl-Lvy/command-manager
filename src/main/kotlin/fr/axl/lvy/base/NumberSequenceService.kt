@@ -3,6 +3,10 @@ package fr.axl.lvy.base
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Generates sequential, prefixed business reference numbers (e.g. "C000001" for clients,
+ * "CoD_PO_001" for Codig orders). Uses pessimistic locking to guarantee uniqueness.
+ */
 @Service
 class NumberSequenceService(private val repository: NumberSequenceRepository) {
 

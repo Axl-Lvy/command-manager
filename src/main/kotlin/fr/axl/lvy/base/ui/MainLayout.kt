@@ -17,6 +17,10 @@ import com.vaadin.flow.server.menu.MenuConfiguration
 import com.vaadin.flow.server.menu.MenuEntry
 import com.vaadin.flow.theme.lumo.LumoUtility
 
+/**
+ * Application shell with a side navigation drawer. Menu items are auto-populated from `@Menu`
+ * annotations on views.
+ */
 @Layout
 @Suppress("unused")
 class MainLayout : AppLayout() {

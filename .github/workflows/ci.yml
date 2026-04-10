@@ -46,6 +46,14 @@ jobs:
           retention-days: 1
 
 
+  check-ai-docs-sync:
+    name: Check CLAUDE.md and AGENTS.md are in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diff CLAUDE.md and AGENTS.md
+        run: diff CLAUDE.md AGENTS.md
+
   publish-test-results:
     name: Publish test results
     needs: analyze

@@ -11,6 +11,12 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A customer invoice issued by Codig. Optionally linked to an [OrderCodig] and [DeliveryNoteCodig].
+ * Snapshots client identity fields (name, address, SIRET, VAT number) at creation time.
+ *
+ * Status workflow: DRAFT -> ISSUED -> PAID (or OVERDUE / CANCELLED / CREDIT_NOTE).
+ */
 @Entity
 @Table(name = "invoices_codig")
 class InvoiceCodig(
@@ -75,6 +81,7 @@ class InvoiceCodig(
 
   @Column(columnDefinition = "TEXT") var notes: String? = null
 
+  /** If this invoice was cancelled, points to the credit note that reverses it. */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "credit_note_id")
   var creditNote: InvoiceCodig? = null

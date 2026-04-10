@@ -16,6 +16,7 @@ This is a Vaadin application built with:
 - Entities use Kotlin properties (`var`/`val`) with `private set` for computed/readonly fields.
 - Constructor injection throughout (no `@Autowired` on fields).
 - **Always format code with KFmt** (`./gradlew ktfmtFormat`) before committing. The project uses Google style. CI will fail on unformatted code.
+- **KDoc**: Every public class, method, field, and enum value that is not trivially self-explained must have a concise KDoc comment explaining the business logic. Keep KDoc short and focused on the "why", not the "what".
 
 ## Development Commands
 

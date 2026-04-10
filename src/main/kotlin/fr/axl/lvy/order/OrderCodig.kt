@@ -12,6 +12,13 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A customer purchase order managed by Codig. Follows a status workflow: DRAFT -> CONFIRMED ->
+ * IN_PRODUCTION -> READY -> DELIVERED -> INVOICED (or CANCELLED at most stages).
+ *
+ * When the order contains MTO products, a linked [OrderNetstone] is created to place the
+ * corresponding supplier order. A [sourceOrder] link tracks duplicated orders.
+ */
 @Entity
 @Table(name = "orders_codig")
 class OrderCodig(
@@ -62,6 +69,7 @@ class OrderCodig(
   @JoinColumn(name = "invoice_id")
   var invoice: InvoiceCodig? = null
 
+  /** An order can only be modified before it is delivered or invoiced. */
   fun isEditable(): Boolean = EDITABLE.contains(status)
 
   override fun recalculateTotals(lines: List<DocumentLine>) {

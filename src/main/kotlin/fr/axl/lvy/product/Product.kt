@@ -8,6 +8,14 @@ import java.math.BigDecimal
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A sellable item in the product catalog. Can be a physical [ProductType.PRODUCT] or a
+ * [ProductType.SERVICE]. Physical products may be flagged as [mto] (made-to-order), meaning they
+ * trigger a supplier purchase order when sold.
+ *
+ * Each product tracks both a selling price and a purchase price (possibly in different currencies),
+ * and can have per-client custom reference codes via [clientProductCodes].
+ */
 @Entity
 @Table(name = "products")
 class Product(
@@ -54,6 +62,7 @@ class Product(
   )
   var suppliers: MutableSet<Client> = linkedSetOf()
 
+  /** Replaces all client-specific product codes with the given entries. */
   fun replaceClientProductCodes(entries: List<Pair<Client, String>>) {
     clientProductCodes.clear()
     entries.forEach { (client, code) ->
@@ -62,6 +71,7 @@ class Product(
     }
   }
 
+  /** Returns the custom reference code that [client] uses for this product, if any. */
   fun findClientProductCode(client: Client?): String? =
     client?.let { currentClient ->
       clientProductCodes.firstOrNull { it.client == currentClient }?.code
@@ -72,6 +82,7 @@ class Product(
     suppliers.addAll(clients)
   }
 
+  /** True if this is a physical product that must be ordered from a supplier when sold. */
   fun isMtoProduct(): Boolean = type == ProductType.PRODUCT && mto
 
   @PrePersist

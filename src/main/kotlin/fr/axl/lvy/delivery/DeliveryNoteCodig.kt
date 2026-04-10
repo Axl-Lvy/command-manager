@@ -9,6 +9,12 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A delivery note for goods shipped to a customer (Codig side). Linked to the originating
+ * [OrderCodig]. Tracks shipping, carrier, and proof of delivery.
+ *
+ * Status workflow: PREPARED -> SHIPPED -> DELIVERED (or INCIDENT at any stage).
+ */
 @Entity
 @Table(name = "delivery_notes_codig")
 class DeliveryNoteCodig(

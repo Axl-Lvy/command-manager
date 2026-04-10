@@ -10,6 +10,10 @@ import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A Codig sales quotation / proforma. When validated, it automatically generates a linked
+ * [OrderCodig] and, if MTO products are present, a [SalesNetstone] for the supplier side.
+ */
 @Entity
 @Table(name = "sales_a")
 class SalesCodig(

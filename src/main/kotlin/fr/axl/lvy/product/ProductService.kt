@@ -5,6 +5,9 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Manages the product catalog. Auto-generates a unique reference (e.g. "P000001") on first save.
+ */
 @Service
 class ProductService(
   private val productRepository: ProductRepository,

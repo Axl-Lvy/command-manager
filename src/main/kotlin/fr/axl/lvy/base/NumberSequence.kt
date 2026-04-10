@@ -5,6 +5,10 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 
+/**
+ * Persistent auto-incrementing counter used to generate unique business reference numbers (e.g.
+ * client codes, order numbers). One row per [entityType].
+ */
 @Entity
 @Table(name = "number_sequences")
 class NumberSequence(

@@ -4,6 +4,7 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/** Manages the currency reference table. Enforces code uniqueness (case-insensitive). */
 @Service
 class CurrencyService(private val currencyRepository: CurrencyRepository) {
 

@@ -10,6 +10,14 @@ import java.math.RoundingMode
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 
+/**
+ * A single line item on a business document (sale, order, or invoice). Lines are polymorphically
+ * associated to their parent document via [documentType] + [documentId] rather than a direct FK,
+ * allowing the same table to serve all document types.
+ *
+ * Financial fields ([lineTotalExclTax], [vatAmount]) are recomputed by [recalculate] from quantity,
+ * unit price, discount, and VAT rate.
+ */
 @Entity
 @Table(
   name = "document_lines",
@@ -61,6 +69,10 @@ class DocumentLine(
 
   var position: Int = 0
 
+  /**
+   * Copies all business fields from [source], optionally overriding VAT rate or unit price, then
+   * recalculates totals.
+   */
   fun copyFieldsFrom(
     source: DocumentLine,
     overrideVatRate: BigDecimal? = null,
@@ -80,6 +92,9 @@ class DocumentLine(
     recalculate()
   }
 
+  /**
+   * Recomputes [lineTotalExclTax] and [vatAmount] from quantity, unit price, discount and VAT rate.
+   */
   fun recalculate() {
     val discountMultiplier =
       BigDecimal.ONE.subtract(
@@ -103,6 +118,10 @@ class DocumentLine(
       return Totals(exclTax, vat, exclTax.add(vat))
     }
 
+    /**
+     * Creates a new line pre-filled with the product's selling price, HS code, origin, and
+     * client-specific code.
+     */
     fun fromProduct(
       documentType: DocumentType,
       documentId: Long,

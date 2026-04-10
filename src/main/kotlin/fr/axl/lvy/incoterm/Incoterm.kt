@@ -6,6 +6,10 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Table
 import jakarta.validation.constraints.NotBlank
 
+/**
+ * An ICC Incoterm rule (e.g. "FOB", "CIF") defining delivery responsibilities on international
+ * shipments.
+ */
 @Entity
 @Table(name = "incoterms")
 class Incoterm(

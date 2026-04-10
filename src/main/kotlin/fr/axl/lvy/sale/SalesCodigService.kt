@@ -10,6 +10,10 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * Business logic for Codig sales. Handles saving with line items, and automatically
+ * generates/updates the linked [OrderCodig] and [SalesNetstone] when MTO products are involved.
+ */
 @Service
 class SalesCodigService(
   private val salesCodigRepository: SalesCodigRepository,
@@ -47,6 +51,11 @@ class SalesCodigService(
     salesCodigRepository.findById(id).ifPresent { it.softDelete() }
   }
 
+  /**
+   * Synchronizes the auto-generated [OrderCodig] from this sale. If no MTO products remain, the
+   * linked order and Netstone sale are deleted. Otherwise, the order is created/updated with the
+   * sale's fields and line items.
+   */
   @Transactional
   fun syncGeneratedOrder(sale: SalesCodig, saleLines: List<DocumentLine>): SalesCodig {
     if (saleLines.none { it.product?.isMtoProduct() == true }) {
@@ -94,6 +103,10 @@ class SalesCodigService(
   fun findLines(saleId: Long): List<DocumentLine> =
     documentLineService.findLines(DocumentLine.DocumentType.SALES_CODIG, saleId)
 
+  /**
+   * Saves the sale with its line items, recalculates totals and purchase price, then syncs the
+   * generated order.
+   */
   @Transactional
   fun saveWithLines(sale: SalesCodig, lines: List<DocumentLine>): SalesCodig {
     val saved = save(sale)

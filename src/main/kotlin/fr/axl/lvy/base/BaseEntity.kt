@@ -3,6 +3,12 @@ package fr.axl.lvy.base
 import jakarta.persistence.*
 import java.time.Instant
 
+/**
+ * Base class for all JPA entities. Provides auto-generated ID and audit timestamps.
+ *
+ * Equality is based on [id] only — two entities with the same non-null ID are considered equal
+ * regardless of other field values.
+ */
 @MappedSuperclass
 abstract class BaseEntity {
   @Id

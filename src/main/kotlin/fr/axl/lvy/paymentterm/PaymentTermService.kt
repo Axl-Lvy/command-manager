@@ -4,6 +4,7 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/** Manages the payment term reference table. Enforces label uniqueness (case-insensitive). */
 @Service
 class PaymentTermService(private val paymentTermRepository: PaymentTermRepository) {
 

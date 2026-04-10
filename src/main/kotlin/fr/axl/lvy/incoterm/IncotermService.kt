@@ -4,6 +4,7 @@ import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/** Manages the incoterm reference table. Enforces name uniqueness (case-insensitive). */
 @Service
 class IncotermService(private val incotermRepository: IncotermRepository) {
 

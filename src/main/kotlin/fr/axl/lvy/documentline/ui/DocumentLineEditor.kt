@@ -17,6 +17,10 @@ import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
 import java.math.BigDecimal
 
+/**
+ * Inline editor component for document line items. Displays a grid of editable lines with
+ * add-from-product and free-line buttons. Supports discount-based or VAT-based tax modes.
+ */
 class DocumentLineEditor(
   private val productService: ProductService,
   private val documentType: DocumentLine.DocumentType,
@@ -225,7 +229,10 @@ class DocumentLineEditor(
   }
 
   enum class LineTaxMode {
+    /** User edits discount percentage per line; VAT is set at document level. */
     DISCOUNT,
+
+    /** User edits VAT rate per line; no discount column. */
     VAT,
   }
 }

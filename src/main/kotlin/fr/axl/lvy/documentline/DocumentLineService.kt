@@ -4,6 +4,7 @@ import java.math.BigDecimal
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/** Manages document lines across all document types (sales, orders, invoices). */
 @Service
 class DocumentLineService(private val documentLineRepository: DocumentLineRepository) {
 
@@ -11,6 +12,10 @@ class DocumentLineService(private val documentLineRepository: DocumentLineReposi
   fun findLines(documentType: DocumentLine.DocumentType, documentId: Long): List<DocumentLine> =
     documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(documentType, documentId)
 
+  /**
+   * Atomically replaces all lines of a document: deletes existing lines, then persists new ones.
+   * Optionally applies a [filter] and/or overrides the VAT rate on all lines.
+   */
   @Transactional
   fun replaceLines(
     documentType: DocumentLine.DocumentType,
