@@ -191,10 +191,20 @@ class DocumentLineEditor(
   }
 
   private fun addLineFromProduct(product: Product) {
-    val line = DocumentLine.fromProduct(documentType, 0L, product, clientSupplier?.invoke())
-    if (usePurchasePrice) {
-      line.unitPriceExclTax = product.purchasePriceExclTax
-    }
+    val line =
+      DocumentLine.fromProduct(
+        documentType,
+        0L,
+        product,
+        clientSupplier?.invoke(),
+        usePurchasePrice,
+      )
+    // Update document-level currency to match the product's currency. When lines use mixed
+    // currencies, the last-added product's currency wins — this is intentional as CoDIG documents
+    // are single-currency.
+    currencyUpdater?.invoke(
+      if (usePurchasePrice) product.purchaseCurrency else product.sellingCurrency
+    )
     if (lineTaxMode == LineTaxMode.VAT) {
       line.vatRate = defaultVatRate
     }

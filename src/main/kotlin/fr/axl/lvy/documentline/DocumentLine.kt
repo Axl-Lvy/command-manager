@@ -127,6 +127,7 @@ class DocumentLine(
       documentId: Long,
       product: Product,
       client: Client? = null,
+      usePurchasePrice: Boolean = false,
     ): DocumentLine {
       val line = DocumentLine(documentType, documentId, product.name)
       line.product = product
@@ -134,7 +135,8 @@ class DocumentLine(
       line.madeIn = product.madeIn
       line.clientProductCode = product.findClientProductCode(client)
       line.unit = product.unit
-      line.unitPriceExclTax = product.sellingPriceExclTax
+      line.unitPriceExclTax =
+        if (usePurchasePrice) product.purchasePriceExclTax else product.sellingPriceExclTax
       line.quantity = BigDecimal.ONE
       line.discountPercent = BigDecimal.ZERO
       line.vatRate = BigDecimal.ZERO

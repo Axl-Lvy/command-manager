@@ -12,6 +12,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import fr.axl.lvy.base.ui.loadAndApplyClientDefaults
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
@@ -26,15 +27,17 @@ import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.sale.SalesStatus
 import java.math.BigDecimal
 import java.time.LocalDate
+import org.slf4j.LoggerFactory
 
 internal class SalesCodigFormDialog(
   private val salesCodigService: SalesCodigService,
-  clientService: ClientService,
+  private val clientService: ClientService,
   incotermService: IncotermService,
   paymentTermService: PaymentTermService,
   productService: ProductService,
   private val order: SalesCodig?,
   private val onSave: Runnable,
+  private val onOpenLinkedOrder: ((SalesCodig) -> Unit)? = null,
 ) : Dialog() {
 
   private val orderNumber = TextField("N° Vente")
@@ -55,7 +58,7 @@ internal class SalesCodigFormDialog(
   private var selectedCurrency: String = order?.currency ?: "EUR"
 
   init {
-    headerTitle = if (order == null) "Nouvelle vente Codig" else "Modifier vente Codig"
+    headerTitle = if (order == null) "Nouvelle vente CoDIG" else "Vente CoDIG"
     width = "900px"
     height = "90%"
 
@@ -77,11 +80,10 @@ internal class SalesCodigFormDialog(
     }
 
     clientCombo.setItems(clientService.findAll().filter { it.isClient() })
-    clientCombo.setItemLabelGenerator { "${it.clientCode} - ${it.name}" }
+    clientCombo.setItemLabelGenerator { it.name }
     clientCombo.addValueChangeListener { event ->
       val client = event.value ?: return@addValueChangeListener
-      billingAddress.value = client.billingAddress ?: ""
-      shippingAddress.value = client.shippingAddress ?: ""
+      applyClientDefaults(client)
     }
 
     val form = FormLayout()
@@ -102,7 +104,8 @@ internal class SalesCodigFormDialog(
         currencySupplier = { selectedCurrency },
         currencyUpdater = { selectedCurrency = it },
         lineTaxMode = DocumentLineEditor.LineTaxMode.VAT,
-        defaultVatRate = BigDecimal("20.00"),
+        // CoDIG sales default to 0% VAT (export / intra-community); users can override per line.
+        defaultVatRate = BigDecimal.ZERO,
       )
 
     val content = VerticalLayout(form, lineEditor)
@@ -112,7 +115,18 @@ internal class SalesCodigFormDialog(
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
-    footer.add(HorizontalLayout(saveBtn, cancelBtn))
+    val actions = HorizontalLayout()
+    if (order?.orderCodig != null && onOpenLinkedOrder != null) {
+      val purchaseButton =
+        Button("Achat") {
+          close()
+          onOpenLinkedOrder.invoke(order)
+        }
+      purchaseButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+      actions.add(purchaseButton)
+    }
+    actions.add(saveBtn, cancelBtn)
+    footer.add(actions)
 
     if (order != null) {
       populateForm(order)
@@ -141,6 +155,18 @@ internal class SalesCodigFormDialog(
     conditions.value = o.conditions ?: ""
 
     lineEditor.setLines(salesCodigService.findLines(o.id!!))
+  }
+
+  private fun applyClientDefaults(client: Client) {
+    loadAndApplyClientDefaults(
+      client,
+      clientService,
+      billingAddress,
+      shippingAddress,
+      incotermCombo,
+      incotermLocation,
+      allIncoterms,
+    )
   }
 
   private fun save() {
@@ -182,12 +208,17 @@ internal class SalesCodigFormDialog(
       onSave.run()
       close()
     } catch (e: Exception) {
+      logger.error("Erreur lors de l'enregistrement de la vente CoDIG", e)
       Notification.show(
-          e.message ?: "Erreur lors de l'enregistrement de la vente Codig",
+          "Erreur lors de l'enregistrement de la vente CoDIG",
           5000,
           Notification.Position.BOTTOM_END,
         )
         .addThemeVariants(NotificationVariant.LUMO_ERROR)
     }
+  }
+
+  companion object {
+    private val logger = LoggerFactory.getLogger(SalesCodigFormDialog::class.java)
   }
 }

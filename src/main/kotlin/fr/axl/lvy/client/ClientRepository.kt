@@ -12,13 +12,14 @@ interface ClientRepository : JpaRepository<Client, Long> {
 
   fun existsByClientCode(clientCode: String): Boolean
 
-  /** Eagerly fetches contacts and payment term for the detail/edit form. */
+  /** Eagerly fetches contacts and reference data for the detail/edit form. */
   @Query(
     """
       SELECT DISTINCT c
       FROM Client c
       LEFT JOIN FETCH c.contacts
       LEFT JOIN FETCH c.paymentTerm
+      LEFT JOIN FETCH c.incoterm
       WHERE c.id = :id
     """
   )

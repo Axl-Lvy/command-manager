@@ -1,6 +1,7 @@
 package fr.axl.lvy.sale
 
 import fr.axl.lvy.base.NumberSequenceService
+import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.order.OrderCodig
@@ -21,6 +22,7 @@ class SalesCodigService(
   private val salesNetstoneService: SalesNetstoneService,
   private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
+  private val clientService: ClientService,
 ) {
   @Transactional(readOnly = true)
   fun findAll(): List<SalesCodig> = salesCodigRepository.findByDeletedAtIsNull()
@@ -31,6 +33,11 @@ class SalesCodigService(
   @Transactional(readOnly = true)
   fun findDetailedById(id: Long): Optional<SalesCodig> =
     Optional.ofNullable(salesCodigRepository.findDetailedById(id))
+
+  /** Returns the sale that generated the given [OrderCodig], if any. */
+  @Transactional(readOnly = true)
+  fun findByOrderCodigId(orderCodigId: Long): Optional<SalesCodig> =
+    Optional.ofNullable(salesCodigRepository.findByOrderCodigId(orderCodigId))
 
   @Transactional
   fun save(sale: SalesCodig): SalesCodig {
@@ -65,9 +72,10 @@ class SalesCodigService(
       return salesCodigRepository.save(sale)
     }
 
-    val order = sale.orderCodig ?: OrderCodig("", sale.client, sale.saleDate)
+    val supplier = clientService.findDefaultCodigSupplier().orElse(sale.client)
+    val order = sale.orderCodig ?: OrderCodig("", supplier, sale.saleDate)
 
-    order.client = sale.client
+    order.client = supplier
     order.orderDate = sale.saleDate
     order.expectedDeliveryDate = sale.expectedDeliveryDate
     order.clientReference = sale.clientReference
@@ -76,6 +84,8 @@ class SalesCodigService(
     order.exchangeRate = sale.exchangeRate
     order.purchasePriceExclTax = sale.purchasePriceExclTax
     order.incoterms = sale.incoterms
+    order.incotermLocation = sale.incotermLocation
+    order.deliveryLocation = sale.client.deliveryPort
     order.billingAddress = sale.billingAddress
     order.shippingAddress = sale.shippingAddress
     order.notes = sale.notes
@@ -90,6 +100,7 @@ class SalesCodigService(
         DocumentLine.DocumentType.ORDER_CODIG,
         savedOrder.id!!,
         saleLines,
+        overrideUnitPrice = { it.product?.purchasePriceExclTax },
       )
 
     savedOrder.recalculateTotals(generatedLines)
