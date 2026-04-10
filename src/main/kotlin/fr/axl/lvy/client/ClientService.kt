@@ -2,7 +2,6 @@ package fr.axl.lvy.client
 
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.user.User
-import java.util.Locale
 import java.util.Optional
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -21,15 +20,15 @@ class ClientService(
   fun findByType(type: Client.ClientType): List<Client> =
     clientRepository.findByDeletedAtIsNullAndTypeOrderByNameAsc(type)
 
+  /**
+   * Returns the default supplier for CoDIG purchase orders — the own-company record representing
+   * Netstone (identified by [User.Company.NETSTONE] visibility).
+   */
   @Transactional(readOnly = true)
   fun findDefaultCodigSupplier(): Optional<Client> {
     val ownCompanies = findByType(Client.ClientType.OWN_COMPANY)
     return Optional.ofNullable(
-      ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("netstone") }
-        ?: ownCompanies.firstOrNull { it.name.equals("B", ignoreCase = true) }
-        ?: ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("société b") }
-        ?: ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("societe b") }
-        ?: ownCompanies.firstOrNull { it.visibleCompany == User.Company.NETSTONE }
+      ownCompanies.firstOrNull { it.visibleCompany == User.Company.NETSTONE }
     )
   }
 

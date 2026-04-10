@@ -63,15 +63,19 @@ internal class CommandCodigListView(
 
   private fun openForm(order: OrderCodig?) {
     val loadedOrder = order?.id?.let { orderCodigService.findDetailedById(it).orElse(order) }
+    showOrderDialog(loadedOrder)
+  }
+
+  private fun showOrderDialog(order: OrderCodig?) {
     val hasLinkedSale =
-      loadedOrder?.id?.let { salesCodigService.findByOrderCodigId(it).isPresent } == true
+      order?.id?.let { salesCodigService.findByOrderCodigId(it).isPresent } == true
 
     CommandCodigFormDialog(
         orderCodigService,
         clientService,
         incotermService,
         productService,
-        loadedOrder,
+        order,
         this::refreshGrid,
         hasLinkedSale,
         this::openLinkedSale,
@@ -108,7 +112,7 @@ internal class CommandCodigListView(
     val loadedOrder =
       linkedOrder.id?.let { orderCodigService.findDetailedById(it).orElse(linkedOrder) }
         ?: linkedOrder
-    openForm(loadedOrder)
+    showOrderDialog(loadedOrder)
   }
 
   private fun refreshGrid() {

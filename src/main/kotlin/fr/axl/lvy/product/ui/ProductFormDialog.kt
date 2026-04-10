@@ -22,6 +22,7 @@ import fr.axl.lvy.currency.CurrencyService
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
 import java.math.BigDecimal
+import org.slf4j.LoggerFactory
 
 internal class ProductFormDialog(
   private val productService: ProductService,
@@ -179,8 +180,9 @@ internal class ProductFormDialog(
       onSave.run()
       close()
     } catch (e: Exception) {
+      logger.error("Erreur lors de l'enregistrement du produit", e)
       Notification.show(
-          e.message ?: "Erreur lors de l'enregistrement du produit",
+          "Erreur lors de l'enregistrement du produit",
           5000,
           Notification.Position.BOTTOM_END,
         )
@@ -237,6 +239,7 @@ internal class ProductFormDialog(
   }
 
   companion object {
+    private val logger = LoggerFactory.getLogger(ProductFormDialog::class.java)
     private const val UNIT_MT = "Mt"
     private const val UNIT_KG = "kg"
     private const val UNIT_OTHER = "Other"

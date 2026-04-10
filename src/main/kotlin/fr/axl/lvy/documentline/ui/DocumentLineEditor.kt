@@ -199,6 +199,9 @@ class DocumentLineEditor(
         clientSupplier?.invoke(),
         usePurchasePrice,
       )
+    // Update document-level currency to match the product's currency. When lines use mixed
+    // currencies, the last-added product's currency wins — this is intentional as CoDIG documents
+    // are single-currency.
     currencyUpdater?.invoke(
       if (usePurchasePrice) product.purchaseCurrency else product.sellingCurrency
     )

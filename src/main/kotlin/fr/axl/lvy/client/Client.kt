@@ -66,12 +66,15 @@ class Client(
   @JoinColumn(name = "payment_term_id")
   var paymentTerm: PaymentTerm? = null
 
+  /** Default incoterm for documents created for this client. */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "incoterm_id")
   var incoterm: Incoterm? = null
 
+  /** Default incoterm named place (e.g. city or warehouse), prefilled into documents. */
   @Column(name = "incoterm_location", length = 100) var incotermLocation: String? = null
 
+  /** Default delivery port/destination, prefilled as "Livrer à" on CoDIG orders. */
   @Column(name = "delivery_port", length = 100) var deliveryPort: String? = null
 
   @Column(name = "default_discount", nullable = false, precision = 5, scale = 2)

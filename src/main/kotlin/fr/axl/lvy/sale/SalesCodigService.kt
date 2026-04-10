@@ -34,6 +34,7 @@ class SalesCodigService(
   fun findDetailedById(id: Long): Optional<SalesCodig> =
     Optional.ofNullable(salesCodigRepository.findDetailedById(id))
 
+  /** Returns the sale that generated the given [OrderCodig], if any. */
   @Transactional(readOnly = true)
   fun findByOrderCodigId(orderCodigId: Long): Optional<SalesCodig> =
     Optional.ofNullable(salesCodigRepository.findByOrderCodigId(orderCodigId))

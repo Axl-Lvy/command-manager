@@ -13,6 +13,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.BigDecimalField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import fr.axl.lvy.base.ui.loadAndApplyClientDefaults
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
@@ -154,13 +155,17 @@ internal class CommandCodigFormDialog(
   }
 
   private fun applyClientDefaults(client: Client) {
-    val detailedClient =
-      client.id?.let { clientService.findDetailedById(it).orElse(client) } ?: client
-    billingAddress.value = detailedClient.billingAddress ?: ""
-    shippingAddress.value = detailedClient.shippingAddress ?: ""
-    incotermCombo.value = allIncoterms.firstOrNull { it.id == detailedClient.incoterm?.id }
-    incotermLocation.value = detailedClient.incotermLocation ?: ""
-    deliveryLocation.value = detailedClient.deliveryPort ?: ""
+    val detailed =
+      loadAndApplyClientDefaults(
+        client,
+        clientService,
+        billingAddress,
+        shippingAddress,
+        incotermCombo,
+        incotermLocation,
+        allIncoterms,
+      )
+    deliveryLocation.value = detailed.deliveryPort ?: ""
   }
 
   private fun save() {
