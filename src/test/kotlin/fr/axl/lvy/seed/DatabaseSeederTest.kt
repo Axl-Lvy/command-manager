@@ -18,7 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-@ActiveProfiles("seed")
+@ActiveProfiles("test")
 class DatabaseSeederTest {
 
   @Autowired lateinit var userRepository: UserRepository

@@ -32,11 +32,11 @@ import org.springframework.stereotype.Component
 /**
  * Populates the database with representative development data.
  *
- * Active only when the `seed` Spring profile is enabled. Intended to be used alongside
- * `spring.jpa.hibernate.ddl-auto=create` (defined in `application-seed.properties`), which drops
+ * Active only when the `test` Spring profile is enabled. Intended to be used alongside
+ * `spring.jpa.hibernate.ddl-auto=create` (defined in `application-test.properties`), which drops
  * and recreates the schema on startup before this runner executes.
  *
- * To activate: run the application with `--spring.profiles.active=local,seed`.
+ * To activate: run the application with `--spring.profiles.active=local,test`.
  *
  * Seeded data (in dependency order):
  * 1. Reference data (currencies, payment terms, incoterms, fiscal positions)
@@ -48,7 +48,7 @@ import org.springframework.stereotype.Component
  *    triggers the creation of OrderCodig, SalesNetstone, and OrderNetstone)
  */
 @Component
-@Profile("seed")
+@Profile("test")
 class DatabaseSeeder(
   private val userRepository: UserRepository,
   private val clientService: ClientService,

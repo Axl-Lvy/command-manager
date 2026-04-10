@@ -15,11 +15,15 @@ build/
 
 # Application
 application-local.properties
+.env
 
 # Vaadin
 node_modules/
 src/main/frontend/generated/
 vite.generated.ts
+
+# Logs
+logs/
 
 # AI
 .claude/settings.local.json
