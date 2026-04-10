@@ -191,10 +191,14 @@ class DocumentLineEditor(
   }
 
   private fun addLineFromProduct(product: Product) {
-    val line = DocumentLine.fromProduct(documentType, 0L, product, clientSupplier?.invoke())
-    if (usePurchasePrice) {
-      line.unitPriceExclTax = product.purchasePriceExclTax
-    }
+    val line =
+      DocumentLine.fromProduct(
+        documentType,
+        0L,
+        product,
+        clientSupplier?.invoke(),
+        usePurchasePrice,
+      )
     currencyUpdater?.invoke(
       if (usePurchasePrice) product.purchaseCurrency else product.sellingCurrency
     )

@@ -128,8 +128,9 @@ class SalesCodigServiceTest {
     assertThat(orderLines).hasSize(1)
     assertThat(orderLines[0].designation).isEqualTo("Widget")
     assertThat(orderLines[0].quantity).isEqualByComparingTo("5")
+    assertThat(orderLines[0].unitPriceExclTax).isEqualByComparingTo("60.00")
     assertThat(orderLines[0].vatRate).isEqualByComparingTo("20.00")
-    assertThat(order.totalExclTax).isEqualByComparingTo("500.00")
+    assertThat(order.totalExclTax).isEqualByComparingTo("300.00")
   }
 
   @Test

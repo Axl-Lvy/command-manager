@@ -99,6 +99,7 @@ class SalesCodigService(
         DocumentLine.DocumentType.ORDER_CODIG,
         savedOrder.id!!,
         saleLines,
+        overrideUnitPrice = { it.product?.purchasePriceExclTax },
       )
 
     savedOrder.recalculateTotals(generatedLines)
