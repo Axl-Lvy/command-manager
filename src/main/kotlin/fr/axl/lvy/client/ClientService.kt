@@ -2,7 +2,9 @@ package fr.axl.lvy.client
 
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.user.User
+import io.micrometer.core.instrument.MeterRegistry
 import java.util.Optional
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -11,7 +13,14 @@ import org.springframework.transaction.annotation.Transactional
 class ClientService(
   private val clientRepository: ClientRepository,
   private val numberSequenceService: NumberSequenceService,
+  private val meterRegistry: MeterRegistry,
 ) {
+  private val clientsCreatedCounter = meterRegistry.counter("client")
+
+  companion object {
+    private val log = LoggerFactory.getLogger(ClientService::class.java)
+    private const val MAX_SEQUENCE_RETRIES = 100
+  }
 
   @Transactional(readOnly = true)
   fun findAll(): List<Client> = clientRepository.findByDeletedAtIsNull()
@@ -40,10 +49,16 @@ class ClientService(
 
   @Transactional
   fun save(client: Client): Client {
-    if (client.clientCode.isBlank()) {
+    val isNew = client.clientCode.isBlank()
+    if (isNew) {
       client.clientCode = generateNextClientCode()
     }
-    return clientRepository.save(client)
+    val saved = clientRepository.save(client)
+    if (isNew) {
+      clientsCreatedCounter.increment()
+      log.info("Client created: code={} name={}", saved.clientCode, saved.name)
+    }
+    return saved
   }
 
   @Transactional
@@ -63,9 +78,5 @@ class ClientService(
     throw IllegalStateException(
       "Impossible de générer un code client unique après $MAX_SEQUENCE_RETRIES tentatives"
     )
-  }
-
-  companion object {
-    private const val MAX_SEQUENCE_RETRIES = 100
   }
 }

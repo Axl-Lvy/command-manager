@@ -7,24 +7,11 @@
   <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="logs"/>
   <springProperty scope="context" name="MAX_HISTORY" source="logging.max-history" defaultValue="7"/>
 
-  <!-- Console appender — always available -->
+  <!-- Console appender — always available, plain text for readability -->
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>${CONSOLE_LOG_PATTERN}</pattern>
       <charset>${CONSOLE_LOG_CHARSET}</charset>
-    </encoder>
-  </appender>
-
-  <!-- Rolling file appender — activated by profiles that need file logging -->
-  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>${LOG_PATH}/command-manager.log</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${LOG_PATH}/command-manager.%d{yyyy-MM-dd}.log</fileNamePattern>
-      <maxHistory>${MAX_HISTORY}</maxHistory>
-    </rollingPolicy>
-    <encoder>
-      <pattern>${FILE_LOG_PATTERN}</pattern>
-      <charset>${FILE_LOG_CHARSET}</charset>
     </encoder>
   </appender>
 
@@ -38,16 +25,54 @@
     </root>
   </springProfile>
 
-  <!-- prod: console + file, INFO -->
+  <!--
+    prod: console (plain text) + file (logstash JSON).
+    The FILE_JSON appender is declared inside this profile so Logback only initialises it
+    when the prod profile is active. This prevents test runs from trying to open the log
+    file and failing with a permission error.
+    JSON output lets Promtail extract MDC fields (orderId, orderNumber, fromStatus, etc.)
+    as structured metadata, making them queryable in Loki/Grafana.
+  -->
   <springProfile name="prod">
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>${LOG_PATH}/command-manager.log</file>
+      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <fileNamePattern>${LOG_PATH}/command-manager.%d{yyyy-MM-dd}.log</fileNamePattern>
+        <maxHistory>${MAX_HISTORY}</maxHistory>
+      </rollingPolicy>
+      <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+        <format>logstash</format>
+      </encoder>
+    </appender>
     <root level="INFO">
       <appender-ref ref="CONSOLE"/>
-      <appender-ref ref="FILE"/>
+      <appender-ref ref="FILE_JSON"/>
     </root>
   </springProfile>
 
-  <!-- test: console + file, DEBUG -->
+  <!-- test: console only, DEBUG -->
   <springProfile name="test">
+    <root level="DEBUG">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!--
+    dev: console + file (plain text), DEBUG.
+    Plain text is easier to read when tailing logs directly with docker compose logs.
+  -->
+  <springProfile name="dev">
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>${LOG_PATH}/command-manager.log</file>
+      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <fileNamePattern>${LOG_PATH}/command-manager.%d{yyyy-MM-dd}.log</fileNamePattern>
+        <maxHistory>${MAX_HISTORY}</maxHistory>
+      </rollingPolicy>
+      <encoder>
+        <pattern>${FILE_LOG_PATTERN}</pattern>
+        <charset>${FILE_LOG_CHARSET}</charset>
+      </encoder>
+    </appender>
     <root level="DEBUG">
       <appender-ref ref="CONSOLE"/>
       <appender-ref ref="FILE"/>

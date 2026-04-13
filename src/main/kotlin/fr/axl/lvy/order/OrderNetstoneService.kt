@@ -3,8 +3,11 @@ package fr.axl.lvy.order
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
+import io.micrometer.core.instrument.MeterRegistry
 import java.time.LocalDate
 import java.util.Optional
+import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -17,8 +20,12 @@ class OrderNetstoneService(
   private val orderNetstoneRepository: OrderNetstoneRepository,
   private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
+  private val meterRegistry: MeterRegistry,
 ) {
+  private val ordersCreatedCounter = meterRegistry.counter("order.netstone")
+
   companion object {
+    private val log = LoggerFactory.getLogger(OrderNetstoneService::class.java)
     private val ALLOWED_TRANSITIONS_FROM_SENT =
       setOf(
         OrderNetstone.OrderNetstoneStatus.CONFIRMED,
@@ -36,10 +43,16 @@ class OrderNetstoneService(
 
   @Transactional
   fun save(order: OrderNetstone): OrderNetstone {
-    if (order.orderNumber.isBlank()) {
+    val isNew = order.orderNumber.isBlank()
+    if (isNew) {
       order.orderNumber = generateNextOrderNumber()
     }
-    return orderNetstoneRepository.save(order)
+    val saved = orderNetstoneRepository.save(order)
+    if (isNew) {
+      ordersCreatedCounter.increment()
+      log.info("OrderNetstone created: number={}", saved.orderNumber)
+    }
+    return saved
   }
 
   @Transactional
@@ -54,8 +67,26 @@ class OrderNetstoneService(
   ): OrderNetstone {
     val allowed = getAllowedTransitions(order.status)
     check(allowed.contains(newStatus)) { "Cannot transition from ${order.status} to $newStatus" }
+    val fromStatus = order.status
     order.status = newStatus
-    return orderNetstoneRepository.save(order)
+    val saved = orderNetstoneRepository.save(order)
+
+    MDC.put("orderId", saved.id?.toString())
+    MDC.put("orderNumber", saved.orderNumber)
+    MDC.put("fromStatus", fromStatus.name)
+    MDC.put("toStatus", newStatus.name)
+    try {
+      meterRegistry
+        .counter("order.netstone.status.transition", "from", fromStatus.name, "to", newStatus.name)
+        .increment()
+      log.info("OrderNetstone {} transitioned {} -> {}", saved.orderNumber, fromStatus, newStatus)
+    } finally {
+      MDC.remove("orderId")
+      MDC.remove("orderNumber")
+      MDC.remove("fromStatus")
+      MDC.remove("toStatus")
+    }
+    return saved
   }
 
   /**
@@ -73,7 +104,24 @@ class OrderNetstoneService(
     order.receptionConforming = conforming
     order.receptionReserve = receptionReserve
     order.status = OrderNetstone.OrderNetstoneStatus.RECEIVED
-    return orderNetstoneRepository.save(order)
+    val saved = orderNetstoneRepository.save(order)
+
+    MDC.put("orderId", saved.id?.toString())
+    MDC.put("orderNumber", saved.orderNumber)
+    MDC.put("conforming", conforming.toString())
+    try {
+      log.info(
+        "OrderNetstone {} goods received: conforming={} reserve={}",
+        saved.orderNumber,
+        conforming,
+        receptionReserve.ifBlank { "none" },
+      )
+    } finally {
+      MDC.remove("orderId")
+      MDC.remove("orderNumber")
+      MDC.remove("conforming")
+    }
+    return saved
   }
 
   @Transactional(readOnly = true)

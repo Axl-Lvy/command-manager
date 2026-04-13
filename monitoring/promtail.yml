@@ -1,0 +1,43 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+# Re-check for new/rotated log files every 10 s instead of the default 5 min.
+# This matters on first start: the app creates command-manager.log after Promtail
+# starts, so without a short sync_period the logs would be invisible for minutes.
+target_config:
+  sync_period: 10s
+
+scrape_configs:
+  - job_name: command-manager
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: command-manager
+          application: command-manager
+          __path__: /logs/command-manager.log
+    pipeline_stages:
+      # Parse the JSON log lines produced by Spring Boot's logstash structured format
+      - json:
+          expressions:
+            level: level
+            logger: logger_name
+            orderId: orderId
+            orderNumber: orderNumber
+            saleNumber: saleNumber
+      # Promote selected fields to Loki labels for efficient filtering
+      - labels:
+          level:
+          logger:
+      # Keep MDC fields as structured metadata (not labels) to avoid label explosion
+      - structured_metadata:
+          orderId:
+          orderNumber:
+          saleNumber:

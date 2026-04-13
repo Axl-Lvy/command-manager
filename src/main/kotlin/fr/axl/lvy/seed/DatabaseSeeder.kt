@@ -48,7 +48,7 @@ import org.springframework.stereotype.Component
  *    triggers the creation of OrderCodig, SalesNetstone, and OrderNetstone)
  */
 @Component
-@Profile("test")
+@Profile("test", "dev", "local")
 class DatabaseSeeder(
   private val userRepository: UserRepository,
   private val clientService: ClientService,
