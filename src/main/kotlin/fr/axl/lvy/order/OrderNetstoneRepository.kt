@@ -6,9 +6,23 @@ import org.springframework.data.jpa.repository.Query
 interface OrderNetstoneRepository : JpaRepository<OrderNetstone, Long> {
 
   @Query(
-    "SELECT o FROM OrderNetstone o LEFT JOIN FETCH o.orderCodig LEFT JOIN FETCH o.orderCodig.client WHERE o.deletedAt IS NULL"
+    "SELECT o FROM OrderNetstone o LEFT JOIN FETCH o.orderCodig LEFT JOIN FETCH o.orderCodig.client LEFT JOIN FETCH o.supplier LEFT JOIN FETCH o.paymentTerm LEFT JOIN FETCH o.fiscalPosition WHERE o.deletedAt IS NULL"
   )
   fun findByDeletedAtIsNull(): List<OrderNetstone>
+
+  @Query(
+    """
+      SELECT o
+      FROM OrderNetstone o
+      LEFT JOIN FETCH o.orderCodig
+      LEFT JOIN FETCH o.orderCodig.client
+      LEFT JOIN FETCH o.supplier
+      LEFT JOIN FETCH o.paymentTerm
+      LEFT JOIN FETCH o.fiscalPosition
+      WHERE o.id = :id
+    """
+  )
+  fun findDetailedById(id: Long): OrderNetstone?
 
   fun findByOrderCodigId(orderCodigId: Long): List<OrderNetstone>
 }

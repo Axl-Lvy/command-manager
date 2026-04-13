@@ -59,8 +59,8 @@ class DatabaseSeederTest {
 
   @Test
   fun seeder_creates_clients() {
-    // 12 clients including 1 OWN_COMPANY record for Netstone
-    assertThat(clientRepository.findAll()).hasSize(12)
+    // 14 clients: 12 base + Codig OWN_COMPANY + Netstone OWN_COMPANY (added for MTO chain)
+    assertThat(clientRepository.findAll()).hasSize(14)
   }
 
   @Test

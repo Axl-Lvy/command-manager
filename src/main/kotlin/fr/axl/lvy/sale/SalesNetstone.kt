@@ -1,9 +1,11 @@
 package fr.axl.lvy.sale
 
 import fr.axl.lvy.base.TotalizableDocument
+import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.order.OrderNetstone
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
+import java.math.BigDecimal
 import java.time.LocalDate
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
@@ -29,6 +31,17 @@ class SalesNetstone(
   var status: SalesStatus = SalesStatus.DRAFT
 
   @Column(name = "sale_date") var saleDate: LocalDate? = null
+
+  @Column(name = "shipping_address", columnDefinition = "TEXT") var shippingAddress: String? = null
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "fiscal_position_id")
+  var fiscalPosition: FiscalPosition? = null
+
+  @Column(nullable = false, length = 5) var currency: String = "EUR"
+
+  @Column(name = "exchange_rate", nullable = false, precision = 12, scale = 6)
+  var exchangeRate: BigDecimal = BigDecimal.ONE
 
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "order_netstone_id")

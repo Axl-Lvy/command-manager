@@ -1,6 +1,9 @@
 package fr.axl.lvy.client
 
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.user.User
@@ -17,6 +20,7 @@ class ClientServiceTest {
 
   @Autowired lateinit var clientService: ClientService
   @Autowired lateinit var clientRepository: ClientRepository
+  @Autowired lateinit var fiscalPositionService: FiscalPositionService
   @Autowired lateinit var incotermService: IncotermService
 
   @Test
@@ -157,6 +161,40 @@ class ClientServiceTest {
   }
 
   @Test
+  fun findDefaultCodigSupplier_finds_netstone_by_own_company_role() {
+    val netstone = Client("CLI-OWN-NET", "Netstone")
+    netstone.type = Client.ClientType.OWN_COMPANY
+    netstone.role = Client.ClientRole.OWN_COMPANY
+    netstone.visibleCompany = User.Company.BOTH
+    clientService.save(netstone)
+
+    val defaultSupplier = clientService.findDefaultCodigSupplier()
+
+    assertThat(defaultSupplier).isPresent
+    assertThat(defaultSupplier.get().id).isEqualTo(netstone.id)
+  }
+
+  @Test
+  fun findDefaultCodigCompany_prefers_codig_own_company() {
+    val codig = Client("CLI-OWN-COD", "Codig")
+    codig.type = Client.ClientType.OWN_COMPANY
+    codig.role = Client.ClientRole.OWN_COMPANY
+    codig.visibleCompany = User.Company.CODIG
+    clientService.save(codig)
+
+    val netstone = Client("CLI-OWN-NST", "Netstone")
+    netstone.type = Client.ClientType.OWN_COMPANY
+    netstone.role = Client.ClientRole.OWN_COMPANY
+    netstone.visibleCompany = User.Company.NETSTONE
+    clientService.save(netstone)
+
+    val defaultCompany = clientService.findDefaultCodigCompany()
+
+    assertThat(defaultCompany).isPresent
+    assertThat(defaultCompany.get().id).isEqualTo(codig.id)
+  }
+
+  @Test
   fun isClient_and_isProducer_reflect_role() {
     val client = Client("CLI-R1", "Client Role")
     client.role = Client.ClientRole.CLIENT
@@ -219,7 +257,9 @@ class ClientServiceTest {
   @Test
   fun findDetailedById_returns_default_delivery_terms() {
     val incoterm = incotermService.save(Incoterm("DAP-CLIENT", "Delivered at place client"))
+    val fiscalPosition = fiscalPositionService.save(FiscalPosition("Export test"))
     val client = Client("CLI-DET-02", "Delivery Terms Client")
+    client.fiscalPosition = fiscalPosition
     client.incoterm = incoterm
     client.incotermLocation = "Paris"
     client.deliveryPort = "Le Havre"
@@ -228,8 +268,30 @@ class ClientServiceTest {
     val found = clientService.findDetailedById(client.id!!)
 
     assertThat(found).isPresent
+    assertThat(found.get().fiscalPosition?.position).isEqualTo("Export test")
     assertThat(found.get().incoterm?.name).isEqualTo("DAP-CLIENT")
     assertThat(found.get().incotermLocation).isEqualTo("Paris")
     assertThat(found.get().deliveryPort).isEqualTo("Le Havre")
+  }
+
+  @Test
+  fun findDetailedById_returns_delivery_addresses() {
+    val client = Client("CLI-DET-03", "Delivery Address Client")
+    client.deliveryAddresses.add(
+      ClientDeliveryAddress(client, "Entrepot Lyon", "12 rue de Lyon\n69000 Lyon").apply {
+        defaultAddress = true
+      }
+    )
+    client.deliveryAddresses.add(
+      ClientDeliveryAddress(client, "Port Marseille", "Quai 4\n13000 Marseille")
+    )
+    clientService.save(client)
+
+    val found = clientService.findDetailedById(client.id!!)
+
+    assertThat(found).isPresent
+    assertThat(found.get().deliveryAddresses).hasSize(2)
+    assertThat(found.get().deliveryAddresses.first { it.defaultAddress }.label)
+      .isEqualTo("Entrepot Lyon")
   }
 }

@@ -4,6 +4,7 @@ import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
 import fr.axl.lvy.currency.Currency
 import fr.axl.lvy.currency.CurrencyService
 import fr.axl.lvy.delivery.DeliveryNoteCodig
@@ -52,7 +53,8 @@ import org.springframework.stereotype.Component
  * Seeded data (in dependency order):
  * 1. Reference data: 6 currencies, 7 payment terms, 8 incoterms, 5 fiscal positions
  * 2. Users (8)
- * 3. Clients (12, including an OWN_COMPANY record so MTO sales can resolve a default supplier)
+ * 3. Clients (14, including OWN_COMPANY records for Codig and Netstone so MTO sales can resolve
+ *    default supplier/company)
  * 4. Products (14: physical, service, and MTO variants)
  * 5. Orders Codig (~20 across all statuses) with delivery notes and invoices
  * 6. Netstone orders (4) with delivery notes and supplier invoices
@@ -93,7 +95,7 @@ class DatabaseSeeder(
     seedUsers()
     val clients = seedClients(refData)
     val products = seedProducts()
-    val mtoOrders = seedOrdersCodig(clients, products, refData)
+    val mtoOrders = seedOrdersCodig(clients, products)
     seedOrdersNetstone(mtoOrders, clients, products)
     seedSalesCodig(clients, products, refData)
 
@@ -137,7 +139,7 @@ class DatabaseSeeder(
 
     val incoterms =
       listOf(
-          Incoterm("EXW", "Ex Works"),
+          Incoterm("CFR", "Cost and Freight"),
           Incoterm("FOB", "Free On Board"),
           Incoterm("CIF", "Cost, Insurance and Freight"),
           Incoterm("DAP", "Delivered At Place"),
@@ -205,9 +207,10 @@ class DatabaseSeeder(
   }
 
   /**
-   * Returns clients in a fixed order used as indices throughout the seeder: 0=Acme, 1=Dupont SARL,
-   * 2=NestSupplier, 3=Jean Dupont, 4=TechPro, 5=Meridian, 6=Global Parts, 7=Innovatech, 8=Benali,
-   * 9=ChinaSource, 10=Boutique Lefèvre, 11=Netstone SAS (OWN_COMPANY).
+   * Returns clients in a fixed order used as indices throughout the seeder: 0=Acme (DOW), 1=Dupont
+   * SARL, 2=NestSupplier (All Plus), 3=Jean Dupont, 4=TechPro, 5=Meridian, 6=Global Parts,
+   * 7=Innovatech, 8=Benali, 9=ChinaSource, 10=Boutique Lefèvre, 11=Netstone SAS (OWN_COMPANY). Also
+   * creates Codig and Netstone OWN_COMPANY records used by service defaults.
    */
   private fun seedClients(refData: ReferenceData): List<Client> {
     logger.info("[Seeder] Creating clients...")
@@ -231,8 +234,43 @@ class DatabaseSeeder(
     val savedNetstone = clientService.save(netstone)
     logger.info("[Seeder] Created client: ${savedNetstone.name} (${savedNetstone.clientCode})")
 
+    val codig =
+      Client(name = "Codig").apply {
+        type = Client.ClientType.OWN_COMPANY
+        role = Client.ClientRole.OWN_COMPANY
+        visibleCompany = User.Company.CODIG
+        email = "contact@codig.fr"
+        phone = "+33 1 40 00 00 01"
+        billingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
+        shippingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
+        deliveryAddresses.add(
+          ClientDeliveryAddress(this, "Codig, Charleston Harbor", "Codig, Charleston Harbor")
+            .apply { defaultAddress = true }
+        )
+        deliveryAddresses.add(
+          ClientDeliveryAddress(this, "Codig, Port du Havre", "Codig, Port du Havre")
+        )
+      }
+    val savedCodig = clientService.save(codig)
+    logger.info("[Seeder] Created own company: ${savedCodig.name} (${savedCodig.clientCode})")
+
+    val netstoneOwnCompany =
+      Client(name = "Netstone").apply {
+        type = Client.ClientType.OWN_COMPANY
+        role = Client.ClientRole.OWN_COMPANY
+        visibleCompany = User.Company.NETSTONE
+        email = "contact@netstone.fr"
+        phone = "+33 1 40 00 00 02"
+        billingAddress = "2 avenue Netstone\n69001 Lyon\nFrance"
+        shippingAddress = "2 avenue Netstone\n69001 Lyon\nFrance"
+      }
+    val savedNetstoneOwnCompany = clientService.save(netstoneOwnCompany)
+    logger.info(
+      "[Seeder] Created own company: ${savedNetstoneOwnCompany.name} (${savedNetstoneOwnCompany.clientCode})"
+    )
+
     val acme =
-      Client(name = "Acme Corp").apply {
+      Client(name = "DOW").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.CLIENT
         visibleCompany = User.Company.CODIG
@@ -245,6 +283,14 @@ class DatabaseSeeder(
         paymentDelay = 30
         paymentTerm = net30
         defaultDiscount = BigDecimal("2.00")
+        deliveryAddresses.add(
+          ClientDeliveryAddress(
+              this,
+              "THE DOW CHEMICAL COMPANY KNX",
+              "ROHM and HAAS CHEMICALS LLC - Knoxville\nPlant\n730 Dale Avenue\nKnoxville TN TN 37921\nÉtats-Unis\n+1 989-633-5596",
+            )
+            .apply { defaultAddress = true }
+        )
         contacts.add(
           Contact(this, "Martin").apply {
             firstName = "Jean"
@@ -267,7 +313,7 @@ class DatabaseSeeder(
     logger.info("[Seeder] Created client: ${savedAcme.name} (${savedAcme.clientCode})")
 
     val dupont =
-      Client(name = "Dupont SARL").apply {
+      Client(name = "Dupont").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.CLIENT
         visibleCompany = User.Company.NETSTONE
@@ -291,7 +337,7 @@ class DatabaseSeeder(
     logger.info("[Seeder] Created client: ${savedDupont.name} (${savedDupont.clientCode})")
 
     val nestSupplier =
-      Client(name = "NestSupplier SAS").apply {
+      Client(name = "All Plus").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.PRODUCER
         visibleCompany = User.Company.BOTH
@@ -304,17 +350,17 @@ class DatabaseSeeder(
     val savedNest = clientService.save(nestSupplier)
     logger.info("[Seeder] Created client: ${savedNest.name} (${savedNest.clientCode})")
 
-    val jeanDupont =
+    val jean =
       Client(name = "Dupont").apply {
         type = Client.ClientType.INDIVIDUAL
         role = Client.ClientRole.CLIENT
         visibleCompany = User.Company.CODIG
         email = "jean.dupont@gmail.com"
         phone = "+33 6 12 34 56 78"
-        billingAddress = "3 impasse des Roses\n31000 Toulouse\nFrance"
-        shippingAddress = "3 impasse des Roses\n31000 Toulouse\nFrance"
+        billingAddress = "3 impasse des Lilas\n33000 Bordeaux\nFrance"
+        shippingAddress = "3 impasse des Lilas\n33000 Bordeaux\nFrance"
       }
-    val savedJean = clientService.save(jeanDupont)
+    val savedJean = clientService.save(jean)
     logger.info("[Seeder] Created client: ${savedJean.name} (${savedJean.clientCode})")
 
     val techPro =
@@ -462,7 +508,7 @@ class DatabaseSeeder(
     val savedBoutique = clientService.save(boutique)
     logger.info("[Seeder] Created client: ${savedBoutique.name} (${savedBoutique.clientCode})")
 
-    logger.info("[Seeder] Created 12 clients")
+    logger.info("[Seeder] Created 14 clients")
     return listOf(
       savedAcme,
       savedDupont,
@@ -689,11 +735,7 @@ class DatabaseSeeder(
    * Creates ~20 Codig orders covering all statuses. Returns a pair of confirmed orders that contain
    * MTO products — these are passed to [seedOrdersNetstone] to generate supplier orders.
    */
-  private fun seedOrdersCodig(
-    clients: List<Client>,
-    products: List<Product>,
-    refData: ReferenceData,
-  ): List<OrderCodig> {
+  private fun seedOrdersCodig(clients: List<Client>, products: List<Product>): List<OrderCodig> {
     logger.info("[Seeder] Creating orders Codig...")
 
     val acme = clients[0]
@@ -725,7 +767,8 @@ class DatabaseSeeder(
       return orderCodigService.changeStatus(saved, OrderCodig.OrderCodigStatus.CONFIRMED)
     }
 
-    // Helper: deliver a confirmed order and attach a delivery note
+    // Helper: deliver a confirmed order and attach a delivery note.
+    // Walks through the full state chain: CONFIRMED → IN_PRODUCTION → READY → DELIVERED.
     fun delivered(
       order: OrderCodig,
       client: Client,
@@ -733,7 +776,9 @@ class DatabaseSeeder(
       tracking: String,
       packages: Int,
     ): OrderCodig {
-      val del = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.DELIVERED)
+      val inProd = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
+      val ready = orderCodigService.changeStatus(inProd, OrderCodig.OrderCodigStatus.READY)
+      val del = orderCodigService.changeStatus(ready, OrderCodig.OrderCodigStatus.DELIVERED)
       deliveryNoteCodigService.save(
         DeliveryNoteCodig("", del, client).apply {
           status = DeliveryNoteCodig.DeliveryNoteCodigStatus.DELIVERED

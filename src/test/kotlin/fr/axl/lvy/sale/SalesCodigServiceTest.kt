@@ -5,6 +5,8 @@ import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
 import fr.axl.lvy.paymentterm.PaymentTerm
@@ -15,6 +17,7 @@ import fr.axl.lvy.user.User
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -31,8 +34,27 @@ class SalesCodigServiceTest {
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
+  @Autowired lateinit var fiscalPositionService: FiscalPositionService
   @Autowired lateinit var paymentTermRepository: PaymentTermRepository
   @Autowired lateinit var testData: TestDataFactory
+
+  @BeforeEach
+  fun ensureOwnCompanies() {
+    if (clientService.findDefaultCodigSupplier().isEmpty) {
+      val supplier = Client("CLI-SA-OWN-B", "Netstone")
+      supplier.type = Client.ClientType.OWN_COMPANY
+      supplier.role = Client.ClientRole.OWN_COMPANY
+      supplier.visibleCompany = User.Company.NETSTONE
+      clientService.save(supplier)
+    }
+    if (clientService.findDefaultCodigCompany().isEmpty) {
+      val codig = Client("CLI-SA-OWN-A", "Codig")
+      codig.type = Client.ClientType.OWN_COMPANY
+      codig.role = Client.ClientRole.OWN_COMPANY
+      codig.visibleCompany = User.Company.CODIG
+      clientService.save(codig)
+    }
+  }
 
   private fun createSalesCodig(
     number: String,
@@ -78,6 +100,30 @@ class SalesCodigServiceTest {
   }
 
   @Test
+  fun save_uses_client_payment_term_when_blank() {
+    val client = testData.createClient("CLI-SA02C")
+    val paymentTerm = paymentTermRepository.saveAndFlush(PaymentTerm("45 jours"))
+    client.paymentTerm = paymentTerm
+    val sale = SalesCodig("SA-PAY-02", client, LocalDate.of(2026, 3, 1))
+
+    val saved = salesCodigService.save(sale)
+
+    assertThat(saved.paymentTerm?.id).isEqualTo(paymentTerm.id)
+  }
+
+  @Test
+  fun save_uses_client_fiscal_position_when_blank() {
+    val client = testData.createClient("CLI-SA-FISCAL")
+    val fiscalPosition = fiscalPositionService.save(FiscalPosition("Intra client"))
+    client.fiscalPosition = fiscalPosition
+    val sale = SalesCodig("SA-FISCAL-01", client, LocalDate.of(2026, 3, 1))
+
+    val saved = salesCodigService.save(sale)
+
+    assertThat(saved.fiscalPosition?.id).isEqualTo(fiscalPosition.id)
+  }
+
+  @Test
   fun soft_delete_excludes_from_findAll() {
     val client = testData.createClient("CLI-SA03")
     val sale = createSalesCodig("SA-DEL-01", client)
@@ -91,11 +137,10 @@ class SalesCodigServiceTest {
   @Test
   fun syncGeneratedOrder_creates_order_and_lines() {
     val client = testData.createClient("CLI-SA04")
+    val supplier = clientService.findDefaultCodigSupplier().orElseThrow()
     val sale = createSalesCodig("SA-SYNC-01", client)
     sale.subject = "Test Subject"
     sale.currency = "USD"
-    sale.incoterms = "FOB"
-    sale.incotermLocation = "Marseille"
     salesCodigRepository.saveAndFlush(sale)
 
     val mtoProduct = testData.createMtoProduct("PRD-SA-SYNC-01")
@@ -114,11 +159,12 @@ class SalesCodigServiceTest {
     assertThat(result.orderCodig).isNotNull
     val order = result.orderCodig!!
     assertThat(order.orderNumber).startsWith("CoD_PO_")
-    assertThat(order.client.id).isEqualTo(client.id)
+    assertThat(order.client.id).isEqualTo(supplier.id)
     assertThat(order.subject).isEqualTo("Test Subject")
     assertThat(order.currency).isEqualTo("USD")
-    assertThat(order.incoterms).isEqualTo("FOB")
-    assertThat(order.incotermLocation).isEqualTo("Marseille")
+    // incoterms comes from codigCompany.incoterm (null in this test — no incoterm configured)
+    // incotermLocation comes from sale.client.deliveryPort (null in this test — no deliveryPort
+    // set)
 
     val orderLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
@@ -137,11 +183,11 @@ class SalesCodigServiceTest {
   fun syncGeneratedOrder_uses_default_codig_supplier() {
     val client = testData.createClient("CLI-SA-SUPPLIER")
     client.deliveryPort = "Port client"
-    val supplier = Client("CLI-SA-OWN-B", "Netstone")
-    supplier.type = Client.ClientType.OWN_COMPANY
-    supplier.role = Client.ClientRole.OWN_COMPANY
-    supplier.visibleCompany = User.Company.NETSTONE
-    clientService.save(supplier)
+    val supplier = clientService.findDefaultCodigSupplier().orElseThrow()
+    val codigFiscalPosition = fiscalPositionService.save(FiscalPosition("Codig export"))
+    val codigCompany = clientService.findDefaultCodigCompany().orElseThrow()
+    codigCompany.fiscalPosition = codigFiscalPosition
+    clientService.save(codigCompany)
 
     val sale = createSalesCodig("SA-SUPPLIER-01", client)
     val mtoProduct = testData.createMtoProduct("PRD-SA-SUPPLIER")
@@ -157,6 +203,7 @@ class SalesCodigServiceTest {
 
     assertThat(result.orderCodig).isNotNull
     assertThat(result.orderCodig!!.client.id).isEqualTo(supplier.id)
+    assertThat(result.orderCodig!!.fiscalPosition?.position).isEqualTo("Codig export")
     assertThat(result.orderCodig!!.deliveryLocation).isEqualTo("Port client")
   }
 

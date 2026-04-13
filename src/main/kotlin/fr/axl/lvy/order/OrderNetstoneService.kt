@@ -1,8 +1,11 @@
 package fr.axl.lvy.order
 
 import fr.axl.lvy.base.NumberSequenceService
+import fr.axl.lvy.client.Client
+import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
+import fr.axl.lvy.product.ProductService
 import io.micrometer.core.instrument.MeterRegistry
 import java.time.LocalDate
 import java.util.Optional
@@ -20,6 +23,8 @@ class OrderNetstoneService(
   private val orderNetstoneRepository: OrderNetstoneRepository,
   private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
+  private val clientService: ClientService,
+  private val productService: ProductService,
   private val meterRegistry: MeterRegistry,
 ) {
   private val ordersCreatedCounter = meterRegistry.counter("order.netstone")
@@ -41,11 +46,33 @@ class OrderNetstoneService(
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderNetstone> = orderNetstoneRepository.findById(id)
 
+  @Transactional(readOnly = true)
+  fun findDetailedById(id: Long): Optional<OrderNetstone> =
+    Optional.ofNullable(orderNetstoneRepository.findDetailedById(id))
+
   @Transactional
   fun save(order: OrderNetstone): OrderNetstone {
     val isNew = order.orderNumber.isBlank()
     if (isNew) {
       order.orderNumber = generateNextOrderNumber()
+    }
+    if (order.deliveryLocation.isNullOrBlank()) {
+      order.deliveryLocation =
+        clientService
+          .findDefaultCodigCompany()
+          .map { codig ->
+            codig.deliveryAddresses.firstOrNull { it.defaultAddress }?.address
+              ?: codig.deliveryAddresses.firstOrNull()?.address
+          }
+          .orElse(null)
+    }
+    if (order.paymentTerm == null) {
+      order.paymentTerm =
+        clientService.findDefaultCodigSupplier().map { it.paymentTerm }.orElse(null)
+    }
+    if (order.fiscalPosition == null) {
+      order.fiscalPosition =
+        clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
     }
     val saved = orderNetstoneRepository.save(order)
     if (isNew) {
@@ -130,6 +157,9 @@ class OrderNetstoneService(
 
   @Transactional
   fun saveWithLines(order: OrderNetstone, lines: List<DocumentLine>): OrderNetstone {
+    if (order.supplier == null) {
+      order.supplier = inferSupplier(lines)
+    }
     val saved = save(order)
 
     val persistedLines =
@@ -138,6 +168,15 @@ class OrderNetstoneService(
     saved.recalculateTotals(persistedLines)
     return orderNetstoneRepository.save(saved)
   }
+
+  private fun inferSupplier(lines: List<DocumentLine>): Client? =
+    lines.firstNotNullOfOrNull { line ->
+      line.product
+        ?.id
+        ?.let { productService.findDetailedById(it).orElse(null) }
+        ?.suppliers
+        ?.firstOrNull()
+    }
 
   private fun getAllowedTransitions(
     current: OrderNetstone.OrderNetstoneStatus

@@ -27,6 +27,8 @@ interface OrderCodigRepository : JpaRepository<OrderCodig, Long> {
       SELECT o
       FROM OrderCodig o
       LEFT JOIN FETCH o.client
+      LEFT JOIN FETCH o.paymentTerm
+      LEFT JOIN FETCH o.fiscalPosition
       WHERE o.id = :id
     """
   )

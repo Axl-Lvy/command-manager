@@ -2,6 +2,7 @@ package fr.axl.lvy.sale
 
 import fr.axl.lvy.base.CodigDocument
 import fr.axl.lvy.client.Client
+import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.paymentterm.PaymentTerm
 import jakarta.persistence.*
@@ -31,6 +32,10 @@ class SalesCodig(
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "payment_term_id")
   var paymentTerm: PaymentTerm? = null
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "fiscal_position_id")
+  var fiscalPosition: FiscalPosition? = null
 
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "order_codig_id")

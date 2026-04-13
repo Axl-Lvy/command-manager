@@ -11,6 +11,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.BigDecimalField
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.value.ValueChangeMode
+import fr.axl.lvy.base.ui.noGap
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.product.Product
@@ -36,8 +37,7 @@ class DocumentLineEditor(
   private val grid: Grid<DocumentLine>
 
   init {
-    isPadding = false
-    isSpacing = false
+    noGap()
 
     grid = Grid()
     grid

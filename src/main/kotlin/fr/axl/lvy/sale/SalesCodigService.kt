@@ -38,6 +38,10 @@ class SalesCodigService(
   fun findAll(): List<SalesCodig> = salesCodigRepository.findByDeletedAtIsNull()
 
   @Transactional(readOnly = true)
+  fun findAllWithLinkedOrder(): List<SalesCodig> =
+    salesCodigRepository.findByDeletedAtIsNullAndOrderCodigIsNotNull()
+
+  @Transactional(readOnly = true)
   fun findById(id: Long): Optional<SalesCodig> = salesCodigRepository.findById(id)
 
   @Transactional(readOnly = true)
@@ -60,6 +64,12 @@ class SalesCodigService(
     }
     if (sale.shippingAddress.isNullOrBlank()) {
       sale.shippingAddress = sale.client.shippingAddress
+    }
+    if (sale.paymentTerm == null) {
+      sale.paymentTerm = sale.client.paymentTerm
+    }
+    if (sale.fiscalPosition == null) {
+      sale.fiscalPosition = sale.client.fiscalPosition
     }
     val saved = salesCodigRepository.save(sale)
     if (isNew) {
@@ -88,8 +98,14 @@ class SalesCodigService(
       return salesCodigRepository.save(sale)
     }
 
-    val supplier = clientService.findDefaultCodigSupplier().orElse(sale.client)
+    val supplier =
+      clientService.findDefaultCodigSupplier().orElseThrow {
+        IllegalStateException(
+          "Aucun fournisseur Netstone par defaut n'est configure dans les societes internes"
+        )
+      }
     val order = sale.orderCodig ?: OrderCodig("", supplier, sale.saleDate)
+    val codigCompany = clientService.findDefaultCodigCompany().orElse(null)
     val isNewOrder = sale.orderCodig == null
 
     order.client = supplier
@@ -100,8 +116,10 @@ class SalesCodigService(
     order.currency = sale.currency
     order.exchangeRate = sale.exchangeRate
     order.purchasePriceExclTax = sale.purchasePriceExclTax
-    order.incoterms = sale.incoterms
-    order.incotermLocation = sale.incotermLocation
+    order.incoterms = codigCompany?.incoterm?.name
+    order.incotermLocation = sale.client.deliveryPort
+    order.paymentTerm = supplier.paymentTerm
+    order.fiscalPosition = codigCompany?.fiscalPosition
     order.deliveryLocation = sale.client.deliveryPort
     order.billingAddress = sale.billingAddress
     order.shippingAddress = sale.shippingAddress

@@ -3,6 +3,7 @@ package fr.axl.lvy.client
 import fr.axl.lvy.base.NumberSequenceService
 import fr.axl.lvy.user.User
 import io.micrometer.core.instrument.MeterRegistry
+import java.util.Locale
 import java.util.Optional
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -31,13 +32,30 @@ class ClientService(
 
   /**
    * Returns the default supplier for CoDIG purchase orders — the own-company record representing
-   * Netstone (identified by [User.Company.NETSTONE] visibility).
+   * Netstone. Primary business rule: a client with role/type OWN_COMPANY named "Netstone".
+   * Visibility NETSTONE is used only as a compatibility fallback.
    */
   @Transactional(readOnly = true)
   fun findDefaultCodigSupplier(): Optional<Client> {
-    val ownCompanies = findByType(Client.ClientType.OWN_COMPANY)
+    val ownCompanies =
+      findByType(Client.ClientType.OWN_COMPANY).filter { it.role == Client.ClientRole.OWN_COMPANY }
     return Optional.ofNullable(
-      ownCompanies.firstOrNull { it.visibleCompany == User.Company.NETSTONE }
+      ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("netstone") }
+        ?: ownCompanies.firstOrNull { it.visibleCompany == User.Company.NETSTONE }
+    )
+  }
+
+  /**
+   * Returns the own-company record representing Codig itself. Primary business rule: an OWN_COMPANY
+   * named "Codig". Visibility CODIG is used as a compatibility fallback.
+   */
+  @Transactional(readOnly = true)
+  fun findDefaultCodigCompany(): Optional<Client> {
+    val ownCompanies =
+      findByType(Client.ClientType.OWN_COMPANY).filter { it.role == Client.ClientRole.OWN_COMPANY }
+    return Optional.ofNullable(
+      ownCompanies.firstOrNull { it.name.lowercase(Locale.ROOT).contains("codig") }
+        ?: ownCompanies.firstOrNull { it.visibleCompany == User.Company.CODIG }
     )
   }
 
