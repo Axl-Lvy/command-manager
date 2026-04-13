@@ -17,7 +17,6 @@ import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
-import fr.axl.lvy.order.ui.CommandNetstoneFormDialog
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
@@ -132,8 +131,7 @@ internal class CommandCodigListView(
   }
 
   private fun openNetstoneSaleForm(sale: SalesNetstone) {
-    val loadedSale =
-      sale.id?.let { salesNetstoneService.findDetailedById(it).orElse(sale) } ?: sale
+    val loadedSale = sale.id?.let { salesNetstoneService.findDetailedById(it).orElse(sale) } ?: sale
     SalesNetstoneFormDialog(
         salesNetstoneService,
         clientService,

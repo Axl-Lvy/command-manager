@@ -194,7 +194,8 @@ internal class CommandCodigFormDialog(
       }
     fiscalPositionCombo.value = codig.map { it.fiscalPosition }.orElse(null)
     incotermCombo.value =
-      codig.map { ownCompany -> allIncoterms.firstOrNull { it.id == ownCompany.incoterm?.id } }
+      codig
+        .map { ownCompany -> allIncoterms.firstOrNull { it.id == ownCompany.incoterm?.id } }
         .orElse(null)
   }
 
@@ -266,20 +267,26 @@ internal class CommandCodigFormDialog(
       DocumentFlowNavigation(
         currentStep = DocumentFlowStep.ORDER_CODIG,
         openSalesCodig =
-          if (hasLinkedSale && onOpenLinkedSale != null) Runnable {
-            close()
-            onOpenLinkedSale.invoke(currentOrder)
-          } else null,
+          if (hasLinkedSale && onOpenLinkedSale != null)
+            Runnable {
+              close()
+              onOpenLinkedSale.invoke(currentOrder)
+            }
+          else null,
         openSalesNetstone =
-          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneSale != null) Runnable {
-            close()
-            onOpenLinkedNetstoneSale.invoke(currentOrder)
-          } else null,
+          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneSale != null)
+            Runnable {
+              close()
+              onOpenLinkedNetstoneSale.invoke(currentOrder)
+            }
+          else null,
         openOrderNetstone =
-          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneOrder != null) Runnable {
-            close()
-            onOpenLinkedNetstoneOrder.invoke(currentOrder)
-          } else null,
+          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneOrder != null)
+            Runnable {
+              close()
+              onOpenLinkedNetstoneOrder.invoke(currentOrder)
+            }
+          else null,
       )
     return if (navigation.hasLinks()) DocumentFlowNavigator(navigation) else null
   }

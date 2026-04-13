@@ -53,7 +53,8 @@ import org.springframework.stereotype.Component
  * Seeded data (in dependency order):
  * 1. Reference data: 6 currencies, 7 payment terms, 8 incoterms, 5 fiscal positions
  * 2. Users (8)
- * 3. Clients (14, including OWN_COMPANY records for Codig and Netstone so MTO sales can resolve default supplier/company)
+ * 3. Clients (14, including OWN_COMPANY records for Codig and Netstone so MTO sales can resolve
+ *    default supplier/company)
  * 4. Products (14: physical, service, and MTO variants)
  * 5. Orders Codig (~20 across all statuses) with delivery notes and invoices
  * 6. Netstone orders (4) with delivery notes and supplier invoices
@@ -206,10 +207,10 @@ class DatabaseSeeder(
   }
 
   /**
-   * Returns clients in a fixed order used as indices throughout the seeder: 0=Acme (DOW),
-   * 1=Dupont SARL, 2=NestSupplier (All Plus), 3=Jean Dupont, 4=TechPro, 5=Meridian, 6=Global
-   * Parts, 7=Innovatech, 8=Benali, 9=ChinaSource, 10=Boutique Lefèvre, 11=Netstone SAS
-   * (OWN_COMPANY). Also creates Codig and Netstone OWN_COMPANY records used by service defaults.
+   * Returns clients in a fixed order used as indices throughout the seeder: 0=Acme (DOW), 1=Dupont
+   * SARL, 2=NestSupplier (All Plus), 3=Jean Dupont, 4=TechPro, 5=Meridian, 6=Global Parts,
+   * 7=Innovatech, 8=Benali, 9=ChinaSource, 10=Boutique Lefèvre, 11=Netstone SAS (OWN_COMPANY). Also
+   * creates Codig and Netstone OWN_COMPANY records used by service defaults.
    */
   private fun seedClients(refData: ReferenceData): List<Client> {
     logger.info("[Seeder] Creating clients...")
@@ -243,9 +244,8 @@ class DatabaseSeeder(
         billingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
         shippingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
         deliveryAddresses.add(
-          ClientDeliveryAddress(this, "Codig, Charleston Harbor", "Codig, Charleston Harbor").apply {
-            defaultAddress = true
-          }
+          ClientDeliveryAddress(this, "Codig, Charleston Harbor", "Codig, Charleston Harbor")
+            .apply { defaultAddress = true }
         )
         deliveryAddresses.add(
           ClientDeliveryAddress(this, "Codig, Port du Havre", "Codig, Port du Havre")
@@ -285,15 +285,11 @@ class DatabaseSeeder(
         defaultDiscount = BigDecimal("2.00")
         deliveryAddresses.add(
           ClientDeliveryAddress(
-            this,
-            "THE DOW CHEMICAL COMPANY KNX",
-            "ROHM and HAAS CHEMICALS LLC - Knoxville\n" +
-              "Plant\n" +
-              "730 Dale Avenue\n" +
-              "Knoxville TN TN 37921\n" +
-              "États-Unis\n" +
-              "+1 989-633-5596",
-          ).apply { defaultAddress = true }
+              this,
+              "THE DOW CHEMICAL COMPANY KNX",
+              "ROHM and HAAS CHEMICALS LLC - Knoxville\nPlant\n730 Dale Avenue\nKnoxville TN TN 37921\nÉtats-Unis\n+1 989-633-5596",
+            )
+            .apply { defaultAddress = true }
         )
         contacts.add(
           Contact(this, "Martin").apply {
@@ -353,7 +349,6 @@ class DatabaseSeeder(
       }
     val savedNest = clientService.save(nestSupplier)
     logger.info("[Seeder] Created client: ${savedNest.name} (${savedNest.clientCode})")
-
 
     val jean =
       Client(name = "Dupont").apply {

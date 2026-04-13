@@ -70,7 +70,9 @@ internal class CommandNetstoneListView(
 
   private fun openForm(order: OrderNetstone?) {
     val loadedOrder = order?.id?.let { orderNetstoneService.findDetailedById(it).orElse(order) }
-    val hasLinkedSale = loadedOrder?.orderCodig?.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true
+    val hasLinkedSale =
+      loadedOrder?.orderCodig?.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } ==
+        true
     CommandNetstoneFormDialog(
         orderNetstoneService,
         clientService,
@@ -139,7 +141,8 @@ internal class CommandNetstoneListView(
   }
 
   private fun openLinkedCodigSale(order: fr.axl.lvy.order.OrderCodig) {
-    val linkedSale = order.id?.let { salesCodigService.findByOrderCodigId(it).orElse(null) } ?: return
+    val linkedSale =
+      order.id?.let { salesCodigService.findByOrderCodigId(it).orElse(null) } ?: return
     val loadedSale =
       linkedSale.id?.let { salesCodigService.findDetailedById(it).orElse(linkedSale) } ?: linkedSale
     SalesCodigFormDialog(

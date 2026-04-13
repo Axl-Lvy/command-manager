@@ -217,22 +217,28 @@ internal class SalesNetstoneFormDialog(
       DocumentFlowNavigation(
         currentStep = DocumentFlowStep.SALES_NETSTONE,
         openSalesCodig =
-          if (onOpenLinkedCodigSale != null) Runnable {
-            close()
-            onOpenLinkedCodigSale.invoke()
-          } else null,
+          if (onOpenLinkedCodigSale != null)
+            Runnable {
+              close()
+              onOpenLinkedCodigSale.invoke()
+            }
+          else null,
         openOrderCodig =
-          if (hasLinkedCodigOrder && onOpenLinkedCodigOrder != null) Runnable {
-            val linkedOrder = sale.salesCodig.orderCodig ?: return@Runnable
-            close()
-            onOpenLinkedCodigOrder.invoke(linkedOrder)
-          } else null,
+          if (hasLinkedCodigOrder && onOpenLinkedCodigOrder != null)
+            Runnable {
+              val linkedOrder = sale.salesCodig.orderCodig ?: return@Runnable
+              close()
+              onOpenLinkedCodigOrder.invoke(linkedOrder)
+            }
+          else null,
         openOrderNetstone =
-          if (hasLinkedOrder && onOpenLinkedOrder != null) Runnable {
-            val linkedOrder = sale.orderNetstone ?: return@Runnable
-            close()
-            onOpenLinkedOrder.invoke(linkedOrder)
-          } else null,
+          if (hasLinkedOrder && onOpenLinkedOrder != null)
+            Runnable {
+              val linkedOrder = sale.orderNetstone ?: return@Runnable
+              close()
+              onOpenLinkedOrder.invoke(linkedOrder)
+            }
+          else null,
       )
     return if (navigation.hasLinks()) DocumentFlowNavigator(navigation) else null
   }

@@ -29,7 +29,6 @@ import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.sale.SalesNetstoneService
-import fr.axl.lvy.sale.ui.SalesNetstoneFormDialog
 import fr.axl.lvy.sale.SalesStatus
 
 @Route("ventes-codig")
@@ -150,7 +149,8 @@ internal class SalesCodigListView(
     val linkedSale =
       order.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) } ?: return
     val loadedSale =
-      linkedSale.id?.let { salesNetstoneService.findDetailedById(it).orElse(linkedSale) } ?: linkedSale
+      linkedSale.id?.let { salesNetstoneService.findDetailedById(it).orElse(linkedSale) }
+        ?: linkedSale
     SalesNetstoneFormDialog(
         salesNetstoneService,
         clientService,

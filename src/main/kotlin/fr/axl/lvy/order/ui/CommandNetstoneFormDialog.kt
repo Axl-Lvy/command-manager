@@ -96,9 +96,7 @@ internal class CommandNetstoneFormDialog(
 
     orderCodigCombo.setItems(orderCodigService.findAll())
     orderCodigCombo.setItemLabelGenerator { "${it.orderNumber} - ${it.client.name}" }
-    orderCodigCombo.addValueChangeListener {
-      applyLinkedSaleDefaults()
-    }
+    orderCodigCombo.addValueChangeListener { applyLinkedSaleDefaults() }
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 3))
@@ -243,23 +241,30 @@ internal class CommandNetstoneFormDialog(
       DocumentFlowNavigation(
         currentStep = DocumentFlowStep.ORDER_NETSTONE,
         openSalesCodig =
-          if (onOpenLinkedCodigSale != null) Runnable {
-            close()
-            onOpenLinkedCodigSale.invoke()
-          } else null,
+          if (onOpenLinkedCodigSale != null)
+            Runnable {
+              close()
+              onOpenLinkedCodigSale.invoke()
+            }
+          else null,
         openOrderCodig =
-          if (onOpenLinkedCodigOrder != null) Runnable {
-            close()
-            onOpenLinkedCodigOrder.invoke()
-          } else null,
+          if (onOpenLinkedCodigOrder != null)
+            Runnable {
+              close()
+              onOpenLinkedCodigOrder.invoke()
+            }
+          else null,
         openSalesNetstone =
-          if (hasLinkedSale && onOpenLinkedSale != null) Runnable {
-            val linkedSale =
-              currentOrder.orderCodig.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) }
-                ?: return@Runnable
-            close()
-            onOpenLinkedSale.invoke(linkedSale)
-          } else null,
+          if (hasLinkedSale && onOpenLinkedSale != null)
+            Runnable {
+              val linkedSale =
+                currentOrder.orderCodig.id?.let {
+                  salesNetstoneService.findByOrderCodigId(it).orElse(null)
+                } ?: return@Runnable
+              close()
+              onOpenLinkedSale.invoke(linkedSale)
+            }
+          else null,
       )
     return if (navigation.hasLinks()) DocumentFlowNavigator(navigation) else null
   }

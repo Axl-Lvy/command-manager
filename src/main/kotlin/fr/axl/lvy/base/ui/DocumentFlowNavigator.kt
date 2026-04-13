@@ -111,25 +111,22 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
     }
 
   private fun actionButton(label: String, color: String, action: Runnable): Component =
-    Button(label) { action.run() }.apply {
-      addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE)
-      style.set("color", color)
-      style.set("opacity", "0.28")
-      style.set("font-weight", "500")
-      style.set("padding", "0")
-      style.set("min-width", "0")
-    }
+    Button(label) { action.run() }
+      .apply {
+        addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE)
+        style.set("color", color)
+        style.set("opacity", "0.28")
+        style.set("font-weight", "500")
+        style.set("padding", "0")
+        style.set("min-width", "0")
+      }
 
   private fun buildSegmentRow(): Component =
-    HorizontalLayout(
-        segment(CODIG_COLOR),
-        segment(NETSTONE_COLOR),
-      )
-      .apply {
-        isPadding = false
-        isSpacing = false
-        setWidthFull()
-      }
+    HorizontalLayout(segment(CODIG_COLOR), segment(NETSTONE_COLOR)).apply {
+      isPadding = false
+      isSpacing = false
+      setWidthFull()
+    }
 
   private fun segment(color: String): Component =
     Div().apply {
@@ -140,15 +137,11 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
     }
 
   private fun buildCompanyRow(): Component =
-    HorizontalLayout(
-        companyLabel("CoDIG"),
-        companyLabel("Netstone"),
-      )
-      .apply {
-        isPadding = false
-        isSpacing = false
-        setWidthFull()
-      }
+    HorizontalLayout(companyLabel("CoDIG"), companyLabel("Netstone")).apply {
+      isPadding = false
+      isSpacing = false
+      setWidthFull()
+    }
 
   private fun companyLabel(label: String): Component =
     Div().apply {

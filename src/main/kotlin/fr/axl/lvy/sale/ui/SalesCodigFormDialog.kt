@@ -249,20 +249,24 @@ internal class SalesCodigFormDialog(
       DocumentFlowNavigation(
         currentStep = DocumentFlowStep.SALES_CODIG,
         openOrderCodig =
-          if (sale.orderCodig != null && onOpenLinkedOrder != null) Runnable {
-            close()
-            onOpenLinkedOrder.invoke(sale)
-          } else null,
+          if (sale.orderCodig != null && onOpenLinkedOrder != null)
+            Runnable {
+              close()
+              onOpenLinkedOrder.invoke(sale)
+            }
+          else null,
         openSalesNetstone =
           Runnable {
             close()
             onOpenLinkedNetstoneSale.invoke()
           },
         openOrderNetstone =
-          if (onOpenLinkedNetstoneOrder != null) Runnable {
-            close()
-            onOpenLinkedNetstoneOrder.invoke()
-          } else null,
+          if (onOpenLinkedNetstoneOrder != null)
+            Runnable {
+              close()
+              onOpenLinkedNetstoneOrder.invoke()
+            }
+          else null,
       )
     return if (navigation.hasLinks()) DocumentFlowNavigator(navigation) else null
   }
