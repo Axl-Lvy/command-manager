@@ -201,6 +201,10 @@ internal class CommandNetstoneFormDialog(
     close()
   }
 
+  /**
+   * Collapses RECEIVED into CONFIRMED for display: the form only exposes three user-facing states
+   * (draft / confirmed / cancelled).
+   */
   private fun normalizeStatusForUi(
     status: OrderNetstone.OrderNetstoneStatus
   ): OrderNetstone.OrderNetstoneStatus =
@@ -210,6 +214,13 @@ internal class CommandNetstoneFormDialog(
       else -> OrderNetstone.OrderNetstoneStatus.CONFIRMED
     }
 
+  /**
+   * Returns the French display label for an order status.
+   *
+   * [SENT][OrderNetstone.OrderNetstoneStatus.SENT] is shown as "Brouillon" (draft). The database
+   * column stores "SENT" rather than "DRAFT" for backward-compatibility with the existing MySQL
+   * enum definition — renaming the value would require a schema migration.
+   */
   private fun statusLabel(status: OrderNetstone.OrderNetstoneStatus): String =
     when (normalizeStatusForUi(status)) {
       OrderNetstone.OrderNetstoneStatus.SENT -> "Brouillon"

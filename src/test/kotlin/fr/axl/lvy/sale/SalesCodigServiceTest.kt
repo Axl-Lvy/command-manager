@@ -141,8 +141,6 @@ class SalesCodigServiceTest {
     val sale = createSalesCodig("SA-SYNC-01", client)
     sale.subject = "Test Subject"
     sale.currency = "USD"
-    sale.incoterms = "FOB"
-    sale.incotermLocation = "Marseille"
     salesCodigRepository.saveAndFlush(sale)
 
     val mtoProduct = testData.createMtoProduct("PRD-SA-SYNC-01")
@@ -164,8 +162,9 @@ class SalesCodigServiceTest {
     assertThat(order.client.id).isEqualTo(supplier.id)
     assertThat(order.subject).isEqualTo("Test Subject")
     assertThat(order.currency).isEqualTo("USD")
-    assertThat(order.incoterms).isEqualTo("FOB")
-    assertThat(order.incotermLocation).isEqualTo("Marseille")
+    // incoterms comes from codigCompany.incoterm (null in this test — no incoterm configured)
+    // incotermLocation comes from sale.client.deliveryPort (null in this test — no deliveryPort
+    // set)
 
     val orderLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(

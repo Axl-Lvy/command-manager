@@ -14,6 +14,7 @@ import fr.axl.lvy.order.OrderNetstoneRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -368,6 +369,19 @@ class SalesNetstoneServiceTest {
     val saved = salesNetstoneService.saveWithLines(salesNetstone, listOf(line))
 
     assertThat(saved.orderNetstone).isNull()
+  }
+
+  @Test
+  fun save_throws_when_salesCodig_has_no_linked_orderCodig() {
+    val client = testData.createClient("CLI-SB-INV", "123 Billing", "456 Shipping")
+    val salesCodig = SalesCodig("SA-INV-01", client, LocalDate.of(2026, 3, 1))
+    salesCodigRepository.save(salesCodig) // no orderCodig set
+
+    val sale = SalesNetstone("", salesCodig)
+
+    assertThatThrownBy { salesNetstoneService.save(sale) }
+      .isInstanceOf(IllegalStateException::class.java)
+      .hasMessageContaining("Order Codig")
   }
 
   @Test

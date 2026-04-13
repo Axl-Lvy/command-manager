@@ -13,6 +13,10 @@ import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
 import java.util.function.Consumer
 
+/**
+ * Dialog for creating or editing a [ClientDeliveryAddress]. Calls [onSave] with the populated
+ * entity on confirm; the caller is responsible for adding or updating it in the parent list.
+ */
 internal class DeliveryAddressFormDialog(
   private val deliveryAddress: ClientDeliveryAddress?,
   private val onSave: Consumer<ClientDeliveryAddress>,

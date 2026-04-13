@@ -178,6 +178,13 @@ internal class CommandNetstoneListView(
     grid.setItems(orderNetstoneService.findAll())
   }
 
+  /**
+   * Returns the French display label for an order status.
+   *
+   * [SENT][OrderNetstone.OrderNetstoneStatus.SENT] is shown as "Brouillon" (draft). The database
+   * column stores "SENT" rather than "DRAFT" for backward-compatibility with the existing MySQL
+   * enum definition — renaming the value would require a schema migration.
+   */
   private fun statusLabel(status: OrderNetstone.OrderNetstoneStatus): String =
     when (status) {
       OrderNetstone.OrderNetstoneStatus.SENT -> "Brouillon"

@@ -271,6 +271,26 @@ class OrderNetstoneServiceTest {
   }
 
   @Test
+  fun saveWithLines_leaves_supplier_null_when_no_line_has_a_supplier() {
+    val orderCodig = createOrderCodig("CA-OB-NO-SUP")
+    val orderNetstone = OrderNetstone("", orderCodig)
+
+    val product = testData.createMtoProduct("PRD-OB-NO-SUP")
+    // no replaceSuppliers() call — product.suppliers is empty
+
+    val line = DocumentLine(DocumentLine.DocumentType.ORDER_NETSTONE, 0L, "Item without supplier")
+    line.product = product
+    line.quantity = BigDecimal.ONE
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
+
+    val saved = orderNetstoneService.saveWithLines(orderNetstone, listOf(line))
+
+    assertThat(saved.supplier).isNull()
+  }
+
+  @Test
   fun saveWithLines_replaces_existing_lines() {
     val orderCodig = createOrderCodig("CA-OB-SWL2")
     val orderNetstone = OrderNetstone("OB-SWL-01", orderCodig)

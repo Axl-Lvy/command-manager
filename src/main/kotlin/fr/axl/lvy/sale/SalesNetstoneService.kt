@@ -34,6 +34,7 @@ class SalesNetstoneService(
 
   companion object {
     private val log = LoggerFactory.getLogger(SalesNetstoneService::class.java)
+    private const val ERR_ORDER_CODIG_MISSING = ERR_ORDER_CODIG_MISSING
   }
 
   @Transactional(readOnly = true)
@@ -55,15 +56,17 @@ class SalesNetstoneService(
     if (sale.saleNumber.isBlank()) {
       sale.saleNumber = generateNextSaleNumber()
     }
+    val orderCodig =
+      sale.salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
     if (sale.incotermLocation.isNullOrBlank()) {
-      sale.incotermLocation = sale.salesCodig.orderCodig?.incotermLocation
+      sale.incotermLocation = orderCodig.incotermLocation
     }
     if (sale.fiscalPosition == null) {
       sale.fiscalPosition =
         clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
     }
     if (sale.currency.isBlank()) {
-      sale.currency = sale.salesCodig.orderCodig?.currency ?: "EUR"
+      sale.currency = orderCodig.currency
     }
     return salesNetstoneRepository.save(sale)
   }
@@ -86,8 +89,7 @@ class SalesNetstoneService(
     sourceLines: List<DocumentLine>,
   ): SalesNetstone {
     val sourceOrderCodig =
-      salesCodig.orderCodig
-        ?: throw IllegalStateException("Sales Codig must generate Order Codig first")
+      salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
     val existing = salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
     val isNew = existing == null
     val sale = existing ?: SalesNetstone("", salesCodig).apply { status = SalesStatus.DRAFT }
@@ -158,8 +160,7 @@ class SalesNetstoneService(
   @Transactional
   fun syncGeneratedOrder(sale: SalesNetstone, saleLines: List<DocumentLine>): SalesNetstone {
     val sourceOrderCodig =
-      sale.salesCodig.orderCodig
-        ?: throw IllegalStateException("Sales Codig must generate Order Codig first")
+      sale.salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
     val order = sale.orderNetstone ?: OrderNetstone("", sourceOrderCodig)
 
     order.orderCodig = sourceOrderCodig

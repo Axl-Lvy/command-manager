@@ -9,6 +9,11 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 
+/**
+ * Holds the current step and optional click actions for the four-stage document flow: Codig sale →
+ * Codig order → Netstone sale → Netstone order. A null action means that step has no linked
+ * document yet and is rendered as disabled.
+ */
 internal data class DocumentFlowNavigation(
   val currentStep: DocumentFlowStep,
   val openSalesCodig: Runnable? = null,
@@ -23,6 +28,7 @@ internal data class DocumentFlowNavigation(
       openOrderNetstone != null
 }
 
+/** The four stages in the Codig→Netstone document chain. */
 internal enum class DocumentFlowStep {
   SALES_CODIG,
   ORDER_CODIG,
@@ -30,6 +36,10 @@ internal enum class DocumentFlowStep {
   ORDER_NETSTONE,
 }
 
+/**
+ * Visual step navigator for the four-stage document flow (Codig sale / order → Netstone sale /
+ * order). The current step is bold; linked steps are clickable buttons; unlinked steps are dimmed.
+ */
 internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : VerticalLayout() {
 
   init {
@@ -37,8 +47,8 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
     isSpacing = false
     setWidthFull()
     defaultHorizontalComponentAlignment = FlexComponent.Alignment.STRETCH
-    style.set("gap", "0.35rem")
-    style.set("padding", "0.25rem 0 0.75rem 0")
+    style["gap"] = "0.35rem"
+    style["padding"] = "0.25rem 0 0.75rem 0"
 
     add(buildStepRow(navigation), buildSegmentRow(), buildCompanyRow())
   }
@@ -84,9 +94,9 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
   ): Component =
     Div().apply {
       setWidth("25%")
-      style.set("text-align", "center")
-      style.set("display", "flex")
-      style.set("justify-content", "center")
+      style["text-align"] = "center"
+      style["display"] = "flex"
+      style["justify-content"] = "center"
       add(
         when {
           current -> currentLabel(label, color)
@@ -98,27 +108,27 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
 
   private fun currentLabel(label: String, color: String): Component =
     Span(label).apply {
-      style.set("color", color)
-      style.set("font-weight", "700")
-      style.set("letter-spacing", "0.02em")
+      style["color"] = color
+      style[STYLE_FONT_WEIGHT] = "700"
+      style["letter-spacing"] = "0.02em"
     }
 
   private fun disabledLabel(label: String, color: String): Component =
     Span(label).apply {
-      style.set("color", color)
-      style.set("opacity", "0.28")
-      style.set("font-weight", "500")
+      style["color"] = color
+      style["opacity"] = "0.28"
+      style[STYLE_FONT_WEIGHT] = "500"
     }
 
   private fun actionButton(label: String, color: String, action: Runnable): Component =
     Button(label) { action.run() }
       .apply {
         addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE)
-        style.set("color", color)
-        style.set("opacity", "0.28")
-        style.set("font-weight", "500")
-        style.set("padding", "0")
-        style.set("min-width", "0")
+        style["color"] = color
+        style["opacity"] = "0.28"
+        style[STYLE_FONT_WEIGHT] = "500"
+        style["padding"] = "0"
+        style["min-width"] = "0"
       }
 
   private fun buildSegmentRow(): Component =
@@ -131,9 +141,9 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
   private fun segment(color: String): Component =
     Div().apply {
       setWidth("50%")
-      style.set("height", "8px")
-      style.set("background", color)
-      style.set("border-radius", "999px")
+      style["height"] = "8px"
+      style["background"] = color
+      style["border-radius"] = "999px"
     }
 
   private fun buildCompanyRow(): Component =
@@ -146,12 +156,12 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
   private fun companyLabel(label: String): Component =
     Div().apply {
       setWidth("50%")
-      style.set("text-align", "center")
+      style["text-align"] = "center"
       add(
         Span(label).apply {
-          style.set("font-size", "0.8rem")
-          style.set("font-weight", "600")
-          style.set("color", "var(--lumo-secondary-text-color)")
+          style["font-size"] = "0.8rem"
+          style[STYLE_FONT_WEIGHT] = "600"
+          style["color"] = "var(--lumo-secondary-text-color)"
         }
       )
     }
@@ -159,5 +169,6 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
   companion object {
     private const val CODIG_COLOR = "#1d4ed8"
     private const val NETSTONE_COLOR = "#15803d"
+    private const val STYLE_FONT_WEIGHT = "font-weight"
   }
 }

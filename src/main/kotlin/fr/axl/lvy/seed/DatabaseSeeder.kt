@@ -95,7 +95,7 @@ class DatabaseSeeder(
     seedUsers()
     val clients = seedClients(refData)
     val products = seedProducts()
-    val mtoOrders = seedOrdersCodig(clients, products, refData)
+    val mtoOrders = seedOrdersCodig(clients, products)
     seedOrdersNetstone(mtoOrders, clients, products)
     seedSalesCodig(clients, products, refData)
 
@@ -735,11 +735,7 @@ class DatabaseSeeder(
    * Creates ~20 Codig orders covering all statuses. Returns a pair of confirmed orders that contain
    * MTO products — these are passed to [seedOrdersNetstone] to generate supplier orders.
    */
-  private fun seedOrdersCodig(
-    clients: List<Client>,
-    products: List<Product>,
-    refData: ReferenceData,
-  ): List<OrderCodig> {
+  private fun seedOrdersCodig(clients: List<Client>, products: List<Product>): List<OrderCodig> {
     logger.info("[Seeder] Creating orders Codig...")
 
     val acme = clients[0]
@@ -771,7 +767,8 @@ class DatabaseSeeder(
       return orderCodigService.changeStatus(saved, OrderCodig.OrderCodigStatus.CONFIRMED)
     }
 
-    // Helper: deliver a confirmed order and attach a delivery note
+    // Helper: deliver a confirmed order and attach a delivery note.
+    // Walks through the full state chain: CONFIRMED → IN_PRODUCTION → READY → DELIVERED.
     fun delivered(
       order: OrderCodig,
       client: Client,
@@ -779,7 +776,9 @@ class DatabaseSeeder(
       tracking: String,
       packages: Int,
     ): OrderCodig {
-      val del = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.DELIVERED)
+      val inProd = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
+      val ready = orderCodigService.changeStatus(inProd, OrderCodig.OrderCodigStatus.READY)
+      val del = orderCodigService.changeStatus(ready, OrderCodig.OrderCodigStatus.DELIVERED)
       deliveryNoteCodigService.save(
         DeliveryNoteCodig("", del, client).apply {
           status = DeliveryNoteCodig.DeliveryNoteCodigStatus.DELIVERED

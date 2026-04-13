@@ -102,7 +102,7 @@ internal class ClientFormDialog(
       visibleCompany.isVisible = false
     }
     statusToggle.addClickListener {
-      val currentStatus = statusToggle.element.getProperty("data-status")
+      val currentStatus = statusToggle.element.getProperty(DATA_STATUS_PROP)
       val nextStatus =
         if (currentStatus == Client.Status.ACTIVE.name) Client.Status.INACTIVE
         else Client.Status.ACTIVE
@@ -253,7 +253,9 @@ internal class ClientFormDialog(
   private fun editDeliveryAddress(deliveryAddress: ClientDeliveryAddress) {
     DeliveryAddressFormDialog(deliveryAddress) { updated ->
         if (updated.defaultAddress) {
-          deliveryAddresses.forEach { it.defaultAddress = it === updated }
+          deliveryAddresses.forEach {
+            it.defaultAddress = if (updated.id != null) it.id == updated.id else it === updated
+          }
         }
         deliveryAddressGrid.setItems(deliveryAddresses)
       }
@@ -299,24 +301,24 @@ internal class ClientFormDialog(
         } else {
           visibleCompany.value ?: User.Company.BOTH
         }
-      c.email = if (email.value.isBlank()) null else email.value
-      c.phone = if (phone.value.isBlank()) null else phone.value
-      c.website = if (website.value.isBlank()) null else website.value
-      c.siret = if (siret.value.isBlank()) null else siret.value
-      c.vatNumber = if (vatNumber.value.isBlank()) null else vatNumber.value
-      c.billingAddress = if (billingAddress.value.isBlank()) null else billingAddress.value
+      c.email = email.value.takeIf { it.isNotBlank() }
+      c.phone = phone.value.takeIf { it.isNotBlank() }
+      c.website = website.value.takeIf { it.isNotBlank() }
+      c.siret = siret.value.takeIf { it.isNotBlank() }
+      c.vatNumber = vatNumber.value.takeIf { it.isNotBlank() }
+      c.billingAddress = billingAddress.value.takeIf { it.isNotBlank() }
       c.paymentTerm = paymentTerm.value
       c.fiscalPosition = fiscalPosition.value
       c.incoterm = incoterm.value
       c.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
       c.deliveryPort = deliveryPort.value.takeIf { it.isNotBlank() }
       c.status =
-        if (statusToggle.element.getProperty("data-status") == Client.Status.INACTIVE.name) {
+        if (statusToggle.element.getProperty(DATA_STATUS_PROP) == Client.Status.INACTIVE.name) {
           Client.Status.INACTIVE
         } else {
           Client.Status.ACTIVE
         }
-      c.notes = if (notes.value.isBlank()) null else notes.value
+      c.notes = notes.value.takeIf { it.isNotBlank() }
 
       c.contacts.clear()
       for (contact in contacts) {
@@ -352,7 +354,7 @@ internal class ClientFormDialog(
 
   private fun updateStatusButton(status: Client.Status) {
     statusToggle.text = if (status == Client.Status.ACTIVE) "Actif" else "Inactif"
-    statusToggle.element.setProperty("data-status", status.name)
+    statusToggle.element.setProperty(DATA_STATUS_PROP, status.name)
     statusToggle.removeThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_CONTRAST)
     if (status == Client.Status.ACTIVE) {
       statusToggle.addThemeVariants(ButtonVariant.LUMO_SUCCESS)
@@ -364,5 +366,9 @@ internal class ClientFormDialog(
   enum class ClientFormMode {
     CLIENT,
     OWN_COMPANY,
+  }
+
+  companion object {
+    private const val DATA_STATUS_PROP = DATA_STATUS_PROP
   }
 }
