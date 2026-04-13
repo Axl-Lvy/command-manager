@@ -17,7 +17,7 @@ services:
       retries: 5
 
   app:
-    build: .
+    image: ghcr.io/axl-lvy/command-manager:dev
     depends_on:
       mysql:
         condition: service_healthy
