@@ -14,7 +14,7 @@ class DocumentLineService(private val documentLineRepository: DocumentLineReposi
 
   /**
    * Atomically replaces all lines of a document: deletes existing lines, then persists new ones.
-   * Optionally applies a [filter] and/or overrides the VAT rate on all lines.
+   * Optionally applies a [filter] and/or overrides the VAT rate or unit price on lines.
    */
   @Transactional
   fun replaceLines(
@@ -22,6 +22,7 @@ class DocumentLineService(private val documentLineRepository: DocumentLineReposi
     documentId: Long,
     lines: List<DocumentLine>,
     overrideVatRate: BigDecimal? = null,
+    overrideUnitPrice: ((DocumentLine) -> BigDecimal?)? = null,
     filter: ((DocumentLine) -> Boolean)? = null,
   ): List<DocumentLine> {
     val existingLines =
@@ -35,7 +36,11 @@ class DocumentLineService(private val documentLineRepository: DocumentLineReposi
     val persistedLines =
       sourceLines.mapIndexed { i, line ->
         DocumentLine(documentType, documentId, line.designation).apply {
-          copyFieldsFrom(line, overrideVatRate = overrideVatRate)
+          copyFieldsFrom(
+            line,
+            overrideVatRate = overrideVatRate,
+            overrideUnitPrice = overrideUnitPrice?.invoke(line),
+          )
           position = i
         }
       }

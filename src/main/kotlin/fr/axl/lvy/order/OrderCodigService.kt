@@ -50,6 +50,10 @@ class OrderCodigService(
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderCodig> = orderCodigRepository.findById(id)
 
+  @Transactional(readOnly = true)
+  fun findDetailedById(id: Long): Optional<OrderCodig> =
+    Optional.ofNullable(orderCodigRepository.findDetailedById(id))
+
   @Transactional
   fun save(order: OrderCodig): OrderCodig {
     val isNew = order.orderNumber.isBlank()
@@ -62,6 +66,10 @@ class OrderCodigService(
     if (order.shippingAddress.isNullOrBlank()) {
       order.shippingAddress = order.client.shippingAddress
     }
+    if (order.deliveryLocation.isNullOrBlank()) {
+      order.deliveryLocation = order.client.deliveryPort
+    }
+    return orderCodigRepository.save(order)
     val saved = orderCodigRepository.save(order)
     if (isNew) {
       ordersCreatedCounter.increment()
@@ -144,6 +152,8 @@ class OrderCodigService(
     copy.exchangeRate = source.exchangeRate
     copy.purchasePriceExclTax = source.purchasePriceExclTax
     copy.incoterms = source.incoterms
+    copy.incotermLocation = source.incotermLocation
+    copy.deliveryLocation = source.deliveryLocation
     copy.notes = source.notes
     copy.conditions = source.conditions
     copy.sourceOrder = source

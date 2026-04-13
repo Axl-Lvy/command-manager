@@ -21,4 +21,14 @@ interface OrderCodigRepository : JpaRepository<OrderCodig, Long> {
     @Param("status") status: OrderCodig.OrderCodigStatus,
     @Param("threshold") threshold: Instant,
   ): Long
+
+  @Query(
+    """
+      SELECT o
+      FROM OrderCodig o
+      LEFT JOIN FETCH o.client
+      WHERE o.id = :id
+    """
+  )
+  fun findDetailedById(id: Long): OrderCodig?
 }

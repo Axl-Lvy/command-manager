@@ -76,6 +76,24 @@ class DocumentLineTest {
   }
 
   @Test
+  fun fromProduct_can_use_purchase_price() {
+    val product = Product("REF-BUY", "Purchased Product")
+    product.sellingPriceExclTax = BigDecimal("150.00")
+    product.purchasePriceExclTax = BigDecimal("80.00")
+
+    val line =
+      DocumentLine.fromProduct(
+        DocumentLine.DocumentType.ORDER_CODIG,
+        1L,
+        product,
+        usePurchasePrice = true,
+      )
+
+    assertThat(line.unitPriceExclTax).isEqualByComparingTo("80.00")
+    assertThat(line.lineTotalExclTax).isEqualByComparingTo("80.00")
+  }
+
+  @Test
   fun recalculate_with_zero_quantity_gives_zero() {
     val line = DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 1L, "Widget")
     line.quantity = BigDecimal.ZERO

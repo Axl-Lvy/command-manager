@@ -2,6 +2,7 @@ package fr.axl.lvy.sale
 
 import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
+import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderCodig
@@ -10,6 +11,7 @@ import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermRepository
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductRepository
+import fr.axl.lvy.user.User
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional
 class SalesCodigServiceTest {
 
   @Autowired lateinit var salesCodigService: SalesCodigService
+  @Autowired lateinit var clientService: ClientService
   @Autowired lateinit var salesCodigRepository: SalesCodigRepository
   @Autowired lateinit var salesNetstoneRepository: SalesNetstoneRepository
   @Autowired lateinit var productRepository: ProductRepository
@@ -92,6 +95,7 @@ class SalesCodigServiceTest {
     sale.subject = "Test Subject"
     sale.currency = "USD"
     sale.incoterms = "FOB"
+    sale.incotermLocation = "Marseille"
     salesCodigRepository.saveAndFlush(sale)
 
     val mtoProduct = testData.createMtoProduct("PRD-SA-SYNC-01")
@@ -114,6 +118,7 @@ class SalesCodigServiceTest {
     assertThat(order.subject).isEqualTo("Test Subject")
     assertThat(order.currency).isEqualTo("USD")
     assertThat(order.incoterms).isEqualTo("FOB")
+    assertThat(order.incotermLocation).isEqualTo("Marseille")
 
     val orderLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
@@ -123,8 +128,36 @@ class SalesCodigServiceTest {
     assertThat(orderLines).hasSize(1)
     assertThat(orderLines[0].designation).isEqualTo("Widget")
     assertThat(orderLines[0].quantity).isEqualByComparingTo("5")
+    assertThat(orderLines[0].unitPriceExclTax).isEqualByComparingTo("60.00")
     assertThat(orderLines[0].vatRate).isEqualByComparingTo("20.00")
-    assertThat(order.totalExclTax).isEqualByComparingTo("500.00")
+    assertThat(order.totalExclTax).isEqualByComparingTo("300.00")
+  }
+
+  @Test
+  fun syncGeneratedOrder_uses_default_codig_supplier() {
+    val client = testData.createClient("CLI-SA-SUPPLIER")
+    client.deliveryPort = "Port client"
+    val supplier = Client("CLI-SA-OWN-B", "Netstone")
+    supplier.type = Client.ClientType.OWN_COMPANY
+    supplier.role = Client.ClientRole.OWN_COMPANY
+    supplier.visibleCompany = User.Company.NETSTONE
+    clientService.save(supplier)
+
+    val sale = createSalesCodig("SA-SUPPLIER-01", client)
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SUPPLIER")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        sale.id!!,
+        "Widget",
+        product = mtoProduct,
+      )
+
+    val result = salesCodigService.syncGeneratedOrder(sale, listOf(line))
+
+    assertThat(result.orderCodig).isNotNull
+    assertThat(result.orderCodig!!.client.id).isEqualTo(supplier.id)
+    assertThat(result.orderCodig!!.deliveryLocation).isEqualTo("Port client")
   }
 
   @Test

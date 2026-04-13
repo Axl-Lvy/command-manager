@@ -29,6 +29,18 @@ class ClientService(
   fun findByType(type: Client.ClientType): List<Client> =
     clientRepository.findByDeletedAtIsNullAndTypeOrderByNameAsc(type)
 
+  /**
+   * Returns the default supplier for CoDIG purchase orders — the own-company record representing
+   * Netstone (identified by [User.Company.NETSTONE] visibility).
+   */
+  @Transactional(readOnly = true)
+  fun findDefaultCodigSupplier(): Optional<Client> {
+    val ownCompanies = findByType(Client.ClientType.OWN_COMPANY)
+    return Optional.ofNullable(
+      ownCompanies.firstOrNull { it.visibleCompany == User.Company.NETSTONE }
+    )
+  }
+
   @Transactional(readOnly = true)
   fun findVisibleFor(company: User.Company): List<Client> = clientRepository.findVisibleFor(company)
 

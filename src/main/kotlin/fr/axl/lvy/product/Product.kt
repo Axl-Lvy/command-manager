@@ -29,6 +29,10 @@ class Product(
   @Column(nullable = false, columnDefinition = "enum('PRODUCT','SERVICE')")
   var type: ProductType = ProductType.PRODUCT
 
+  /** Free-text field for purchase price conditions (e.g. "Prix départ usine"). */
+  @Column(name = "price_type", length = 100, columnDefinition = "varchar(100)")
+  var priceType: String? = null
+
   @Column(name = "is_mto", nullable = false) var mto: Boolean = false
 
   @Column(name = "selling_price_excl_tax", nullable = false, precision = 12, scale = 2)
