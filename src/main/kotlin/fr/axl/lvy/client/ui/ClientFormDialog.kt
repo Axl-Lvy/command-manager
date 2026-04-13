@@ -369,6 +369,6 @@ internal class ClientFormDialog(
   }
 
   companion object {
-    private const val DATA_STATUS_PROP = DATA_STATUS_PROP
+    private const val DATA_STATUS_PROP = "data-status"
   }
 }
