@@ -13,6 +13,11 @@ class NumberSequenceService(
   private val repository: NumberSequenceRepository,
   private val meterRegistry: MeterRegistry,
 ) {
+  init {
+    // Pre-register one counter per sequence type so they appear in Prometheus at startup
+    // with value 0, even if no sequences have been generated yet in this process.
+    CONFIGS.keys.forEach { meterRegistry.counter("number.sequence.generated", "type", it) }
+  }
 
   @Transactional
   fun nextNumber(entityType: String): String {
