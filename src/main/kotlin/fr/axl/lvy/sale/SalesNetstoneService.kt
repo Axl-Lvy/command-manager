@@ -34,7 +34,7 @@ class SalesNetstoneService(
 
   companion object {
     private val log = LoggerFactory.getLogger(SalesNetstoneService::class.java)
-    private const val ERR_ORDER_CODIG_MISSING = ERR_ORDER_CODIG_MISSING
+    private const val ERR_ORDER_CODIG_MISSING = "Sales Codig must generate Order Codig first"
   }
 
   @Transactional(readOnly = true)
@@ -56,8 +56,7 @@ class SalesNetstoneService(
     if (sale.saleNumber.isBlank()) {
       sale.saleNumber = generateNextSaleNumber()
     }
-    val orderCodig =
-      sale.salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
+    val orderCodig = sale.salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
     if (sale.incotermLocation.isNullOrBlank()) {
       sale.incotermLocation = orderCodig.incotermLocation
     }
@@ -88,8 +87,7 @@ class SalesNetstoneService(
     notes: String?,
     sourceLines: List<DocumentLine>,
   ): SalesNetstone {
-    val sourceOrderCodig =
-      salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
+    val sourceOrderCodig = salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
     val existing = salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
     val isNew = existing == null
     val sale = existing ?: SalesNetstone("", salesCodig).apply { status = SalesStatus.DRAFT }
@@ -159,8 +157,7 @@ class SalesNetstoneService(
    */
   @Transactional
   fun syncGeneratedOrder(sale: SalesNetstone, saleLines: List<DocumentLine>): SalesNetstone {
-    val sourceOrderCodig =
-      sale.salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
+    val sourceOrderCodig = sale.salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
     val order = sale.orderNetstone ?: OrderNetstone("", sourceOrderCodig)
 
     order.orderCodig = sourceOrderCodig
