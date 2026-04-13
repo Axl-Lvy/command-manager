@@ -47,6 +47,11 @@ class ProductService(
   }
 
   @Transactional
+  fun archive(id: Long) {
+    productRepository.findById(id).ifPresent { it.active = false }
+  }
+
+  @Transactional
   fun delete(id: Long) {
     productRepository.findById(id).ifPresent { it.softDelete() }
   }

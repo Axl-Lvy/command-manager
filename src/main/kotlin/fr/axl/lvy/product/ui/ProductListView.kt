@@ -51,8 +51,7 @@ internal class ProductListView(
 
         val archiveButton =
           Button("Archiver") {
-            product.active = false
-            productService.save(product)
+            productService.archive(product.id!!)
             refreshGrid()
           }
         archiveButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY)
