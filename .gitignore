@@ -16,6 +16,7 @@ build/
 # Application
 application-local.properties
 .env
+docker-compose.override.yml
 
 # Vaadin
 node_modules/
