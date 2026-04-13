@@ -3,6 +3,7 @@ package fr.axl.lvy.seed
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
 import fr.axl.lvy.currency.Currency
 import fr.axl.lvy.currency.CurrencyService
 import fr.axl.lvy.documentline.DocumentLine
@@ -107,7 +108,7 @@ class DatabaseSeeder(
 
     val incoterms =
       listOf(
-          Incoterm("EXW", "Ex Works"),
+          Incoterm("CFR", "Cost and Freight"),
           Incoterm("FOB", "Free On Board"),
           Incoterm("CIF", "Cost, Insurance and Freight"),
           Incoterm("DAP", "Delivered At Place"),
@@ -155,8 +156,44 @@ class DatabaseSeeder(
     val net45 = refData.paymentTerms[1]
     val net60 = refData.paymentTerms[2]
 
+    val codig =
+      Client(name = "Codig").apply {
+        type = Client.ClientType.OWN_COMPANY
+        role = Client.ClientRole.OWN_COMPANY
+        visibleCompany = User.Company.CODIG
+        email = "contact@codig.fr"
+        phone = "+33 1 40 00 00 01"
+        billingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
+        shippingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
+        deliveryAddresses.add(
+          ClientDeliveryAddress(this, "Codig, Charleston Harbor", "Codig, Charleston Harbor").apply {
+            defaultAddress = true
+          }
+        )
+        deliveryAddresses.add(
+          ClientDeliveryAddress(this, "Codig, Port du Havre", "Codig, Port du Havre")
+        )
+      }
+    val savedCodig = clientService.save(codig)
+    logger.info("[Seeder] Created own company: ${savedCodig.name} (${savedCodig.clientCode})")
+
+    val netstoneOwnCompany =
+      Client(name = "Netstone").apply {
+        type = Client.ClientType.OWN_COMPANY
+        role = Client.ClientRole.OWN_COMPANY
+        visibleCompany = User.Company.NETSTONE
+        email = "contact@netstone.fr"
+        phone = "+33 1 40 00 00 02"
+        billingAddress = "2 avenue Netstone\n69001 Lyon\nFrance"
+        shippingAddress = "2 avenue Netstone\n69001 Lyon\nFrance"
+      }
+    val savedNetstoneOwnCompany = clientService.save(netstoneOwnCompany)
+    logger.info(
+      "[Seeder] Created own company: ${savedNetstoneOwnCompany.name} (${savedNetstoneOwnCompany.clientCode})"
+    )
+
     val acme =
-      Client(name = "Acme Corp").apply {
+      Client(name = "DOW").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.CLIENT
         visibleCompany = User.Company.CODIG
@@ -167,6 +204,16 @@ class DatabaseSeeder(
         shippingAddress = "10 rue de la Paix\n75001 Paris\nFrance"
         paymentDelay = 30
         paymentTerm = net30
+        deliveryAddresses.add(
+          ClientDeliveryAddress(this, "THE DOW CHEMICAL COMPANY KNX", "ROHM and HAAS CHEMICALS LLC - Knoxville\n" +
+                  "Plant\n" +
+                  "730 Dale Avenue\n" +
+                  "Knoxville TN TN 37921\n" +
+                  "États-Unis\n" +
+                  "+1 989-633-5596").apply {
+            defaultAddress = true
+          }
+        )
         contacts.add(
           Contact(this, "Martin").apply {
             firstName = "Jean"
@@ -181,7 +228,7 @@ class DatabaseSeeder(
     logger.info("[Seeder] Created client: ${savedAcme.name} (${savedAcme.clientCode})")
 
     val dupont =
-      Client(name = "Dupont SARL").apply {
+      Client(name = "Dupont").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.CLIENT
         visibleCompany = User.Company.NETSTONE
@@ -205,7 +252,7 @@ class DatabaseSeeder(
     logger.info("[Seeder] Created client: ${savedDupont.name} (${savedDupont.clientCode})")
 
     val nestSupplier =
-      Client(name = "NestSupplier SAS").apply {
+      Client(name = "All Plus").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.PRODUCER
         visibleCompany = User.Company.BOTH
@@ -218,32 +265,21 @@ class DatabaseSeeder(
     val savedNest = clientService.save(nestSupplier)
     logger.info("[Seeder] Created client: ${savedNest.name} (${savedNest.clientCode})")
 
-    val jeanDupont =
-      Client(name = "Dupont").apply {
-        type = Client.ClientType.INDIVIDUAL
-        role = Client.ClientRole.CLIENT
-        visibleCompany = User.Company.CODIG
-        email = "jean.dupont@gmail.com"
-        phone = "+33 6 12 34 56 78"
-        billingAddress = "3 impasse des Roses\n31000 Toulouse\nFrance"
-        shippingAddress = "3 impasse des Roses\n31000 Toulouse\nFrance"
-      }
-    val savedJean = clientService.save(jeanDupont)
-    logger.info("[Seeder] Created client: ${savedJean.name} (${savedJean.clientCode})")
 
-    return listOf(savedAcme, savedDupont, savedNest, savedJean)
+
+    return listOf(savedAcme, savedDupont, savedNest, savedCodig, savedNetstoneOwnCompany)
   }
 
   private fun seedProducts(): List<Product> {
     logger.info("[Seeder] Creating products...")
 
     val widgetA =
-      Product(name = "Widget A").apply {
+      Product(name = "APF 7100").apply {
         type = Product.ProductType.PRODUCT
-        mto = false
+        mto = true
         sellingPriceExclTax = BigDecimal("49.99")
         purchasePriceExclTax = BigDecimal("25.00")
-        unit = "pcs"
+        unit = "Mt"
       }
     val savedWidgetA = productService.save(widgetA)
     logger.info("[Seeder] Created product: ${savedWidgetA.name} (${savedWidgetA.reference})")

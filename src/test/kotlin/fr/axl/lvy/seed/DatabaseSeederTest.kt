@@ -47,7 +47,7 @@ class DatabaseSeederTest {
 
   @Test
   fun seeder_creates_clients() {
-    assertThat(clientRepository.findAll()).hasSize(4)
+    assertThat(clientRepository.findAll()).hasSize(6)
   }
 
   @Test

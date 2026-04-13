@@ -89,6 +89,7 @@ class SalesCodigService(
         )
       }
     val order = sale.orderCodig ?: OrderCodig("", supplier, sale.saleDate)
+    val codigCompany = clientService.findDefaultCodigCompany().orElse(null)
 
     order.client = supplier
     order.orderDate = sale.saleDate
@@ -98,11 +99,10 @@ class SalesCodigService(
     order.currency = sale.currency
     order.exchangeRate = sale.exchangeRate
     order.purchasePriceExclTax = sale.purchasePriceExclTax
-    order.incoterms = sale.incoterms
-    order.incotermLocation = sale.incotermLocation
+    order.incoterms = codigCompany?.incoterm?.name
+    order.incotermLocation = sale.client.deliveryPort
     order.paymentTerm = supplier.paymentTerm
-    order.fiscalPosition =
-      clientService.findDefaultCodigCompany().map { it.fiscalPosition }.orElse(null)
+    order.fiscalPosition = codigCompany?.fiscalPosition
     order.deliveryLocation = sale.client.deliveryPort
     order.billingAddress = sale.billingAddress
     order.shippingAddress = sale.shippingAddress

@@ -15,11 +15,17 @@ import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
+import fr.axl.lvy.order.OrderNetstone
+import fr.axl.lvy.order.OrderNetstoneService
+import fr.axl.lvy.order.ui.CommandNetstoneFormDialog
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
+import fr.axl.lvy.sale.SalesNetstone
+import fr.axl.lvy.sale.SalesNetstoneService
 import fr.axl.lvy.sale.ui.SalesCodigFormDialog
+import fr.axl.lvy.sale.ui.SalesNetstoneFormDialog
 
 @Route("commandes-codig")
 @PageTitle("Commandes Codig")
@@ -32,6 +38,8 @@ internal class CommandCodigListView(
   private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
   private val salesCodigService: SalesCodigService,
+  private val salesNetstoneService: SalesNetstoneService,
+  private val orderNetstoneService: OrderNetstoneService,
 ) : VerticalLayout() {
 
   private val grid: Grid<OrderCodig>
@@ -71,6 +79,8 @@ internal class CommandCodigListView(
   private fun showOrderDialog(order: OrderCodig?) {
     val hasLinkedSale =
       order?.id?.let { salesCodigService.findByOrderCodigId(it).isPresent } == true
+    val hasLinkedNetstoneSale =
+      order?.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true
 
     CommandCodigFormDialog(
         orderCodigService,
@@ -83,6 +93,9 @@ internal class CommandCodigListView(
         this::refreshGrid,
         hasLinkedSale,
         this::openLinkedSale,
+        hasLinkedNetstoneSale,
+        this::openLinkedNetstoneSale,
+        this::openLinkedNetstoneOrderFromCodigOrder,
       )
       .open()
   }
@@ -105,8 +118,67 @@ internal class CommandCodigListView(
         loadedSale,
         this::refreshGrid,
         this::openLinkedOrder,
+        loadedSale.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
+        { loadedSale.orderCodig?.let(this::openLinkedNetstoneSale) },
+        { loadedSale.orderCodig?.let(this::openLinkedNetstoneOrderFromCodigOrder) },
       )
       .open()
+  }
+
+  private fun openLinkedNetstoneSale(order: OrderCodig) {
+    val linkedSale =
+      order.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) } ?: return
+    openNetstoneSaleForm(linkedSale)
+  }
+
+  private fun openNetstoneSaleForm(sale: SalesNetstone) {
+    val loadedSale =
+      sale.id?.let { salesNetstoneService.findDetailedById(it).orElse(sale) } ?: sale
+    SalesNetstoneFormDialog(
+        salesNetstoneService,
+        clientService,
+        salesCodigService,
+        incotermService,
+        fiscalPositionService,
+        productService,
+        loadedSale,
+        this::refreshGrid,
+        loadedSale.orderNetstone != null,
+        this::openLinkedNetstoneOrder,
+        loadedSale.salesCodig.orderCodig != null,
+        this::openCodigOrder,
+        { openSaleForm(loadedSale.salesCodig) },
+      )
+      .open()
+  }
+
+  private fun openLinkedNetstoneOrder(order: OrderNetstone) {
+    val loadedOrder =
+      order.id?.let { orderNetstoneService.findDetailedById(it).orElse(order) } ?: order
+    CommandNetstoneFormDialog(
+        orderNetstoneService,
+        clientService,
+        salesNetstoneService,
+        orderCodigService,
+        incotermService,
+        paymentTermService,
+        fiscalPositionService,
+        productService,
+        loadedOrder,
+        this::refreshGrid,
+        true,
+        this::openNetstoneSaleForm,
+        { openCodigOrder(loadedOrder.orderCodig) },
+        { openLinkedSale(loadedOrder.orderCodig) },
+      )
+      .open()
+  }
+
+  private fun openLinkedNetstoneOrderFromCodigOrder(order: OrderCodig) {
+    val linkedSale =
+      order.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) } ?: return
+    val linkedOrder = linkedSale.orderNetstone ?: return
+    openLinkedNetstoneOrder(linkedOrder)
   }
 
   private fun openLinkedOrder(sale: SalesCodig) {
@@ -114,9 +186,12 @@ internal class CommandCodigListView(
       sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }?.orderCodig
         ?: sale.orderCodig
         ?: return
+    openCodigOrder(linkedOrder)
+  }
+
+  private fun openCodigOrder(order: OrderCodig) {
     val loadedOrder =
-      linkedOrder.id?.let { orderCodigService.findDetailedById(it).orElse(linkedOrder) }
-        ?: linkedOrder
+      order.id?.let { orderCodigService.findDetailedById(it).orElse(order) } ?: order
     showOrderDialog(loadedOrder)
   }
 

@@ -13,6 +13,9 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.BigDecimalField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import fr.axl.lvy.base.ui.DocumentFlowNavigation
+import fr.axl.lvy.base.ui.DocumentFlowNavigator
+import fr.axl.lvy.base.ui.DocumentFlowStep
 import fr.axl.lvy.base.ui.loadAndApplyClientDefaults
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
@@ -41,6 +44,9 @@ internal class CommandCodigFormDialog(
   private val onSave: Runnable,
   private val hasLinkedSale: Boolean = false,
   private val onOpenLinkedSale: ((OrderCodig) -> Unit)? = null,
+  private val hasLinkedNetstoneSale: Boolean = false,
+  private val onOpenLinkedNetstoneSale: ((OrderCodig) -> Unit)? = null,
+  private val onOpenLinkedNetstoneOrder: ((OrderCodig) -> Unit)? = null,
 ) : Dialog() {
 
   private val orderNumber = TextField("N° Commande")
@@ -56,7 +62,7 @@ internal class CommandCodigFormDialog(
   private val incotermLocation = TextField("Emplacement")
   private val deliveryLocation = TextField("Livrer à")
   private val billingAddress = TextArea("Adresse facturation")
-  private val shippingAddress = TextArea("Adresse livraison")
+  private val shippingAddress = TextArea()
   private val notes = TextArea("Notes")
   private val conditions = TextArea("Conditions")
   private val lineEditor: DocumentLineEditor
@@ -102,7 +108,6 @@ internal class CommandCodigFormDialog(
     form.add(paymentTermCombo, fiscalPositionCombo, incotermCombo)
     form.add(incotermLocation, deliveryLocation)
     form.add(billingAddress, 3)
-    form.add(shippingAddress, 3)
     form.add(notes, 3)
     form.add(conditions, 3)
 
@@ -118,25 +123,17 @@ internal class CommandCodigFormDialog(
         defaultVatRate = BigDecimal.ZERO,
       )
 
-    val content = VerticalLayout(form, lineEditor)
+    val content = VerticalLayout()
     content.isPadding = false
+    content.isSpacing = false
+    buildFlowNavigator()?.let { content.add(it) }
+    content.add(form, lineEditor)
     add(content)
 
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
-    val actions = HorizontalLayout()
-    if (order != null && hasLinkedSale && onOpenLinkedSale != null) {
-      val saleButton =
-        Button("Vente") {
-          close()
-          onOpenLinkedSale.invoke(order)
-        }
-      saleButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
-      actions.add(saleButton)
-    }
-    actions.add(saveBtn, cancelBtn)
-    footer.add(actions)
+    footer.add(HorizontalLayout(saveBtn, cancelBtn))
 
     if (order != null) {
       populateForm(order)
@@ -147,8 +144,7 @@ internal class CommandCodigFormDialog(
       selectedCurrency = "EUR"
       totalExclTax.value = BigDecimal.ZERO
       clientService.findDefaultCodigSupplier().ifPresent { clientCombo.value = it }
-      fiscalPositionCombo.value =
-        clientService.findDefaultCodigCompany().map { it.fiscalPosition }.orElse(null)
+      applyCodigCompanyDefaults()
     }
   }
 
@@ -188,6 +184,18 @@ internal class CommandCodigFormDialog(
       )
     paymentTermCombo.value = detailed.paymentTerm
     deliveryLocation.value = detailed.deliveryPort ?: ""
+    applyCodigCompanyDefaults()
+  }
+
+  private fun applyCodigCompanyDefaults() {
+    val codig =
+      clientService.findDefaultCodigCompany().flatMap { company ->
+        company.id?.let { clientService.findDetailedById(it) } ?: java.util.Optional.of(company)
+      }
+    fiscalPositionCombo.value = codig.map { it.fiscalPosition }.orElse(null)
+    incotermCombo.value =
+      codig.map { ownCompany -> allIncoterms.firstOrNull { it.id == ownCompany.incoterm?.id } }
+        .orElse(null)
   }
 
   private fun save() {
@@ -248,4 +256,31 @@ internal class CommandCodigFormDialog(
       OrderCodig.OrderCodigStatus.CANCELLED -> "Annule"
       else -> status.name
     }
+
+  private fun buildFlowNavigator(): DocumentFlowNavigator? {
+    val currentOrder = order ?: return null
+    if (!hasLinkedNetstoneSale || onOpenLinkedNetstoneSale == null) {
+      return null
+    }
+    val navigation =
+      DocumentFlowNavigation(
+        currentStep = DocumentFlowStep.ORDER_CODIG,
+        openSalesCodig =
+          if (hasLinkedSale && onOpenLinkedSale != null) Runnable {
+            close()
+            onOpenLinkedSale.invoke(currentOrder)
+          } else null,
+        openSalesNetstone =
+          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneSale != null) Runnable {
+            close()
+            onOpenLinkedNetstoneSale.invoke(currentOrder)
+          } else null,
+        openOrderNetstone =
+          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneOrder != null) Runnable {
+            close()
+            onOpenLinkedNetstoneOrder.invoke(currentOrder)
+          } else null,
+      )
+    return if (navigation.hasLinks()) DocumentFlowNavigator(navigation) else null
+  }
 }

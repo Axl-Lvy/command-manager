@@ -36,6 +36,10 @@ class SalesNetstoneService(
   fun findDetailedById(id: Long): Optional<SalesNetstone> =
     Optional.ofNullable(salesNetstoneRepository.findDetailedById(id))
 
+  @Transactional(readOnly = true)
+  fun findByOrderCodigId(orderCodigId: Long): Optional<SalesNetstone> =
+    Optional.ofNullable(salesNetstoneRepository.findByOrderCodigId(orderCodigId))
+
   @Transactional
   fun save(sale: SalesNetstone): SalesNetstone {
     if (sale.saleNumber.isBlank()) {
@@ -137,6 +141,8 @@ class SalesNetstoneService(
     order.paymentTerm = clientService.findDefaultCodigSupplier().map { it.paymentTerm }.orElse(null)
     order.fiscalPosition =
       clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
+    order.incoterms = sale.incoterms
+    order.incotermLocation = sale.incotermLocation
     order.notes = sale.notes
     order.purchasePriceExclTax = sale.purchasePriceExclTax
 

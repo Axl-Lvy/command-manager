@@ -12,6 +12,9 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import fr.axl.lvy.base.ui.DocumentFlowNavigation
+import fr.axl.lvy.base.ui.DocumentFlowNavigator
+import fr.axl.lvy.base.ui.DocumentFlowStep
 import fr.axl.lvy.base.ui.loadAndApplyClientDefaults
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
@@ -42,6 +45,9 @@ internal class SalesCodigFormDialog(
   private val order: SalesCodig?,
   private val onSave: Runnable,
   private val onOpenLinkedOrder: ((SalesCodig) -> Unit)? = null,
+  private val hasLinkedNetstoneSale: Boolean = false,
+  private val onOpenLinkedNetstoneSale: (() -> Unit)? = null,
+  private val onOpenLinkedNetstoneOrder: (() -> Unit)? = null,
 ) : Dialog() {
 
   private val orderNumber = TextField("N° Vente")
@@ -121,25 +127,17 @@ internal class SalesCodigFormDialog(
         defaultVatRate = BigDecimal.ZERO,
       )
 
-    val content = VerticalLayout(form, lineEditor)
+    val content = VerticalLayout()
     content.isPadding = false
+    content.isSpacing = false
+    buildFlowNavigator()?.let { content.add(it) }
+    content.add(form, lineEditor)
     add(content)
 
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
-    val actions = HorizontalLayout()
-    if (order?.orderCodig != null && onOpenLinkedOrder != null) {
-      val purchaseButton =
-        Button("Achat") {
-          close()
-          onOpenLinkedOrder.invoke(order)
-        }
-      purchaseButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
-      actions.add(purchaseButton)
-    }
-    actions.add(saveBtn, cancelBtn)
-    footer.add(actions)
+    footer.add(HorizontalLayout(saveBtn, cancelBtn))
 
     if (order != null) {
       populateForm(order)
@@ -240,5 +238,32 @@ internal class SalesCodigFormDialog(
 
   companion object {
     private val logger = LoggerFactory.getLogger(SalesCodigFormDialog::class.java)
+  }
+
+  private fun buildFlowNavigator(): DocumentFlowNavigator? {
+    val sale = order ?: return null
+    if (!hasLinkedNetstoneSale || onOpenLinkedNetstoneSale == null) {
+      return null
+    }
+    val navigation =
+      DocumentFlowNavigation(
+        currentStep = DocumentFlowStep.SALES_CODIG,
+        openOrderCodig =
+          if (sale.orderCodig != null && onOpenLinkedOrder != null) Runnable {
+            close()
+            onOpenLinkedOrder.invoke(sale)
+          } else null,
+        openSalesNetstone =
+          Runnable {
+            close()
+            onOpenLinkedNetstoneSale.invoke()
+          },
+        openOrderNetstone =
+          if (onOpenLinkedNetstoneOrder != null) Runnable {
+            close()
+            onOpenLinkedNetstoneOrder.invoke()
+          } else null,
+      )
+    return if (navigation.hasLinks()) DocumentFlowNavigator(navigation) else null
   }
 }

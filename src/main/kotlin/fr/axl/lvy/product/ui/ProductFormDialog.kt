@@ -50,7 +50,7 @@ internal class ProductFormDialog(
   private val clientCodeRows = VerticalLayout()
   private val availableClients: List<Client> = clientService.findAll().filter { it.isClient() }
   private val availableSuppliers: List<Client> =
-    clientService.findAll().filter { it.isSupplierForProduct() }
+    clientService.findAll().filter { it.role == Client.ClientRole.PRODUCER }
   private val clientCodeEntries = mutableListOf<ClientCodeRow>()
 
   init {
@@ -68,7 +68,7 @@ internal class ProductFormDialog(
     purchaseCurrency.setItems(currencyCodes)
     purchaseCurrency.value = "EUR"
     suppliers.setItems(availableSuppliers)
-    suppliers.setItemLabelGenerator { "${it.clientCode} - ${it.name}" }
+    suppliers.setItemLabelGenerator { it.name }
 
     unitOption.setItems(UNIT_MT, UNIT_KG, UNIT_OTHER)
     customUnit.placeholder = "Saisir l'unité"

@@ -18,18 +18,25 @@ import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesCodigService
+import fr.axl.lvy.sale.SalesNetstone
+import fr.axl.lvy.sale.SalesNetstoneService
+import fr.axl.lvy.sale.ui.SalesCodigFormDialog
+import fr.axl.lvy.sale.ui.SalesNetstoneFormDialog
 
 @Route("commandes-netstone")
 @PageTitle("Commandes Netstone")
 @Menu(order = 6.0, icon = "vaadin:cart-o", title = "Commande/Netstone")
 internal class CommandNetstoneListView(
   private val orderNetstoneService: OrderNetstoneService,
+  private val salesNetstoneService: SalesNetstoneService,
   private val clientService: ClientService,
   private val orderCodigService: OrderCodigService,
   private val incotermService: IncotermService,
   private val paymentTermService: PaymentTermService,
   private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
+  private val salesCodigService: SalesCodigService,
 ) : VerticalLayout() {
 
   private val grid: Grid<OrderNetstone>
@@ -63,9 +70,11 @@ internal class CommandNetstoneListView(
 
   private fun openForm(order: OrderNetstone?) {
     val loadedOrder = order?.id?.let { orderNetstoneService.findDetailedById(it).orElse(order) }
+    val hasLinkedSale = loadedOrder?.orderCodig?.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true
     CommandNetstoneFormDialog(
         orderNetstoneService,
         clientService,
+        salesNetstoneService,
         orderCodigService,
         incotermService,
         paymentTermService,
@@ -73,8 +82,93 @@ internal class CommandNetstoneListView(
         productService,
         loadedOrder,
         this::refreshGrid,
+        hasLinkedSale,
+        this::openLinkedSale,
+        { loadedOrder?.orderCodig?.let(this::openCodigOrder) },
+        { loadedOrder?.orderCodig?.let(this::openLinkedCodigSale) },
       )
       .open()
+  }
+
+  private fun openLinkedSale(sale: SalesNetstone) {
+    val linkedSale = sale.id?.let { salesNetstoneService.findDetailedById(it).orElse(sale) } ?: sale
+    SalesNetstoneFormDialog(
+        salesNetstoneService,
+        clientService,
+        salesCodigService,
+        incotermService,
+        fiscalPositionService,
+        productService,
+        linkedSale,
+        this::refreshGrid,
+        linkedSale.orderNetstone != null,
+        this::openLinkedOrder,
+        linkedSale.salesCodig.orderCodig != null,
+        this::openCodigOrder,
+        { linkedSale.salesCodig.orderCodig?.let(this::openLinkedCodigSale) },
+      )
+      .open()
+  }
+
+  private fun openLinkedOrder(order: OrderNetstone) {
+    openForm(order)
+  }
+
+  private fun openCodigOrder(order: fr.axl.lvy.order.OrderCodig) {
+    val loadedOrder =
+      order.id?.let { orderCodigService.findDetailedById(it).orElse(order) } ?: order
+    val hasLinkedSale =
+      loadedOrder.id?.let { salesCodigService.findByOrderCodigId(it).isPresent } == true
+    val hasLinkedNetstoneSale =
+      loadedOrder.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true
+    CommandCodigFormDialog(
+        orderCodigService,
+        clientService,
+        incotermService,
+        paymentTermService,
+        fiscalPositionService,
+        productService,
+        loadedOrder,
+        this::refreshGrid,
+        hasLinkedSale,
+        this::openLinkedCodigSale,
+        hasLinkedNetstoneSale,
+        this::openLinkedNetstoneSaleFromCodig,
+      )
+      .open()
+  }
+
+  private fun openLinkedCodigSale(order: fr.axl.lvy.order.OrderCodig) {
+    val linkedSale = order.id?.let { salesCodigService.findByOrderCodigId(it).orElse(null) } ?: return
+    val loadedSale =
+      linkedSale.id?.let { salesCodigService.findDetailedById(it).orElse(linkedSale) } ?: linkedSale
+    SalesCodigFormDialog(
+        salesCodigService,
+        clientService,
+        incotermService,
+        paymentTermService,
+        fiscalPositionService,
+        productService,
+        loadedSale,
+        this::refreshGrid,
+        this::openCodigOrderFromSale,
+        loadedSale.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
+      )
+      .open()
+  }
+
+  private fun openLinkedNetstoneSaleFromCodig(order: fr.axl.lvy.order.OrderCodig) {
+    val linkedSale =
+      order.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) } ?: return
+    openLinkedSale(linkedSale)
+  }
+
+  private fun openCodigOrderFromSale(sale: fr.axl.lvy.sale.SalesCodig) {
+    val linkedOrder =
+      sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }?.orderCodig
+        ?: sale.orderCodig
+        ?: return
+    openCodigOrder(linkedOrder)
   }
 
   private fun refreshGrid() {

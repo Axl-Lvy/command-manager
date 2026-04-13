@@ -12,6 +12,9 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import fr.axl.lvy.base.ui.DocumentFlowNavigation
+import fr.axl.lvy.base.ui.DocumentFlowNavigator
+import fr.axl.lvy.base.ui.DocumentFlowStep
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
@@ -28,11 +31,14 @@ import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesNetstone
+import fr.axl.lvy.sale.SalesNetstoneService
 import java.math.BigDecimal
 
 internal class CommandNetstoneFormDialog(
   private val orderNetstoneService: OrderNetstoneService,
   private val clientService: ClientService,
+  private val salesNetstoneService: SalesNetstoneService,
   orderCodigService: OrderCodigService,
   incotermService: IncotermService,
   paymentTermService: PaymentTermService,
@@ -40,6 +46,10 @@ internal class CommandNetstoneFormDialog(
   productService: ProductService,
   private val order: OrderNetstone?,
   private val onSave: Runnable,
+  private val hasLinkedSale: Boolean = false,
+  private val onOpenLinkedSale: ((SalesNetstone) -> Unit)? = null,
+  private val onOpenLinkedCodigOrder: (() -> Unit)? = null,
+  private val onOpenLinkedCodigSale: (() -> Unit)? = null,
 ) : Dialog() {
 
   private val orderNumber = TextField("N° Commande Netstone")
@@ -86,6 +96,9 @@ internal class CommandNetstoneFormDialog(
 
     orderCodigCombo.setItems(orderCodigService.findAll())
     orderCodigCombo.setItemLabelGenerator { "${it.orderNumber} - ${it.client.name}" }
+    orderCodigCombo.addValueChangeListener {
+      applyLinkedSaleDefaults()
+    }
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 3))
@@ -106,8 +119,11 @@ internal class CommandNetstoneFormDialog(
         defaultVatRate = BigDecimal.ZERO,
       )
 
-    val content = VerticalLayout(form, lineEditor)
+    val content = VerticalLayout()
     content.isPadding = false
+    content.isSpacing = false
+    buildFlowNavigator()?.let { content.add(it) }
+    content.add(form, lineEditor)
     add(content)
 
     val saveBtn = Button("Enregistrer") { save() }
@@ -124,6 +140,7 @@ internal class CommandNetstoneFormDialog(
       fiscalPositionCombo.value =
         clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
       applyCodigDeliveryDefaults(null)
+      applyLinkedSaleDefaults()
     }
   }
 
@@ -142,6 +159,13 @@ internal class CommandNetstoneFormDialog(
     notes.value = o.notes ?: ""
 
     lineEditor.setLines(orderNetstoneService.findLines(o.id!!))
+  }
+
+  private fun applyLinkedSaleDefaults() {
+    val salesCodigId = orderCodigCombo.value?.id ?: return
+    val linkedSale = salesNetstoneService.findByOrderCodigId(salesCodigId).orElse(null) ?: return
+    incotermCombo.value = allIncoterms.firstOrNull { it.name == linkedSale.incoterms }
+    incotermLocation.value = linkedSale.incotermLocation ?: ""
   }
 
   private fun save() {
@@ -211,5 +235,32 @@ internal class CommandNetstoneFormDialog(
         ?: deliveryAddresses.firstOrNull { it.defaultAddress }
         ?: deliveryAddresses.firstOrNull()
     deliveryLocationCombo.value = selected
+  }
+
+  private fun buildFlowNavigator(): DocumentFlowNavigator? {
+    val currentOrder = order ?: return null
+    val navigation =
+      DocumentFlowNavigation(
+        currentStep = DocumentFlowStep.ORDER_NETSTONE,
+        openSalesCodig =
+          if (onOpenLinkedCodigSale != null) Runnable {
+            close()
+            onOpenLinkedCodigSale.invoke()
+          } else null,
+        openOrderCodig =
+          if (onOpenLinkedCodigOrder != null) Runnable {
+            close()
+            onOpenLinkedCodigOrder.invoke()
+          } else null,
+        openSalesNetstone =
+          if (hasLinkedSale && onOpenLinkedSale != null) Runnable {
+            val linkedSale =
+              currentOrder.orderCodig.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) }
+                ?: return@Runnable
+            close()
+            onOpenLinkedSale.invoke(linkedSale)
+          } else null,
+      )
+    return if (navigation.hasLinks()) DocumentFlowNavigator(navigation) else null
   }
 }
