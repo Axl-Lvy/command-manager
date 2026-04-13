@@ -58,24 +58,24 @@
   </springProfile>
 
   <!--
-    dev: console + file (plain text), DEBUG.
-    Plain text is easier to read when tailing logs directly with docker compose logs.
+    dev: console (plain text) + file (logstash JSON), DEBUG.
+    JSON file lets Promtail/Loki work in both local Docker and deployed dev.
+    Console stays plain text for readability with docker compose logs.
   -->
   <springProfile name="dev">
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
       <file>${LOG_PATH}/command-manager.log</file>
       <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
         <fileNamePattern>${LOG_PATH}/command-manager.%d{yyyy-MM-dd}.log</fileNamePattern>
         <maxHistory>${MAX_HISTORY}</maxHistory>
       </rollingPolicy>
-      <encoder>
-        <pattern>${FILE_LOG_PATTERN}</pattern>
-        <charset>${FILE_LOG_CHARSET}</charset>
+      <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+        <format>logstash</format>
       </encoder>
     </appender>
     <root level="DEBUG">
       <appender-ref ref="CONSOLE"/>
-      <appender-ref ref="FILE"/>
+      <appender-ref ref="FILE_JSON"/>
     </root>
   </springProfile>
 
