@@ -1,5 +1,6 @@
 package fr.axl.lvy.base
 
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -8,7 +9,15 @@ import org.springframework.transaction.annotation.Transactional
  * "CoD_PO_001" for Codig orders). Uses pessimistic locking to guarantee uniqueness.
  */
 @Service
-class NumberSequenceService(private val repository: NumberSequenceRepository) {
+class NumberSequenceService(
+  private val repository: NumberSequenceRepository,
+  private val meterRegistry: MeterRegistry,
+) {
+  init {
+    // Pre-register one counter per sequence type so they appear in Prometheus at startup
+    // with value 0, even if no sequences have been generated yet in this process.
+    CONFIGS.keys.forEach { meterRegistry.counter("number.sequence.generated", "type", it) }
+  }
 
   @Transactional
   fun nextNumber(entityType: String): String {
@@ -23,6 +32,7 @@ class NumberSequenceService(private val repository: NumberSequenceRepository) {
     val current = seq.nextVal
     seq.nextVal++
     repository.save(seq)
+    meterRegistry.counter("number.sequence.generated", "type", entityType).increment()
     return prefix + current.toString().padStart(padding, '0')
   }
 

@@ -38,6 +38,16 @@ spring.datasource.password=yourpassword
 
 The app starts at http://localhost:8080.
 
+### Run with Seeded Data
+
+The `test` profile seeds the database with representative development data (clients, products, orders, sales):
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=test,local'
+```
+
+This drops and recreates the schema on every startup (`ddl-auto=create`).
+
 ### Run Tests
 
 ```bash
@@ -45,6 +55,86 @@ The app starts at http://localhost:8080.
 ```
 
 Tests run against an in-memory H2 database.
+
+## Spring Profiles
+
+| Profile | Purpose                                                                    |
+|---------|----------------------------------------------------------------------------|
+| `local` | Local dev credentials (activated by default)                               |
+| `test` | Seeds the DB, `ddl-auto=create`, INFO logging with 1-day file retention    |
+| `prod` | Production settings, INFO logging with 7-day file retention to `/app/logs` |
+
+## Logging
+
+Logging is configured via `logback-spring.xml` with profile-specific behavior:
+
+| Profile | Console | File | Level |
+|---------|---------|------|-------|
+| `local` (default) | Yes | No | INFO  |
+| `test` | Yes | Yes (1-day retention) | INFO  |
+| `prod` | Yes | Yes (7-day retention) | INFO  |
+
+Log files are written to the path defined by `logging.file.path` (defaults to `logs/`). In production (Docker), this is `/app/logs`, mounted to `./logs` on the host.
+
+## Observability
+
+The app exposes metrics via Spring Boot Actuator and Micrometer:
+
+- **Health**: http://localhost:8080/actuator/health
+- **Metrics**: http://localhost:8080/actuator/metrics
+- **Prometheus**: http://localhost:8080/actuator/prometheus
+
+Hibernate query statistics are enabled and auto-exposed via Micrometer.
+
+## Docker Compose
+
+The full stack (app + MySQL + Prometheus + Grafana) runs via Docker Compose.
+
+### Setup
+
+Create a `.env` file at the project root:
+
+```env
+DB_PASSWORD=changeme
+DB_ROOT_PASSWORD=rootchangeme
+SPRING_PROFILES_ACTIVE=test
+```
+
+`SPRING_PROFILES_ACTIVE` defaults to `prod` if omitted. Set it to `test` to seed the database with sample data.
+
+### Start
+
+```bash
+docker compose up --build
+```
+
+### Services
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| App | http://localhost:8080 | |
+| Prometheus | http://localhost:9090 | Scrapes `/actuator/prometheus` every 15s |
+| Grafana | http://localhost:3000 | Login: `admin` / `admin` |
+| MySQL | `localhost:3306` | |
+
+Prometheus is auto-configured as the default Grafana data source via provisioning.
+
+### Grafana Dashboards
+
+To import a pre-built JVM dashboard:
+
+1. Open Grafana at http://localhost:3000
+2. Go to Dashboards > Import
+3. Paste dashboard ID **4701** (JVM Micrometer)
+4. Select the Prometheus data source
+5. Click Import
+
+### Volumes
+
+- `./logs` — Application log files (mounted from the app container)
+- `mysql-data` — MySQL data (named volume)
+- `prometheus-data` — Prometheus TSDB (named volume)
+- `grafana-data` — Grafana config and dashboards (named volume)
 
 ## ER Diagram
 

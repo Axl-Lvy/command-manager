@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <!-- Read logging.file.path and logging.max-history from Spring config -->
+  <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="logs"/>
+  <springProperty scope="context" name="MAX_HISTORY" source="logging.max-history" defaultValue="7"/>
+
+  <!-- Console appender — always available, plain text for readability -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+      <charset>${CONSOLE_LOG_CHARSET}</charset>
+    </encoder>
+  </appender>
+
+  <!-- Suppress noisy Atmosphere logs -->
+  <logger name="org.atmosphere" level="WARN"/>
+
+  <!-- local / default: console only, INFO -->
+  <springProfile name="local | default">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!--
+    prod: console (plain text) + file (logstash JSON).
+    The FILE_JSON appender is declared inside this profile so Logback only initialises it
+    when the prod profile is active. This prevents test runs from trying to open the log
+    file and failing with a permission error.
+    JSON output lets Promtail extract MDC fields (orderId, orderNumber, fromStatus, etc.)
+    as structured metadata, making them queryable in Loki/Grafana.
+  -->
+  <springProfile name="prod">
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>${LOG_PATH}/command-manager.log</file>
+      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <fileNamePattern>${LOG_PATH}/command-manager.%d{yyyy-MM-dd}.log</fileNamePattern>
+        <maxHistory>${MAX_HISTORY}</maxHistory>
+      </rollingPolicy>
+      <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+        <format>logstash</format>
+      </encoder>
+    </appender>
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+      <appender-ref ref="FILE_JSON"/>
+    </root>
+  </springProfile>
+
+  <!-- test: console only, DEBUG -->
+  <springProfile name="test">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!--
+    dev: console (plain text) + file (logstash JSON), DEBUG.
+    JSON file lets Promtail/Loki work in both local Docker and deployed dev.
+    Console stays plain text for readability with docker compose logs.
+  -->
+  <springProfile name="dev">
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>${LOG_PATH}/command-manager.log</file>
+      <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <fileNamePattern>${LOG_PATH}/command-manager.%d{yyyy-MM-dd}.log</fileNamePattern>
+        <maxHistory>${MAX_HISTORY}</maxHistory>
+      </rollingPolicy>
+      <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+        <format>logstash</format>
+      </encoder>
+    </appender>
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+      <appender-ref ref="FILE_JSON"/>
+    </root>
+  </springProfile>
+
+</configuration>

@@ -1,0 +1,673 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Uptime",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "process_uptime_seconds{application=\"command-manager\"}", "legendFormat": "Uptime", "refId": "A" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "rate(http_server_requests_seconds_count{application=\"command-manager\"}[1m])", "legendFormat": "{{method}} {{uri}} ({{status}})", "refId": "A" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "HTTP Response Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "p95" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p50" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{application=\"command-manager\"}[5m]))", "legendFormat": "p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{application=\"command-manager\"}[5m]))", "legendFormat": "p50", "refId": "B" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "CPU Usage",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.6 },
+              { "color": "red", "value": 0.85 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        { "expr": "process_cpu_usage{application=\"command-manager\"}", "legendFormat": "CPU", "refId": "A" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "JVM Heap Memory",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "jvm_memory_used_bytes{application=\"command-manager\", area=\"heap\"}", "legendFormat": "Used — {{id}}", "refId": "A" },
+        { "expr": "jvm_memory_max_bytes{application=\"command-manager\", area=\"heap\"}", "legendFormat": "Max — {{id}}", "refId": "B" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "JVM Threads",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "jvm_threads_live_threads{application=\"command-manager\"}", "legendFormat": "Live", "refId": "A" },
+        { "expr": "jvm_threads_peak_threads{application=\"command-manager\"}", "legendFormat": "Peak", "refId": "B" },
+        { "expr": "jvm_threads_daemon_threads{application=\"command-manager\"}", "legendFormat": "Daemon", "refId": "C" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "GC Pause Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "rate(jvm_gc_pause_seconds_sum{application=\"command-manager\"}[1m])", "legendFormat": "{{action}} — {{cause}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "HikariCP Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Active" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Pending" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Idle" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Max" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }, { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "hikaricp_connections_active{application=\"command-manager\"}", "legendFormat": "Active", "refId": "A" },
+        { "expr": "hikaricp_connections_idle{application=\"command-manager\"}", "legendFormat": "Idle", "refId": "B" },
+        { "expr": "hikaricp_connections_pending{application=\"command-manager\"}", "legendFormat": "Pending", "refId": "C" },
+        { "expr": "hikaricp_connections_max{application=\"command-manager\"}", "legendFormat": "Max", "refId": "D" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Repository Invocations",
+      "description": "Spring Data repository method call rate — shows which JPA operations are executed most",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "rate(spring_data_repository_invocations_seconds_count{application=\"command-manager\", state=\"SUCCESS\"}[$__rate_interval])", "legendFormat": "{{method}}({{repository}})", "refId": "A" }
+      ]
+    },
+
+    {
+      "id": 10,
+      "title": "Business Activity",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "panels": []
+    },
+
+    {
+      "id": 11,
+      "title": "Orders Codig",
+      "description": "Customer orders created since last restart",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "order_codig_total{application=\"command-manager\"}", "legendFormat": "Orders Codig", "refId": "A" }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Sales Codig",
+      "description": "Customer sales created since last restart",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "sale_codig_total{application=\"command-manager\"}", "legendFormat": "Sales Codig", "refId": "A" }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Orders Netstone",
+      "description": "Supplier orders created since last restart",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "order_netstone_total{application=\"command-manager\"}", "legendFormat": "Orders Netstone", "refId": "A" }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Sales Netstone",
+      "description": "Supplier sales created since last restart",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "sale_netstone_total{application=\"command-manager\"}", "legendFormat": "Sales Netstone", "refId": "A" }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Delivery Notes",
+      "description": "Customer delivery notes created since last restart",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "delivery_codig_total{application=\"command-manager\"}", "legendFormat": "Delivery Notes", "refId": "A" }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Clients",
+      "description": "New clients created since last restart",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "client_total{application=\"command-manager\"}", "legendFormat": "Clients", "refId": "A" }
+      ]
+    },
+
+    {
+      "id": 17,
+      "title": "Document Creation Rate",
+      "description": "Rate of new documents being created across all types",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "lineWidth": 2, "showPoints": "auto", "pointSize": 5 }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Orders Codig" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Sales Codig" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Orders Netstone" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Sales Netstone" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Delivery Notes" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Clients" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "rate(order_codig_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "Orders Codig", "refId": "A" },
+        { "expr": "rate(sale_codig_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "Sales Codig", "refId": "B" },
+        { "expr": "rate(order_netstone_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "Orders Netstone", "refId": "C" },
+        { "expr": "rate(sale_netstone_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "Sales Netstone", "refId": "D" },
+        { "expr": "rate(delivery_codig_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "Delivery Notes", "refId": "E" },
+        { "expr": "rate(client_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "Clients", "refId": "F" }
+      ]
+    },
+
+    {
+      "id": 18,
+      "title": "Order Status Transitions",
+      "description": "Rate of order status changes — shows the business workflow in motion",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1, "barAlignment": 0, "stacking": { "group": "A", "mode": "none" } }
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": ".*CANCELLED" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byRegexp", "options": ".*INVOICED|.*RECEIVED" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] },
+          { "matcher": { "id": "byRegexp", "options": ".*DELIVERED|.*CONFIRMED" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byRegexp", "options": "DRAFT.*" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        { "expr": "rate(order_codig_status_transition_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "CoD: {{from}} → {{to}}", "refId": "A" },
+        { "expr": "rate(order_netstone_status_transition_total{application=\"command-manager\"}[$__rate_interval])", "legendFormat": "NST: {{from}} → {{to}}", "refId": "B" }
+      ]
+    },
+
+    {
+      "id": 19,
+      "title": "MTO Orders Triggered",
+      "description": "Supplier orders auto-generated from MTO product lines",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "order_codig_mto_triggered_total{application=\"command-manager\"}", "legendFormat": "MTO Triggered", "refId": "A" }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Orders Duplicated",
+      "description": "Orders created by duplication of an existing order",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "yellow", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "order_codig_duplicated_total{application=\"command-manager\"}", "legendFormat": "Duplicated", "refId": "A" }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Sequences Generated (CoD)",
+      "description": "Total document numbers issued for Codig (orders, sales, deliveries, clients)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "sum(number_sequence_generated_total{application=\"command-manager\", type=~\"ORDER_CODIG|SALES_CODIG|DELIVERY_CODIG|CLIENT\"})", "legendFormat": "CoD Sequences", "refId": "A" }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Sequences Generated (NST)",
+      "description": "Total document numbers issued for Netstone (orders, sales)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "sum(number_sequence_generated_total{application=\"command-manager\", type=~\"ORDER_NETSTONE|SALES_NETSTONE\"})", "legendFormat": "NST Sequences", "refId": "A" }
+      ]
+    },
+
+    {
+      "id": 23,
+      "title": "Logs",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "panels": []
+    },
+
+    {
+      "id": 24,
+      "title": "Log Volume by Level",
+      "description": "Logback event rate from Prometheus — works without Loki. Upgrade to Loki for full log search.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 42 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "bars", "fillOpacity": 80, "lineWidth": 1, "barAlignment": 0, "stacking": { "group": "A", "mode": "normal" } }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "error" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "warn" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "info" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "debug" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "trace" }, "properties": [{ "id": "color", "value": { "fixedColor": "#a0a0a0", "mode": "fixed" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "rate(logback_events_total{application=\"command-manager\"}[$__rate_interval])",
+          "legendFormat": "{{level}}",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 25,
+      "title": "Application Logs",
+      "description": "Recent application log lines — includes orderId, orderNumber and other MDC context fields",
+      "type": "logs",
+      "gridPos": { "h": 16, "w": 12, "x": 12, "y": 42 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{job=\"command-manager\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 26,
+      "title": "Errors & Warnings",
+      "description": "Filter view showing only ERROR and WARN log lines — first place to look when something goes wrong",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "signature",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{job=\"command-manager\", level=~\"ERROR|WARN\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["spring-boot", "command-manager"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Command Manager",
+  "uid": "command-manager",
+  "version": 2
+}

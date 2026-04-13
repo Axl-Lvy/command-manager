@@ -31,7 +31,9 @@ dependencies {
   implementation(libs.vaadin.spring.boot.starter)
   implementation(libs.spring.boot.starter.data.jpa)
   implementation(libs.spring.boot.starter.validation)
+  implementation(libs.spring.boot.starter.actuator)
   runtimeOnly(libs.mysql.connector)
+  runtimeOnly(libs.micrometer.registry.prometheus)
   testImplementation(libs.spring.boot.starter.test)
   testRuntimeOnly(libs.h2)
 }

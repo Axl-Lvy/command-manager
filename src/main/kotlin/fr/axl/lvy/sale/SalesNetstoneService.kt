@@ -5,9 +5,12 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
+import io.micrometer.core.instrument.MeterRegistry
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.Optional
+import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -21,7 +24,14 @@ class SalesNetstoneService(
   private val orderNetstoneService: OrderNetstoneService,
   private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
+  private val meterRegistry: MeterRegistry,
 ) {
+  private val salesCreatedCounter = meterRegistry.counter("sale.netstone")
+
+  companion object {
+    private val log = LoggerFactory.getLogger(SalesNetstoneService::class.java)
+  }
+
   @Transactional(readOnly = true)
   fun findAll(): List<SalesNetstone> = salesNetstoneRepository.findByDeletedAtIsNull()
 
@@ -53,9 +63,9 @@ class SalesNetstoneService(
     notes: String?,
     sourceLines: List<DocumentLine>,
   ): SalesNetstone {
-    val sale =
-      salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
-        ?: SalesNetstone("", salesCodig).apply { status = SalesStatus.DRAFT }
+    val existing = salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
+    val isNew = existing == null
+    val sale = existing ?: SalesNetstone("", salesCodig).apply { status = SalesStatus.DRAFT }
 
     sale.salesCodig = salesCodig
     sale.saleDate = saleDate
@@ -80,7 +90,32 @@ class SalesNetstoneService(
       )
 
     savedSale.recalculateTotals(generatedSaleLines)
-    return salesNetstoneRepository.save(savedSale)
+    val result = salesNetstoneRepository.save(savedSale)
+
+    if (isNew) {
+      salesCreatedCounter.increment()
+    }
+    MDC.put("saleNetstoneNumber", result.saleNumber)
+    MDC.put("salesCodigNumber", salesCodig.saleNumber)
+    try {
+      if (isNew) {
+        log.info(
+          "SalesNetstone {} created from SalesCodig {}",
+          result.saleNumber,
+          salesCodig.saleNumber,
+        )
+      } else {
+        log.info(
+          "SalesNetstone {} synced from SalesCodig {}",
+          result.saleNumber,
+          salesCodig.saleNumber,
+        )
+      }
+    } finally {
+      MDC.remove("saleNetstoneNumber")
+      MDC.remove("salesCodigNumber")
+    }
+    return result
   }
 
   /**
@@ -122,6 +157,11 @@ class SalesNetstoneService(
     salesNetstone.orderNetstone?.id?.let { orderNetstoneService.delete(it) }
     salesNetstone.softDelete()
     salesNetstoneRepository.save(salesNetstone)
+    log.info(
+      "SalesNetstone {} soft-deleted (salesCodigId={})",
+      salesNetstone.saleNumber,
+      salesCodigId,
+    )
   }
 
   @Transactional(readOnly = true)
