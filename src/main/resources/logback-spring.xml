@@ -52,7 +52,7 @@
 
   <!-- test: console only, DEBUG -->
   <springProfile name="test">
-    <root level="DEBUG">
+    <root level="INFO">
       <appender-ref ref="CONSOLE"/>
     </root>
   </springProfile>
@@ -73,7 +73,7 @@
         <format>logstash</format>
       </encoder>
     </appender>
-    <root level="DEBUG">
+    <root level="INFO">
       <appender-ref ref="CONSOLE"/>
       <appender-ref ref="FILE_JSON"/>
     </root>

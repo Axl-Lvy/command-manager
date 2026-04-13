@@ -58,10 +58,10 @@ Tests run against an in-memory H2 database.
 
 ## Spring Profiles
 
-| Profile | Purpose |
-|---------|---------|
-| `local` | Local dev credentials (activated by default) |
-| `test` | Seeds the DB, `ddl-auto=create`, DEBUG logging with 1-day file retention |
+| Profile | Purpose                                                                    |
+|---------|----------------------------------------------------------------------------|
+| `local` | Local dev credentials (activated by default)                               |
+| `test` | Seeds the DB, `ddl-auto=create`, INFO logging with 1-day file retention    |
 | `prod` | Production settings, INFO logging with 7-day file retention to `/app/logs` |
 
 ## Logging
@@ -70,9 +70,9 @@ Logging is configured via `logback-spring.xml` with profile-specific behavior:
 
 | Profile | Console | File | Level |
 |---------|---------|------|-------|
-| `local` (default) | Yes | No | INFO |
-| `test` | Yes | Yes (1-day retention) | DEBUG |
-| `prod` | Yes | Yes (7-day retention) | INFO |
+| `local` (default) | Yes | No | INFO  |
+| `test` | Yes | Yes (1-day retention) | INFO  |
+| `prod` | Yes | Yes (7-day retention) | INFO  |
 
 Log files are written to the path defined by `logging.file.path` (defaults to `logs/`). In production (Docker), this is `/app/logs`, mounted to `./logs` on the host.
 
