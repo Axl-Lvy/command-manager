@@ -38,6 +38,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: "docker-compose.yml,monitoring/"
+          target: /opt/command-manager-dev/
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         env:
@@ -52,8 +61,10 @@ jobs:
             cd /opt/command-manager-dev
             echo "DB_PASSWORD=$DB_PASSWORD" > .env
             echo "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" >> .env
+            echo "DOCKER_SPRING_PROFILES_ACTIVE=dev" >> .env
+            echo "APP_HOST_PORT=8081" >> .env
+            echo "SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop" >> .env
             chmod 600 .env
-            grep -q "SPRING_PROFILES_ACTIVE" docker-compose.yml || sed -i '/SPRING_DATASOURCE_PASSWORD/a\      SPRING_PROFILES_ACTIVE: seed' docker-compose.yml
             docker compose pull
             docker compose up -d
             docker image prune -f

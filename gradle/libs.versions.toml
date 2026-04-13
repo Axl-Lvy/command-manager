@@ -16,6 +16,8 @@ spring-boot-starter-validation = { group = "org.springframework.boot", name = "s
 spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
 mysql-connector = { group = "com.mysql", name = "mysql-connector-j" }
 h2 = { group = "com.h2database", name = "h2" }
+spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }
+micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

@@ -6,8 +6,11 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
+import io.micrometer.core.instrument.MeterRegistry
 import java.math.BigDecimal
 import java.util.Optional
+import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -22,8 +25,15 @@ class SalesCodigService(
   private val salesNetstoneService: SalesNetstoneService,
   private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
+  private val meterRegistry: MeterRegistry,
   private val clientService: ClientService,
 ) {
+  private val salesCreatedCounter = meterRegistry.counter("sale.codig")
+
+  companion object {
+    private val log = LoggerFactory.getLogger(SalesCodigService::class.java)
+  }
+
   @Transactional(readOnly = true)
   fun findAll(): List<SalesCodig> = salesCodigRepository.findByDeletedAtIsNull()
 
@@ -45,7 +55,8 @@ class SalesCodigService(
 
   @Transactional
   fun save(sale: SalesCodig): SalesCodig {
-    if (sale.saleNumber.isBlank()) {
+    val isNew = sale.saleNumber.isBlank()
+    if (isNew) {
       sale.saleNumber = generateNextSaleNumber()
     }
     if (sale.billingAddress.isNullOrBlank()) {
@@ -60,7 +71,12 @@ class SalesCodigService(
     if (sale.fiscalPosition == null) {
       sale.fiscalPosition = sale.client.fiscalPosition
     }
-    return salesCodigRepository.save(sale)
+    val saved = salesCodigRepository.save(sale)
+    if (isNew) {
+      salesCreatedCounter.increment()
+      log.info("SalesCodig created: number={} clientId={}", saved.saleNumber, saved.client.id)
+    }
+    return saved
   }
 
   @Transactional
@@ -90,6 +106,7 @@ class SalesCodigService(
       }
     val order = sale.orderCodig ?: OrderCodig("", supplier, sale.saleDate)
     val codigCompany = clientService.findDefaultCodigCompany().orElse(null)
+    val isNewOrder = sale.orderCodig == null
 
     order.client = supplier
     order.orderDate = sale.saleDate
@@ -125,6 +142,20 @@ class SalesCodigService(
     orderCodigService.save(savedOrder)
 
     sale.orderCodig = savedOrder
+
+    MDC.put("saleNumber", sale.saleNumber)
+    MDC.put("orderNumber", savedOrder.orderNumber)
+    try {
+      if (isNewOrder) {
+        log.info("SalesCodig {} generated OrderCodig {}", sale.saleNumber, savedOrder.orderNumber)
+      } else {
+        log.info("SalesCodig {} synced OrderCodig {}", sale.saleNumber, savedOrder.orderNumber)
+      }
+    } finally {
+      MDC.remove("saleNumber")
+      MDC.remove("orderNumber")
+    }
+
     return salesCodigRepository.save(sale)
   }
 

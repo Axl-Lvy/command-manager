@@ -7,8 +7,11 @@ import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.sale.SalesCodigRepository
 import fr.axl.lvy.sale.SalesNetstoneService
+import io.micrometer.core.instrument.MeterRegistry
 import java.math.BigDecimal
 import java.util.Optional
+import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -27,8 +30,15 @@ class OrderCodigService(
   private val salesNetstoneService: SalesNetstoneService,
   private val numberSequenceService: NumberSequenceService,
   private val clientService: ClientService,
+  private val meterRegistry: MeterRegistry,
 ) {
+  // Pre-registered so they appear in Prometheus at startup with value 0.
+  private val ordersCreatedCounter = meterRegistry.counter("order.codig")
+  private val ordersDuplicatedCounter = meterRegistry.counter("order.codig.duplicated")
+  private val mtoTriggeredCounter = meterRegistry.counter("order.codig.mto.triggered")
+
   companion object {
+    private val log = LoggerFactory.getLogger(OrderCodigService::class.java)
     private val ALLOWED_TRANSITIONS_FROM_DRAFT =
       setOf(OrderCodig.OrderCodigStatus.CONFIRMED, OrderCodig.OrderCodigStatus.CANCELLED)
     private val ALLOWED_TRANSITIONS_FROM_CONFIRMED =
@@ -52,7 +62,8 @@ class OrderCodigService(
 
   @Transactional
   fun save(order: OrderCodig): OrderCodig {
-    if (order.orderNumber.isBlank()) {
+    val isNew = order.orderNumber.isBlank()
+    if (isNew) {
       order.orderNumber = generateNextOrderNumber()
     }
     if (order.billingAddress.isNullOrBlank()) {
@@ -71,7 +82,12 @@ class OrderCodigService(
       order.fiscalPosition =
         clientService.findDefaultCodigCompany().map { it.fiscalPosition }.orElse(null)
     }
-    return orderCodigRepository.save(order)
+    val saved = orderCodigRepository.save(order)
+    if (isNew) {
+      ordersCreatedCounter.increment()
+      log.info("OrderCodig created: number={} clientId={}", saved.orderNumber, saved.client.id)
+    }
+    return saved
   }
 
   @Transactional
@@ -88,28 +104,46 @@ class OrderCodigService(
   fun changeStatus(order: OrderCodig, newStatus: OrderCodig.OrderCodigStatus): OrderCodig {
     val allowed = getAllowedTransitions(order.status)
     require(allowed.contains(newStatus)) { "Cannot transition from ${order.status} to $newStatus" }
+    val fromStatus = order.status
     order.status = newStatus
     val saved = orderCodigRepository.save(order)
     val savedId = saved.id ?: return saved
-    val originatingSale = salesCodigRepository.findByOrderCodigId(savedId)
-    if (originatingSale != null) {
-      val saleId = originatingSale.id ?: return saved
-      if (newStatus == OrderCodig.OrderCodigStatus.CONFIRMED) {
-        val lines = findLines(savedId)
-        if (lines.any { it.product?.isMtoProduct() == true }) {
-          salesNetstoneService.createOrUpdateFromSalesCodig(
-            originatingSale,
-            saved.orderDate,
-            saved.expectedDeliveryDate,
-            saved.notes,
-            lines,
-          )
-        } else {
+
+    MDC.put("orderId", savedId.toString())
+    MDC.put("orderNumber", saved.orderNumber)
+    MDC.put("fromStatus", fromStatus.name)
+    MDC.put("toStatus", newStatus.name)
+    try {
+      meterRegistry
+        .counter("order.codig.status.transition", "from", fromStatus.name, "to", newStatus.name)
+        .increment()
+      log.info("OrderCodig {} transitioned {} -> {}", saved.orderNumber, fromStatus, newStatus)
+
+      val originatingSale = salesCodigRepository.findByOrderCodigId(savedId)
+      if (originatingSale != null) {
+        val saleId = originatingSale.id ?: return saved
+        if (newStatus == OrderCodig.OrderCodigStatus.CONFIRMED) {
+          val lines = findLines(savedId)
+          if (lines.any { it.product?.isMtoProduct() == true }) {
+            salesNetstoneService.createOrUpdateFromSalesCodig(
+              originatingSale,
+              saved.orderDate,
+              saved.expectedDeliveryDate,
+              saved.notes,
+              lines,
+            )
+          } else {
+            salesNetstoneService.deleteBySalesCodigId(saleId)
+          }
+        } else if (newStatus == OrderCodig.OrderCodigStatus.CANCELLED) {
           salesNetstoneService.deleteBySalesCodigId(saleId)
         }
-      } else if (newStatus == OrderCodig.OrderCodigStatus.CANCELLED) {
-        salesNetstoneService.deleteBySalesCodigId(saleId)
       }
+    } finally {
+      MDC.remove("orderId")
+      MDC.remove("orderNumber")
+      MDC.remove("fromStatus")
+      MDC.remove("toStatus")
     }
     return saved
   }
@@ -157,7 +191,11 @@ class OrderCodigService(
         copy.id!!,
       )
     copy.recalculateTotals(copyLines)
-    return orderCodigRepository.save(copy)
+    val result = orderCodigRepository.save(copy)
+
+    ordersDuplicatedCounter.increment()
+    log.info("OrderCodig duplicated: source={} copy={}", source.orderNumber, result.orderNumber)
+    return result
   }
 
   /**
@@ -196,6 +234,14 @@ class OrderCodigService(
 
     order.orderNetstone = orderNetstone
     orderCodigRepository.save(order)
+
+    mtoTriggeredCounter.increment()
+    log.info(
+      "MTO supplier order triggered: codigOrder={} netstoneOrder={} mtoLines={}",
+      order.orderNumber,
+      orderNetstoneNumber,
+      mtoLines.size,
+    )
   }
 
   @Transactional(readOnly = true)

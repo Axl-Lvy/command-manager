@@ -28,4 +28,5 @@ RUN --mount=type=cache,target=/root/.gradle \
 FROM eclipse-temurin:21-jre-alpine
 COPY --from=build /app/build/libs/*.jar app.jar
 ENV SPRING_PROFILES_ACTIVE=prod
+VOLUME /app/logs
 ENTRYPOINT ["java", "-jar", "/app.jar"]
