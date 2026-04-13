@@ -61,6 +61,9 @@ jobs:
             cd /opt/command-manager-dev
             echo "DB_PASSWORD=$DB_PASSWORD" > .env
             echo "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" >> .env
+            echo "DOCKER_SPRING_PROFILES_ACTIVE=dev" >> .env
+            echo "APP_HOST_PORT=8081" >> .env
+            echo "SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop" >> .env
             chmod 600 .env
             docker compose pull
             docker compose up -d
