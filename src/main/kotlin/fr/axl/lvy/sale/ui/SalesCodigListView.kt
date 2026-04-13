@@ -106,8 +106,8 @@ internal class SalesCodigListView(
         loadedOrder,
         this::refreshGrid,
         this::openLinkedOrder,
-        loadedOrder?.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
-        { loadedOrder?.orderCodig?.let(this::openLinkedNetstoneSaleFromCodigOrder) },
+        loadedOrder?.salesNetstone != null,
+        { loadedOrder?.let(this::openLinkedNetstoneSaleFromCodigSale) },
         { loadedOrder?.orderCodig?.let(this::openLinkedNetstoneOrderFromCodigOrder) },
       )
       .open()
@@ -149,6 +149,28 @@ internal class SalesCodigListView(
   private fun openLinkedNetstoneSaleFromCodigOrder(order: OrderCodig) {
     val linkedSale =
       order.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) } ?: return
+    val loadedSale =
+      linkedSale.id?.let { salesNetstoneService.findDetailedById(it).orElse(linkedSale) } ?: linkedSale
+    SalesNetstoneFormDialog(
+        salesNetstoneService,
+        clientService,
+        salesCodigService,
+        incotermService,
+        fiscalPositionService,
+        productService,
+        loadedSale,
+        this::refreshGrid,
+        loadedSale.orderNetstone != null,
+        this::openLinkedNetstoneOrder,
+        loadedSale.salesCodig.orderCodig != null,
+        this::openLinkedOrderCodigFromNetstoneSale,
+        { openForm(loadedSale.salesCodig) },
+      )
+      .open()
+  }
+
+  private fun openLinkedNetstoneSaleFromCodigSale(sale: SalesCodig) {
+    val linkedSale = sale.id?.let { salesNetstoneService.findBySalesCodigId(it).orElse(null) } ?: return
     val loadedSale =
       linkedSale.id?.let { salesNetstoneService.findDetailedById(it).orElse(linkedSale) } ?: linkedSale
     SalesNetstoneFormDialog(

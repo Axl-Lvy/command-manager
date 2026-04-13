@@ -40,6 +40,10 @@ class SalesNetstoneService(
   fun findByOrderCodigId(orderCodigId: Long): Optional<SalesNetstone> =
     Optional.ofNullable(salesNetstoneRepository.findByOrderCodigId(orderCodigId))
 
+  @Transactional(readOnly = true)
+  fun findBySalesCodigId(salesCodigId: Long): Optional<SalesNetstone> =
+    Optional.ofNullable(salesNetstoneRepository.findBySalesCodigId(salesCodigId))
+
   @Transactional
   fun save(sale: SalesNetstone): SalesNetstone {
     if (sale.saleNumber.isBlank()) {

@@ -118,7 +118,8 @@ internal class CommandCodigListView(
         loadedSale,
         this::refreshGrid,
         this::openLinkedOrder,
-        loadedSale.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
+        loadedSale.orderCodig?.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } ==
+          true,
         { loadedSale.orderCodig?.let(this::openLinkedNetstoneSale) },
         { loadedSale.orderCodig?.let(this::openLinkedNetstoneOrderFromCodigOrder) },
       )
