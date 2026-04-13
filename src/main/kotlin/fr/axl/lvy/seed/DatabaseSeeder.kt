@@ -64,6 +64,11 @@ class DatabaseSeeder(
   private val logger = LoggerFactory.getLogger(DatabaseSeeder::class.java)
 
   override fun run(args: ApplicationArguments) {
+    if (currencyService.findAll().isNotEmpty()) {
+      logger.info("[Seeder] Database already seeded, skipping.")
+      return
+    }
+
     logger.info("[Seeder] Starting database seeding...")
 
     val refData = seedReferenceData()

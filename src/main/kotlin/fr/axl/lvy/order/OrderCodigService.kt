@@ -69,7 +69,6 @@ class OrderCodigService(
     if (order.deliveryLocation.isNullOrBlank()) {
       order.deliveryLocation = order.client.deliveryPort
     }
-    return orderCodigRepository.save(order)
     val saved = orderCodigRepository.save(order)
     if (isNew) {
       ordersCreatedCounter.increment()
