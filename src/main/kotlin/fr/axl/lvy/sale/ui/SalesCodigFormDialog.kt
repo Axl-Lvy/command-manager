@@ -16,6 +16,7 @@ import fr.axl.lvy.base.ui.DocumentFlowNavigation
 import fr.axl.lvy.base.ui.DocumentFlowNavigator
 import fr.axl.lvy.base.ui.DocumentFlowStep
 import fr.axl.lvy.base.ui.loadAndApplyClientDefaults
+import fr.axl.lvy.base.ui.noGap
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
@@ -128,8 +129,7 @@ internal class SalesCodigFormDialog(
       )
 
     val content = VerticalLayout()
-    content.isPadding = false
-    content.isSpacing = false
+    content.noGap()
     buildFlowNavigator()?.let { content.add(it) }
     content.add(form, lineEditor)
     add(content)

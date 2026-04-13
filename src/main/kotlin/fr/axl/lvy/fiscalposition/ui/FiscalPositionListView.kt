@@ -9,11 +9,11 @@ import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
-import com.vaadin.flow.dom.Style
 import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.base.ui.initAsListContainer
 import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.fiscalposition.FiscalPositionService
 
@@ -72,10 +72,7 @@ internal class FiscalPositionListView(private val fiscalPositionService: FiscalP
 
     refreshGrid()
 
-    setSizeFull()
-    isPadding = false
-    isSpacing = false
-    style.setOverflow(Style.Overflow.HIDDEN)
+    initAsListContainer()
 
     add(ViewToolbar("Positions fiscales", addBtn))
     add(grid)

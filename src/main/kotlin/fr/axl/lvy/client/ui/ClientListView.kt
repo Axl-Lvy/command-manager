@@ -6,11 +6,11 @@ import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
-import com.vaadin.flow.dom.Style
 import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.base.ui.initAsListContainer
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.fiscalposition.FiscalPositionService
@@ -69,10 +69,7 @@ internal class ClientListView(
 
     refreshGrid()
 
-    setSizeFull()
-    isPadding = false
-    isSpacing = false
-    style.setOverflow(Style.Overflow.HIDDEN)
+    initAsListContainer()
 
     add(ViewToolbar("Clients", addBtn))
     add(grid)

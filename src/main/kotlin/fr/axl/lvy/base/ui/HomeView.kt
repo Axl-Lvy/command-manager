@@ -60,8 +60,7 @@ internal class HomeView : VerticalLayout() {
       )
 
     val grid = VerticalLayout(row1, row2)
-    grid.isSpacing = false
-    grid.isPadding = false
+    grid.noGap()
     grid.addClassNames(LumoUtility.Gap.LARGE)
     grid.alignItems = FlexComponent.Alignment.CENTER
 
@@ -70,8 +69,7 @@ internal class HomeView : VerticalLayout() {
 
   private fun row(vararg components: Component): HorizontalLayout {
     val row = HorizontalLayout(*components)
-    row.isSpacing = false
-    row.isPadding = false
+    row.noGap()
     row.addClassNames(LumoUtility.Gap.LARGE)
     return row
   }
@@ -129,8 +127,7 @@ internal class HomeView : VerticalLayout() {
     header.addClassNames(LumoUtility.Border.BOTTOM, LumoUtility.Padding.MEDIUM)
 
     val columnsRow = HorizontalLayout()
-    columnsRow.isSpacing = false
-    columnsRow.isPadding = false
+    columnsRow.noGap()
     columnsRow.setWidthFull()
     columnsRow.style["flex"] = "1"
 
@@ -150,8 +147,7 @@ internal class HomeView : VerticalLayout() {
     }
 
     val tile = VerticalLayout(header, columnsRow)
-    tile.isSpacing = false
-    tile.isPadding = false
+    tile.noGap()
     tile.setWidth("200px")
     tile.setHeight("200px")
     tile.addClassNames(LumoUtility.Background.CONTRAST_5, LumoUtility.BorderRadius.LARGE)

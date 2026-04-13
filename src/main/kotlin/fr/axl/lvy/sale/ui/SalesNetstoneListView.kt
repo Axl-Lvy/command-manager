@@ -5,11 +5,11 @@ import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
-import com.vaadin.flow.dom.Style
 import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.base.ui.initAsListContainer
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
@@ -69,10 +69,7 @@ internal class SalesNetstoneListView(
 
     refreshGrid()
 
-    setSizeFull()
-    isPadding = false
-    isSpacing = false
-    style.setOverflow(Style.Overflow.HIDDEN)
+    initAsListContainer()
 
     add(ViewToolbar("Ventes Netstone", addBtn))
     add(grid)

@@ -43,8 +43,7 @@ internal enum class DocumentFlowStep {
 internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : VerticalLayout() {
 
   init {
-    isPadding = false
-    isSpacing = false
+    noGap()
     setWidthFull()
     defaultHorizontalComponentAlignment = FlexComponent.Alignment.STRETCH
     style["gap"] = "0.35rem"
@@ -81,8 +80,7 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
         ),
       )
       .apply {
-        isPadding = false
-        isSpacing = false
+        noGap()
         setWidthFull()
       }
 
@@ -133,8 +131,7 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
 
   private fun buildSegmentRow(): Component =
     HorizontalLayout(segment(CODIG_COLOR), segment(NETSTONE_COLOR)).apply {
-      isPadding = false
-      isSpacing = false
+      noGap()
       setWidthFull()
     }
 
@@ -148,8 +145,7 @@ internal class DocumentFlowNavigator(navigation: DocumentFlowNavigation) : Verti
 
   private fun buildCompanyRow(): Component =
     HorizontalLayout(companyLabel("CoDIG"), companyLabel("Netstone")).apply {
-      isPadding = false
-      isSpacing = false
+      noGap()
       setWidthFull()
     }
 
