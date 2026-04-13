@@ -16,6 +16,7 @@ import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTermService
 
@@ -25,6 +26,7 @@ import fr.axl.lvy.paymentterm.PaymentTermService
 internal class CompanyListView(
   private val clientService: ClientService,
   private val paymentTermService: PaymentTermService,
+  private val fiscalPositionService: FiscalPositionService,
   private val incotermService: IncotermService,
 ) : VerticalLayout() {
 
@@ -92,6 +94,7 @@ internal class CompanyListView(
     ClientFormDialog(
         clientService,
         paymentTermService,
+        fiscalPositionService,
         incotermService,
         loadedCompany,
         this::refreshGrid,

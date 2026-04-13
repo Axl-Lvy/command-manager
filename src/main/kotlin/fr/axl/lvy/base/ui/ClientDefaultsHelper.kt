@@ -5,6 +5,7 @@ import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
 import fr.axl.lvy.incoterm.Incoterm
 
 /**
@@ -17,13 +18,19 @@ fun loadAndApplyClientDefaults(
   clientService: ClientService,
   billingAddress: TextArea,
   shippingAddress: TextArea,
+  deliveryAddressCombo: ComboBox<ClientDeliveryAddress>?,
   incotermCombo: ComboBox<Incoterm>,
   incotermLocation: TextField,
   allIncoterms: List<Incoterm>,
 ): Client {
   val detailed = client.id?.let { clientService.findDetailedById(it).orElse(client) } ?: client
   billingAddress.value = detailed.billingAddress ?: ""
-  shippingAddress.value = detailed.shippingAddress ?: ""
+  val defaultDeliveryAddress =
+    detailed.deliveryAddresses.firstOrNull { it.defaultAddress }
+      ?: detailed.deliveryAddresses.firstOrNull()
+  deliveryAddressCombo?.setItems(detailed.deliveryAddresses)
+  deliveryAddressCombo?.value = defaultDeliveryAddress
+  shippingAddress.value = defaultDeliveryAddress?.address ?: detailed.shippingAddress ?: ""
   incotermCombo.value = allIncoterms.firstOrNull { it.id == detailed.incoterm?.id }
   incotermLocation.value = detailed.incotermLocation ?: ""
   return detailed

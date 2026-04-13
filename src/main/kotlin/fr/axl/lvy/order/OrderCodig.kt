@@ -4,7 +4,9 @@ import fr.axl.lvy.base.CodigDocument
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.delivery.DeliveryNoteCodig
 import fr.axl.lvy.documentline.DocumentLine
+import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.invoice.InvoiceCodig
+import fr.axl.lvy.paymentterm.PaymentTerm
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
@@ -29,7 +31,13 @@ class OrderCodig(
   @Column(name = "order_date", nullable = false) var orderDate: LocalDate,
 ) : CodigDocument(client) {
   companion object {
-    private val EDITABLE = setOf(OrderCodigStatus.DRAFT, OrderCodigStatus.CONFIRMED)
+    private val EDITABLE =
+      setOf(
+        OrderCodigStatus.DRAFT,
+        OrderCodigStatus.CONFIRMED,
+        OrderCodigStatus.IN_PRODUCTION,
+        OrderCodigStatus.READY,
+      )
   }
 
   @ManyToOne(fetch = FetchType.LAZY)
@@ -40,12 +48,21 @@ class OrderCodig(
   @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(
     nullable = false,
-    columnDefinition = "enum('DRAFT','CONFIRMED','DELIVERED','INVOICED','CANCELLED')",
+    columnDefinition =
+      "enum('DRAFT','CONFIRMED','IN_PRODUCTION','READY','DELIVERED','INVOICED','CANCELLED')",
   )
   var status: OrderCodigStatus = OrderCodigStatus.DRAFT
 
   @Column(name = "vat_rate", nullable = false, precision = 5, scale = 2)
   var vatRate: BigDecimal = BigDecimal.ZERO
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "payment_term_id")
+  var paymentTerm: PaymentTerm? = null
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "fiscal_position_id")
+  var fiscalPosition: FiscalPosition? = null
 
   /** Delivery destination ("Livrer à"), prefilled from [Client.deliveryPort] on creation. */
   @Column(name = "delivery_location", length = 100) var deliveryLocation: String? = null
@@ -76,6 +93,8 @@ class OrderCodig(
   enum class OrderCodigStatus {
     DRAFT,
     CONFIRMED,
+    IN_PRODUCTION,
+    READY,
     DELIVERED,
     INVOICED,
     CANCELLED,

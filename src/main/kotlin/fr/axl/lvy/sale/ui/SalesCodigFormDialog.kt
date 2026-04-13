@@ -15,8 +15,11 @@ import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.base.ui.loadAndApplyClientDefaults
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTerm
@@ -34,6 +37,7 @@ internal class SalesCodigFormDialog(
   private val clientService: ClientService,
   incotermService: IncotermService,
   paymentTermService: PaymentTermService,
+  fiscalPositionService: FiscalPositionService,
   productService: ProductService,
   private val order: SalesCodig?,
   private val onSave: Runnable,
@@ -47,6 +51,8 @@ internal class SalesCodigFormDialog(
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
   private val clientReference = TextField("Réf. client")
   private val paymentTermCombo = ComboBox<PaymentTerm>("Conditions de paiement")
+  private val fiscalPositionCombo = ComboBox<FiscalPosition>("Position fiscale")
+  private val deliveryAddressCombo = ComboBox<ClientDeliveryAddress>("Adresse de livraison")
   private val incotermCombo = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
   private val billingAddress = TextArea("Adresse facturation")
@@ -70,6 +76,12 @@ internal class SalesCodigFormDialog(
     incotermCombo.setItemLabelGenerator { it.name }
     paymentTermCombo.setItems(paymentTermService.findAll())
     paymentTermCombo.setItemLabelGenerator { it.label }
+    fiscalPositionCombo.setItems(fiscalPositionService.findAll())
+    fiscalPositionCombo.setItemLabelGenerator { it.position }
+    deliveryAddressCombo.setItemLabelGenerator { it.label }
+    deliveryAddressCombo.addValueChangeListener { event ->
+      shippingAddress.value = event.value?.address ?: ""
+    }
     status.setItems(*SalesStatus.entries.toTypedArray())
     status.setItemLabelGenerator {
       when (it) {
@@ -90,7 +102,8 @@ internal class SalesCodigFormDialog(
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 3))
     form.add(orderNumber, clientCombo, orderDate)
     form.add(status, expectedDeliveryDate, clientReference)
-    form.add(paymentTermCombo, incotermCombo, incotermLocation)
+    form.add(paymentTermCombo, fiscalPositionCombo, deliveryAddressCombo)
+    form.add(incotermCombo, incotermLocation)
     form.add(billingAddress, 3)
     form.add(shippingAddress, 3)
     form.add(notes, 3)
@@ -146,6 +159,8 @@ internal class SalesCodigFormDialog(
     expectedDeliveryDate.value = o.expectedDeliveryDate
     clientReference.value = o.clientReference ?: ""
     paymentTermCombo.value = o.paymentTerm
+    fiscalPositionCombo.value = o.fiscalPosition
+    deliveryAddressCombo.clear()
     selectedCurrency = o.currency
     incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
     incotermLocation.value = o.incotermLocation ?: ""
@@ -158,15 +173,19 @@ internal class SalesCodigFormDialog(
   }
 
   private fun applyClientDefaults(client: Client) {
-    loadAndApplyClientDefaults(
-      client,
-      clientService,
-      billingAddress,
-      shippingAddress,
-      incotermCombo,
-      incotermLocation,
-      allIncoterms,
-    )
+    val detailed =
+      loadAndApplyClientDefaults(
+        client,
+        clientService,
+        billingAddress,
+        shippingAddress,
+        deliveryAddressCombo,
+        incotermCombo,
+        incotermLocation,
+        allIncoterms,
+      )
+    paymentTermCombo.value = detailed.paymentTerm
+    fiscalPositionCombo.value = detailed.fiscalPosition
   }
 
   private fun save() {
@@ -191,6 +210,7 @@ internal class SalesCodigFormDialog(
       o.clientReference = if (clientReference.value.isBlank()) null else clientReference.value
       o.subject = null
       o.paymentTerm = paymentTermCombo.value
+      o.fiscalPosition = fiscalPositionCombo.value
       o.currency = selectedCurrency
       o.exchangeRate = BigDecimal.ONE
       o.incoterms = incotermCombo.value?.name

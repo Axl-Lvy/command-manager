@@ -1,7 +1,10 @@
 package fr.axl.lvy.order
 
 import fr.axl.lvy.base.TotalizableDocument
+import fr.axl.lvy.client.Client
+import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.invoice.InvoiceNetstone
+import fr.axl.lvy.paymentterm.PaymentTerm
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.time.LocalDate
@@ -24,12 +27,25 @@ class OrderNetstone(
   @JoinColumn(name = "order_codig_id", nullable = false)
   var orderCodig: OrderCodig,
 ) : TotalizableDocument() {
+  @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "supplier_id") var supplier: Client? = null
+
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(nullable = false, columnDefinition = "enum('SENT','CONFIRMED','RECEIVED','CANCELLED')")
   var status: OrderNetstoneStatus = OrderNetstoneStatus.SENT
 
   @Column(name = "order_date") var orderDate: LocalDate? = null
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "payment_term_id")
+  var paymentTerm: PaymentTerm? = null
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "fiscal_position_id")
+  var fiscalPosition: FiscalPosition? = null
+
+  @Column(name = "delivery_location", columnDefinition = "TEXT")
+  var deliveryLocation: String? = null
 
   @Column(name = "reception_date") var receptionDate: LocalDate? = null
 

@@ -23,6 +23,7 @@ class DocumentLineService(private val documentLineRepository: DocumentLineReposi
     lines: List<DocumentLine>,
     overrideVatRate: BigDecimal? = null,
     overrideUnitPrice: ((DocumentLine) -> BigDecimal?)? = null,
+    overrideDiscountPercent: BigDecimal? = null,
     filter: ((DocumentLine) -> Boolean)? = null,
   ): List<DocumentLine> {
     val existingLines =
@@ -40,6 +41,7 @@ class DocumentLineService(private val documentLineRepository: DocumentLineReposi
             line,
             overrideVatRate = overrideVatRate,
             overrideUnitPrice = overrideUnitPrice?.invoke(line),
+            overrideDiscountPercent = overrideDiscountPercent,
           )
           position = i
         }

@@ -18,7 +18,9 @@ interface ClientRepository : JpaRepository<Client, Long> {
       SELECT DISTINCT c
       FROM Client c
       LEFT JOIN FETCH c.contacts
+      LEFT JOIN FETCH c.deliveryAddresses
       LEFT JOIN FETCH c.paymentTerm
+      LEFT JOIN FETCH c.fiscalPosition
       LEFT JOIN FETCH c.incoterm
       WHERE c.id = :id
     """

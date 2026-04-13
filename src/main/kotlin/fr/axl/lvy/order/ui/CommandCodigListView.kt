@@ -11,6 +11,7 @@ import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
@@ -28,6 +29,7 @@ internal class CommandCodigListView(
   private val clientService: ClientService,
   private val incotermService: IncotermService,
   private val paymentTermService: PaymentTermService,
+  private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
   private val salesCodigService: SalesCodigService,
 ) : VerticalLayout() {
@@ -44,7 +46,7 @@ internal class CommandCodigListView(
     grid.addColumn(OrderCodig::orderDate).setHeader("Date").setAutoWidth(true)
     grid.addColumn(OrderCodig::totalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid.addColumn(OrderCodig::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
-    grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
+    grid.addColumn { statusLabel(it.status) }.setHeader("Statut").setAutoWidth(true)
     grid.setEmptyStateText("Aucune commande Codig")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
@@ -74,6 +76,8 @@ internal class CommandCodigListView(
         orderCodigService,
         clientService,
         incotermService,
+        paymentTermService,
+        fiscalPositionService,
         productService,
         order,
         this::refreshGrid,
@@ -96,6 +100,7 @@ internal class CommandCodigListView(
         clientService,
         incotermService,
         paymentTermService,
+        fiscalPositionService,
         productService,
         loadedSale,
         this::refreshGrid,
@@ -118,4 +123,11 @@ internal class CommandCodigListView(
   private fun refreshGrid() {
     grid.setItems(orderCodigService.findAll())
   }
+
+  private fun statusLabel(status: OrderCodig.OrderCodigStatus): String =
+    when (status) {
+      OrderCodig.OrderCodigStatus.DRAFT -> "Brouillon"
+      OrderCodig.OrderCodigStatus.CANCELLED -> "Annule"
+      else -> "Confirme"
+    }
 }

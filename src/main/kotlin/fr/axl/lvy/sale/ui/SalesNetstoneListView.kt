@@ -10,6 +10,8 @@ import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodigService
@@ -21,8 +23,10 @@ import fr.axl.lvy.sale.SalesNetstoneService
 @Menu(order = 4.0, icon = "vaadin:truck", title = "Vente/Netstone")
 internal class SalesNetstoneListView(
   private val salesNetstoneService: SalesNetstoneService,
+  private val clientService: ClientService,
   private val salesCodigService: SalesCodigService,
   private val incotermService: IncotermService,
+  private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
 ) : VerticalLayout() {
 
@@ -34,7 +38,17 @@ internal class SalesNetstoneListView(
 
     grid = Grid()
     grid.addColumn(SalesNetstone::saleNumber).setHeader("N° Vente Netstone").setAutoWidth(true)
-    grid.addColumn { it.salesCodig.saleNumber }.setHeader("Vente Codig liée").setAutoWidth(true)
+    grid
+      .addColumn {
+        val linkedOrder = it.salesCodig.orderCodig
+        if (linkedOrder == null) {
+          ""
+        } else {
+          "${linkedOrder.orderNumber} - ${it.salesCodig.client.name}"
+        }
+      }
+      .setHeader("Commande CoDIG liée")
+      .setAutoWidth(true)
     grid.addColumn(SalesNetstone::saleDate).setHeader("Date").setAutoWidth(true)
     grid.addColumn(SalesNetstone::totalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid.addColumn(SalesNetstone::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
@@ -56,12 +70,15 @@ internal class SalesNetstoneListView(
   }
 
   private fun openForm(order: SalesNetstone?) {
+    val loadedOrder = order?.id?.let { salesNetstoneService.findDetailedById(it).orElse(order) }
     SalesNetstoneFormDialog(
         salesNetstoneService,
+        clientService,
         salesCodigService,
         incotermService,
+        fiscalPositionService,
         productService,
-        order,
+        loadedOrder,
         this::refreshGrid,
       )
       .open()

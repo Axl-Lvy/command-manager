@@ -11,12 +11,14 @@ import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
-import com.vaadin.flow.component.textfield.IntegerField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTerm
@@ -26,6 +28,7 @@ import fr.axl.lvy.user.User
 internal class ClientFormDialog(
   private val clientService: ClientService,
   paymentTermService: PaymentTermService,
+  fiscalPositionService: FiscalPositionService,
   incotermService: IncotermService,
   private val client: Client?,
   private val onSave: Runnable,
@@ -42,9 +45,8 @@ internal class ClientFormDialog(
   private val siret = TextField("SIRET")
   private val vatNumber = TextField("N° TVA intra.")
   private val billingAddress = TextArea("Adresse facturation")
-  private val shippingAddress = TextArea("Adresse livraison")
-  private val paymentDelay = IntegerField("Délai paiement (jours)")
   private val paymentTerm = ComboBox<PaymentTerm>("Conditions de paiement")
+  private val fiscalPosition = ComboBox<FiscalPosition>("Position fiscale")
   private val incoterm = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
   private val deliveryPort = TextField("Port de livraison")
@@ -52,8 +54,11 @@ internal class ClientFormDialog(
   private val notes = TextArea("Notes")
 
   private val contacts = mutableListOf<Contact>()
+  private val deliveryAddresses = mutableListOf<ClientDeliveryAddress>()
   private val contactGrid = Grid<Contact>()
+  private val deliveryAddressGrid = Grid<ClientDeliveryAddress>()
   private val availablePaymentTerms = paymentTermService.findAll()
+  private val availableFiscalPositions = fiscalPositionService.findAll()
   private val availableIncoterms = incotermService.findAll()
 
   init {
@@ -107,6 +112,8 @@ internal class ClientFormDialog(
     name.isRequired = true
     paymentTerm.setItems(availablePaymentTerms)
     paymentTerm.setItemLabelGenerator { it.label }
+    fiscalPosition.setItems(availableFiscalPositions)
+    fiscalPosition.setItemLabelGenerator { it.position }
     incoterm.setItems(availableIncoterms)
     incoterm.setItemLabelGenerator { "${it.name} - ${it.label}" }
 
@@ -123,11 +130,10 @@ internal class ClientFormDialog(
     form.add(statusToggle, email)
     form.add(phone, website)
     form.add(siret, vatNumber)
-    form.add(paymentTerm, paymentDelay)
+    form.add(paymentTerm, fiscalPosition)
     form.add(incoterm, incotermLocation)
     form.add(deliveryPort, 2)
     form.add(billingAddress, 2)
-    form.add(shippingAddress, 2)
     form.add(notes, 2)
 
     contactGrid.addColumn(Contact::lastName).setHeader("Nom").setFlexGrow(1)
@@ -137,16 +143,38 @@ internal class ClientFormDialog(
     contactGrid.addColumn { it.role.name }.setHeader("Rôle").setAutoWidth(true)
     contactGrid.setHeight("200px")
 
+    deliveryAddressGrid.addColumn(ClientDeliveryAddress::label).setHeader("Libellé").setFlexGrow(1)
+    deliveryAddressGrid
+      .addColumn(ClientDeliveryAddress::address)
+      .setHeader("Adresse")
+      .setFlexGrow(2)
+    deliveryAddressGrid
+      .addColumn { if (it.defaultAddress) "Oui" else "" }
+      .setHeader("Par défaut")
+      .setAutoWidth(true)
+    deliveryAddressGrid.addItemDoubleClickListener { editDeliveryAddress(it.item) }
+    deliveryAddressGrid.setHeight("180px")
+
     val addContactBtn = Button("Ajouter contact") { addContact() }
     val removeContactBtn = Button("Supprimer") { removeSelectedContact() }
     removeContactBtn.addThemeVariants(ButtonVariant.LUMO_ERROR)
+    val addDeliveryAddressBtn = Button("Ajouter adresse") { addDeliveryAddress() }
+    val editDeliveryAddressBtn = Button("Modifier adresse") { editSelectedDeliveryAddress() }
+    val removeDeliveryAddressBtn = Button("Supprimer adresse") { removeSelectedDeliveryAddress() }
+    removeDeliveryAddressBtn.addThemeVariants(ButtonVariant.LUMO_ERROR)
 
     val contactActions = HorizontalLayout(addContactBtn, removeContactBtn)
     val contactSection = VerticalLayout(H3("Contacts"), contactActions, contactGrid)
     contactSection.isPadding = false
     contactSection.isSpacing = false
+    val deliveryAddressActions =
+      HorizontalLayout(addDeliveryAddressBtn, editDeliveryAddressBtn, removeDeliveryAddressBtn)
+    val deliveryAddressSection =
+      VerticalLayout(H3("Adresses de livraison"), deliveryAddressActions, deliveryAddressGrid)
+    deliveryAddressSection.isPadding = false
+    deliveryAddressSection.isSpacing = false
 
-    val content = VerticalLayout(form, contactSection)
+    val content = VerticalLayout(form, deliveryAddressSection, contactSection)
     content.isPadding = false
     add(content)
 
@@ -180,9 +208,8 @@ internal class ClientFormDialog(
     siret.value = c.siret ?: ""
     vatNumber.value = c.vatNumber ?: ""
     billingAddress.value = c.billingAddress ?: ""
-    shippingAddress.value = c.shippingAddress ?: ""
-    paymentDelay.value = c.paymentDelay
     paymentTerm.value = c.paymentTerm
+    fiscalPosition.value = c.fiscalPosition
     incoterm.value = c.incoterm
     incotermLocation.value = c.incotermLocation ?: ""
     deliveryPort.value = c.deliveryPort ?: ""
@@ -190,6 +217,8 @@ internal class ClientFormDialog(
     notes.value = c.notes ?: ""
     contacts.addAll(c.contacts)
     contactGrid.setItems(contacts)
+    deliveryAddresses.addAll(c.deliveryAddresses)
+    deliveryAddressGrid.setItems(deliveryAddresses)
   }
 
   private fun addContact() {
@@ -203,6 +232,37 @@ internal class ClientFormDialog(
   private fun removeSelectedContact() {
     contactGrid.selectedItems.forEach { contacts.remove(it) }
     contactGrid.setItems(contacts)
+  }
+
+  private fun addDeliveryAddress() {
+    DeliveryAddressFormDialog(null) { deliveryAddress ->
+        if (deliveryAddress.defaultAddress) {
+          deliveryAddresses.forEach { it.defaultAddress = false }
+        }
+        deliveryAddresses.add(deliveryAddress)
+        deliveryAddressGrid.setItems(deliveryAddresses)
+      }
+      .open()
+  }
+
+  private fun editSelectedDeliveryAddress() {
+    val selected = deliveryAddressGrid.selectedItems.firstOrNull() ?: return
+    editDeliveryAddress(selected)
+  }
+
+  private fun editDeliveryAddress(deliveryAddress: ClientDeliveryAddress) {
+    DeliveryAddressFormDialog(deliveryAddress) { updated ->
+        if (updated.defaultAddress) {
+          deliveryAddresses.forEach { it.defaultAddress = it === updated }
+        }
+        deliveryAddressGrid.setItems(deliveryAddresses)
+      }
+      .open()
+  }
+
+  private fun removeSelectedDeliveryAddress() {
+    deliveryAddressGrid.selectedItems.forEach { deliveryAddresses.remove(it) }
+    deliveryAddressGrid.setItems(deliveryAddresses)
   }
 
   private fun save() {
@@ -245,9 +305,8 @@ internal class ClientFormDialog(
       c.siret = if (siret.value.isBlank()) null else siret.value
       c.vatNumber = if (vatNumber.value.isBlank()) null else vatNumber.value
       c.billingAddress = if (billingAddress.value.isBlank()) null else billingAddress.value
-      c.shippingAddress = if (shippingAddress.value.isBlank()) null else shippingAddress.value
-      c.paymentDelay = paymentDelay.value
       c.paymentTerm = paymentTerm.value
+      c.fiscalPosition = fiscalPosition.value
       c.incoterm = incoterm.value
       c.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
       c.deliveryPort = deliveryPort.value.takeIf { it.isNotBlank() }
@@ -263,6 +322,13 @@ internal class ClientFormDialog(
       for (contact in contacts) {
         contact.client = c
         c.contacts.add(contact)
+      }
+      val defaultDeliveryAddress = deliveryAddresses.firstOrNull { it.defaultAddress }
+      deliveryAddresses.forEach { it.defaultAddress = it === defaultDeliveryAddress }
+      c.deliveryAddresses.clear()
+      for (deliveryAddress in deliveryAddresses) {
+        deliveryAddress.client = c
+        c.deliveryAddresses.add(deliveryAddress)
       }
 
       clientService.save(c)

@@ -17,6 +17,7 @@ import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.delivery.DeliveryNoteCodigService
 import fr.axl.lvy.delivery.ui.DeliveryNoteCodigFormDialog
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
@@ -35,6 +36,7 @@ internal class SalesCodigListView(
   private val clientService: ClientService,
   private val incotermService: IncotermService,
   private val paymentTermService: PaymentTermService,
+  private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
   private val deliveryNoteCodigService: DeliveryNoteCodigService,
   private val orderCodigService: OrderCodigService,
@@ -93,6 +95,7 @@ internal class SalesCodigListView(
         clientService,
         incotermService,
         paymentTermService,
+        fiscalPositionService,
         productService,
         loadedOrder,
         this::refreshGrid,
@@ -114,6 +117,8 @@ internal class SalesCodigListView(
         orderCodigService,
         clientService,
         incotermService,
+        paymentTermService,
+        fiscalPositionService,
         productService,
         loadedOrder,
         this::refreshGrid,

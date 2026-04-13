@@ -13,7 +13,20 @@ interface SalesCodigRepository : JpaRepository<SalesCodig, Long> {
       SELECT s
       FROM SalesCodig s
       LEFT JOIN FETCH s.client
+      LEFT JOIN FETCH s.orderCodig o
+      LEFT JOIN FETCH o.client
+      WHERE s.deletedAt IS NULL AND s.orderCodig IS NOT NULL
+    """
+  )
+  fun findByDeletedAtIsNullAndOrderCodigIsNotNull(): List<SalesCodig>
+
+  @Query(
+    """
+      SELECT s
+      FROM SalesCodig s
+      LEFT JOIN FETCH s.client
       LEFT JOIN FETCH s.paymentTerm
+      LEFT JOIN FETCH s.fiscalPosition
       LEFT JOIN FETCH s.orderCodig o
       LEFT JOIN FETCH o.deliveryNote
       WHERE s.id = :id

@@ -2,13 +2,19 @@ package fr.axl.lvy.order
 
 import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
+import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermRepository
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductRepository
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigRepository
 import fr.axl.lvy.sale.SalesNetstoneRepository
+import fr.axl.lvy.user.User
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
@@ -24,12 +30,15 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class OrderCodigServiceTest {
 
+  @Autowired lateinit var clientService: ClientService
   @Autowired lateinit var orderCodigService: OrderCodigService
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
   @Autowired lateinit var orderNetstoneRepository: OrderNetstoneRepository
   @Autowired lateinit var salesCodigRepository: SalesCodigRepository
   @Autowired lateinit var salesNetstoneRepository: SalesNetstoneRepository
   @Autowired lateinit var productRepository: ProductRepository
+  @Autowired lateinit var fiscalPositionService: FiscalPositionService
+  @Autowired lateinit var paymentTermRepository: PaymentTermRepository
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var testData: TestDataFactory
 
@@ -67,6 +76,36 @@ class OrderCodigServiceTest {
   }
 
   @Test
+  fun save_uses_supplier_payment_term_when_blank() {
+    val client = testData.createClient("CLI-OA-PAYMENT")
+    val paymentTerm = paymentTermRepository.saveAndFlush(PaymentTerm("30 jours"))
+    client.paymentTerm = paymentTerm
+    val order = OrderCodig("CA-PAYMENT-001", client, LocalDate.of(2026, 3, 1))
+
+    val saved = orderCodigService.save(order)
+
+    assertThat(saved.paymentTerm?.id).isEqualTo(paymentTerm.id)
+  }
+
+  @Test
+  fun save_uses_codig_fiscal_position_when_blank() {
+    val codig = Client("CLI-OWN-CODIG-ORDER", "Codig")
+    codig.type = Client.ClientType.OWN_COMPANY
+    codig.role = Client.ClientRole.OWN_COMPANY
+    codig.visibleCompany = User.Company.CODIG
+    val fiscalPosition = fiscalPositionService.save(FiscalPosition("Fiscalite Codig"))
+    codig.fiscalPosition = fiscalPosition
+    clientService.save(codig)
+
+    val supplier = testData.createClient("CLI-OA-FISCAL")
+    val order = OrderCodig("CA-FISCAL-001", supplier, LocalDate.of(2026, 3, 1))
+
+    val saved = orderCodigService.save(order)
+
+    assertThat(saved.fiscalPosition?.id).isEqualTo(fiscalPosition.id)
+  }
+
+  @Test
   fun default_status_is_draft() {
     val client = testData.createClient("CLI-OA00")
     val order = OrderCodig("CA-DRAFT-001", client, LocalDate.of(2026, 3, 1))
@@ -85,7 +124,7 @@ class OrderCodigServiceTest {
   }
 
   @Test
-  fun isEditable_for_draft_and_confirmed() {
+  fun isEditable_for_draft_confirmed_in_production_and_ready() {
     val client = testData.createClient("CLI-OA03")
 
     assertThat(createOrderCodig("CA-E1", client, OrderCodig.OrderCodigStatus.DRAFT).isEditable())
@@ -95,24 +134,30 @@ class OrderCodigServiceTest {
       )
       .isTrue
     assertThat(
-        createOrderCodig("CA-E3", client, OrderCodig.OrderCodigStatus.DELIVERED).isEditable()
+        createOrderCodig("CA-E3", client, OrderCodig.OrderCodigStatus.IN_PRODUCTION).isEditable()
+      )
+      .isTrue
+    assertThat(createOrderCodig("CA-E4", client, OrderCodig.OrderCodigStatus.READY).isEditable())
+      .isTrue
+    assertThat(
+        createOrderCodig("CA-E5", client, OrderCodig.OrderCodigStatus.DELIVERED).isEditable()
       )
       .isFalse
-    assertThat(createOrderCodig("CA-E4", client, OrderCodig.OrderCodigStatus.INVOICED).isEditable())
+    assertThat(createOrderCodig("CA-E6", client, OrderCodig.OrderCodigStatus.INVOICED).isEditable())
       .isFalse
     assertThat(
-        createOrderCodig("CA-E5", client, OrderCodig.OrderCodigStatus.CANCELLED).isEditable()
+        createOrderCodig("CA-E7", client, OrderCodig.OrderCodigStatus.CANCELLED).isEditable()
       )
       .isFalse
   }
 
   @Test
-  fun status_transition_confirmed_to_delivered() {
+  fun status_transition_confirmed_to_in_production() {
     val client = testData.createClient("CLI-OA04")
     val order = createOrderCodig("CA-ST-01", client, OrderCodig.OrderCodigStatus.CONFIRMED)
 
-    val updated = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.DELIVERED)
-    assertThat(updated.status).isEqualTo(OrderCodig.OrderCodigStatus.DELIVERED)
+    val updated = orderCodigService.changeStatus(order, OrderCodig.OrderCodigStatus.IN_PRODUCTION)
+    assertThat(updated.status).isEqualTo(OrderCodig.OrderCodigStatus.IN_PRODUCTION)
   }
 
   @Test

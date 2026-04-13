@@ -2,6 +2,8 @@ package fr.axl.lvy.client
 
 import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.contact.Contact
+import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
+import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.user.User
@@ -66,6 +68,10 @@ class Client(
   @JoinColumn(name = "payment_term_id")
   var paymentTerm: PaymentTerm? = null
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "fiscal_position_id")
+  var fiscalPosition: FiscalPosition? = null
+
   /** Default incoterm for documents created for this client. */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "incoterm_id")
@@ -89,6 +95,9 @@ class Client(
 
   @OneToMany(mappedBy = "client", cascade = [CascadeType.ALL], orphanRemoval = true)
   var contacts: MutableList<Contact> = mutableListOf()
+
+  @OneToMany(mappedBy = "client", cascade = [CascadeType.ALL], orphanRemoval = true)
+  var deliveryAddresses: MutableSet<ClientDeliveryAddress> = linkedSetOf()
 
   /** Whether this client can appear as a buyer on Codig sales/orders. */
   fun isClient(): Boolean = role == ClientRole.CLIENT || role == ClientRole.BOTH

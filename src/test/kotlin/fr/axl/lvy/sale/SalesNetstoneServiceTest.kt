@@ -2,8 +2,11 @@ package fr.axl.lvy.sale
 
 import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
+import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
 import fr.axl.lvy.order.OrderCodigService
@@ -11,6 +14,7 @@ import fr.axl.lvy.order.OrderNetstoneRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -20,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class SalesNetstoneServiceTest {
 
+  @Autowired lateinit var clientService: ClientService
+  @Autowired lateinit var fiscalPositionService: FiscalPositionService
   @Autowired lateinit var salesNetstoneService: SalesNetstoneService
   @Autowired lateinit var salesCodigService: SalesCodigService
   @Autowired lateinit var salesCodigRepository: SalesCodigRepository
@@ -29,6 +35,17 @@ class SalesNetstoneServiceTest {
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
   @Autowired lateinit var orderNetstoneRepository: OrderNetstoneRepository
   @Autowired lateinit var testData: TestDataFactory
+
+  @BeforeEach
+  fun ensureNetstoneOwnCompany() {
+    if (clientService.findDefaultCodigSupplier().isEmpty) {
+      val netstone = Client("CLI-SB-OWN-NET", "Netstone")
+      netstone.type = Client.ClientType.OWN_COMPANY
+      netstone.role = Client.ClientRole.OWN_COMPANY
+      netstone.visibleCompany = fr.axl.lvy.user.User.Company.NETSTONE
+      clientService.save(netstone)
+    }
+  }
 
   private fun createSalesCodigWithOrder(
     number: String,
@@ -40,6 +57,9 @@ class SalesNetstoneServiceTest {
     val saved = salesCodigRepository.save(sale)
 
     val order = OrderCodig("", client, LocalDate.of(2026, 3, 1))
+    order.incoterms = "FOB"
+    order.incotermLocation = "Le Havre"
+    order.currency = "USD"
     val savedOrder = orderCodigService.save(order)
     saved.orderCodig = savedOrder
     return salesCodigRepository.saveAndFlush(saved)
@@ -74,6 +94,10 @@ class SalesNetstoneServiceTest {
   fun createOrUpdateFromSalesCodig_creates_salesNetstone_with_mto_lines() {
     val client = testData.createClient("CLI-SB03", "123 Billing St", "456 Shipping Ave")
     val salesCodig = createSalesCodigWithOrder("SA-SB-03", client)
+    val fiscalPosition = fiscalPositionService.save(FiscalPosition("Fiscalite Netstone"))
+    val netstone = clientService.findDefaultCodigSupplier().orElseThrow()
+    netstone.fiscalPosition = fiscalPosition
+    clientService.save(netstone)
 
     val mtoProduct = testData.createMtoProduct("PRD-MTO-SB1")
     val regularProduct = testData.createRegularProduct("PRD-REG-SB1")
@@ -104,6 +128,9 @@ class SalesNetstoneServiceTest {
 
     assertThat(result.status).isEqualTo(SalesStatus.DRAFT)
     assertThat(result.orderNetstone).isNull()
+    assertThat(result.incotermLocation).isEqualTo("Le Havre")
+    assertThat(result.fiscalPosition?.position).isEqualTo("Fiscalite Netstone")
+    assertThat(result.currency).isEqualTo("USD")
 
     val salesNetstoneLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
@@ -112,6 +139,7 @@ class SalesNetstoneServiceTest {
       )
     assertThat(salesNetstoneLines).hasSize(1)
     assertThat(salesNetstoneLines[0].designation).isEqualTo("MTO Item")
+    assertThat(salesNetstoneLines[0].discountPercent).isEqualByComparingTo("0.00")
   }
 
   @Test
@@ -163,8 +191,12 @@ class SalesNetstoneServiceTest {
   fun syncGeneratedOrder_creates_orderNetstone() {
     val client = testData.createClient("CLI-SB05", "123 Billing St", "456 Shipping Ave")
     val salesCodig = createSalesCodigWithOrder("SA-SB-05", client)
+    val supplier = Client("CLI-SB-SUP", "Supplier Generated")
+    supplier.role = Client.ClientRole.PRODUCER
+    clientService.save(supplier)
 
     val mtoProduct = testData.createMtoProduct("PRD-MTO-SB3")
+    mtoProduct.replaceSuppliers(listOf(supplier))
     val salesNetstone = SalesNetstone("SB-SYNC-01", salesCodig)
     salesNetstone.saleDate = LocalDate.of(2026, 3, 1)
     salesNetstone.status = SalesStatus.VALIDATED
@@ -183,6 +215,7 @@ class SalesNetstoneServiceTest {
     assertThat(result.orderNetstone).isNotNull
     val orderNetstone = result.orderNetstone!!
     assertThat(orderNetstone.orderNumber).startsWith("NST_PO_")
+    assertThat(orderNetstone.supplier?.id).isEqualTo(supplier.id)
 
     val orderNetstoneLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
@@ -314,6 +347,27 @@ class SalesNetstoneServiceTest {
     val lines = salesNetstoneService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)
     assertThat(lines[0].designation).isEqualTo("MTO Item")
+  }
+
+  @Test
+  fun saveWithLines_validated_without_mto_does_not_create_orderNetstone() {
+    val client = testData.createClient("CLI-SB-NO-MTO", "123 Billing St", "456 Shipping Ave")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-NO-MTO", client)
+    val salesNetstone = SalesNetstone("", salesCodig)
+    salesNetstone.saleDate = LocalDate.of(2026, 3, 1)
+    salesNetstone.status = SalesStatus.VALIDATED
+
+    val regularProduct = testData.createRegularProduct("PRD-REG-NO-MTO")
+    val line = DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, 0L, "Regular Item")
+    line.product = regularProduct
+    line.quantity = BigDecimal("2")
+    line.unitPriceExclTax = BigDecimal("50.00")
+    line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
+
+    val saved = salesNetstoneService.saveWithLines(salesNetstone, listOf(line))
+
+    assertThat(saved.orderNetstone).isNull()
   }
 
   @Test

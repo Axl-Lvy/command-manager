@@ -18,10 +18,14 @@ import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
+import fr.axl.lvy.fiscalposition.FiscalPosition
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -30,6 +34,8 @@ internal class CommandCodigFormDialog(
   private val orderCodigService: OrderCodigService,
   private val clientService: ClientService,
   incotermService: IncotermService,
+  paymentTermService: PaymentTermService,
+  fiscalPositionService: FiscalPositionService,
   productService: ProductService,
   private val order: OrderCodig?,
   private val onSave: Runnable,
@@ -43,10 +49,9 @@ internal class CommandCodigFormDialog(
   private val status = ComboBox<OrderCodig.OrderCodigStatus>("Statut")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
   private val clientReference = TextField("Réf. client")
-  private val subject = TextField("Objet")
   private val totalExclTax = BigDecimalField("Prix achat HT")
-  private val currency = ComboBox<String>("Devise")
-  private val vatRate = BigDecimalField("TVA (%)")
+  private val paymentTermCombo = ComboBox<PaymentTerm>("Conditions de paiement")
+  private val fiscalPositionCombo = ComboBox<FiscalPosition>("Position fiscale")
   private val incotermCombo = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
   private val deliveryLocation = TextField("Livrer à")
@@ -56,6 +61,13 @@ internal class CommandCodigFormDialog(
   private val conditions = TextArea("Conditions")
   private val lineEditor: DocumentLineEditor
   private val allIncoterms: List<Incoterm>
+  private var selectedCurrency: String = order?.currency ?: "EUR"
+  private val visibleStatuses =
+    listOf(
+      OrderCodig.OrderCodigStatus.DRAFT,
+      OrderCodig.OrderCodigStatus.CONFIRMED,
+      OrderCodig.OrderCodigStatus.CANCELLED,
+    )
 
   init {
     setHeaderTitle(if (order == null) "Nouvelle commande CoDIG" else "Commande CoDIG")
@@ -66,11 +78,15 @@ internal class CommandCodigFormDialog(
     orderDate.isRequired = true
     orderNumber.isReadOnly = true
     totalExclTax.isReadOnly = true
-    currency.setItems("EUR", "USD")
     allIncoterms = incotermService.findAll()
     incotermCombo.setItems(allIncoterms)
     incotermCombo.setItemLabelGenerator { it.name }
-    status.setItems(*OrderCodig.OrderCodigStatus.entries.toTypedArray())
+    paymentTermCombo.setItems(paymentTermService.findAll())
+    paymentTermCombo.setItemLabelGenerator { it.label }
+    fiscalPositionCombo.setItems(fiscalPositionService.findAll())
+    fiscalPositionCombo.setItemLabelGenerator { it.position }
+    status.setItems(visibleStatuses)
+    status.setItemLabelGenerator(::statusLabel)
 
     clientCombo.setItems(clientService.findAll().filter { it.isSupplierForProduct() })
     clientCombo.setItemLabelGenerator { it.name }
@@ -83,9 +99,8 @@ internal class CommandCodigFormDialog(
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 3))
     form.add(orderNumber, clientCombo, orderDate)
     form.add(status, expectedDeliveryDate, clientReference)
-    form.add(subject, totalExclTax, currency)
-    form.add(vatRate, incotermCombo, incotermLocation)
-    form.add(deliveryLocation, 3)
+    form.add(paymentTermCombo, fiscalPositionCombo, incotermCombo)
+    form.add(incotermLocation, deliveryLocation)
     form.add(billingAddress, 3)
     form.add(shippingAddress, 3)
     form.add(notes, 3)
@@ -96,7 +111,11 @@ internal class CommandCodigFormDialog(
         productService = productService,
         documentType = DocumentLine.DocumentType.ORDER_CODIG,
         clientSupplier = { clientCombo.value },
+        currencySupplier = { selectedCurrency },
+        currencyUpdater = { selectedCurrency = it },
         usePurchasePrice = true,
+        lineTaxMode = DocumentLineEditor.LineTaxMode.VAT,
+        defaultVatRate = BigDecimal.ZERO,
       )
 
     val content = VerticalLayout(form, lineEditor)
@@ -125,10 +144,11 @@ internal class CommandCodigFormDialog(
       orderNumber.value = "(auto)"
       orderDate.value = LocalDate.now()
       status.value = OrderCodig.OrderCodigStatus.DRAFT
-      currency.value = "EUR"
-      vatRate.value = BigDecimal("20.00")
+      selectedCurrency = "EUR"
       totalExclTax.value = BigDecimal.ZERO
       clientService.findDefaultCodigSupplier().ifPresent { clientCombo.value = it }
+      fiscalPositionCombo.value =
+        clientService.findDefaultCodigCompany().map { it.fiscalPosition }.orElse(null)
     }
   }
 
@@ -136,13 +156,13 @@ internal class CommandCodigFormDialog(
     orderNumber.value = o.orderNumber
     clientCombo.value = o.client
     orderDate.value = o.orderDate
-    status.value = o.status
+    status.value = normalizeStatusForUi(o.status)
     expectedDeliveryDate.value = o.expectedDeliveryDate
     clientReference.value = o.clientReference ?: ""
-    subject.value = o.subject ?: ""
     totalExclTax.value = o.totalExclTax
-    currency.value = o.currency
-    vatRate.value = o.vatRate
+    paymentTermCombo.value = o.paymentTerm
+    fiscalPositionCombo.value = o.fiscalPosition
+    selectedCurrency = o.currency
     incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
     incotermLocation.value = o.incotermLocation ?: ""
     deliveryLocation.value = o.deliveryLocation ?: ""
@@ -161,10 +181,12 @@ internal class CommandCodigFormDialog(
         clientService,
         billingAddress,
         shippingAddress,
+        null,
         incotermCombo,
         incotermLocation,
         allIncoterms,
       )
+    paymentTermCombo.value = detailed.paymentTerm
     deliveryLocation.value = detailed.deliveryPort ?: ""
   }
 
@@ -187,9 +209,11 @@ internal class CommandCodigFormDialog(
     o.status = status.value ?: OrderCodig.OrderCodigStatus.DRAFT
     o.expectedDeliveryDate = expectedDeliveryDate.value
     o.clientReference = clientReference.value.takeIf { it.isNotBlank() }
-    o.subject = subject.value.takeIf { it.isNotBlank() }
-    o.currency = currency.value ?: "EUR"
-    o.vatRate = vatRate.value ?: BigDecimal.ZERO
+    o.subject = null
+    o.currency = selectedCurrency
+    o.vatRate = BigDecimal.ZERO
+    o.paymentTerm = paymentTermCombo.value
+    o.fiscalPosition = fiscalPositionCombo.value
     o.incoterms = incotermCombo.value?.name
     o.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
     o.deliveryLocation = deliveryLocation.value.takeIf { it.isNotBlank() }
@@ -207,4 +231,21 @@ internal class CommandCodigFormDialog(
     onSave.run()
     close()
   }
+
+  private fun normalizeStatusForUi(
+    status: OrderCodig.OrderCodigStatus
+  ): OrderCodig.OrderCodigStatus =
+    when (status) {
+      OrderCodig.OrderCodigStatus.DRAFT -> OrderCodig.OrderCodigStatus.DRAFT
+      OrderCodig.OrderCodigStatus.CANCELLED -> OrderCodig.OrderCodigStatus.CANCELLED
+      else -> OrderCodig.OrderCodigStatus.CONFIRMED
+    }
+
+  private fun statusLabel(status: OrderCodig.OrderCodigStatus): String =
+    when (normalizeStatusForUi(status)) {
+      OrderCodig.OrderCodigStatus.DRAFT -> "Brouillon"
+      OrderCodig.OrderCodigStatus.CONFIRMED -> "Confirme"
+      OrderCodig.OrderCodigStatus.CANCELLED -> "Annule"
+      else -> status.name
+    }
 }

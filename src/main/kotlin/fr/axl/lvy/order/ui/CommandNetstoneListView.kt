@@ -10,10 +10,13 @@ import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
+import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
+import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.ProductService
 
 @Route("commandes-netstone")
@@ -21,8 +24,11 @@ import fr.axl.lvy.product.ProductService
 @Menu(order = 6.0, icon = "vaadin:cart-o", title = "Commande/Netstone")
 internal class CommandNetstoneListView(
   private val orderNetstoneService: OrderNetstoneService,
+  private val clientService: ClientService,
   private val orderCodigService: OrderCodigService,
   private val incotermService: IncotermService,
+  private val paymentTermService: PaymentTermService,
+  private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
 ) : VerticalLayout() {
 
@@ -34,11 +40,11 @@ internal class CommandNetstoneListView(
 
     grid = Grid()
     grid.addColumn(OrderNetstone::orderNumber).setHeader("N° Commande Netstone").setAutoWidth(true)
-    grid.addColumn { it.orderCodig.orderNumber }.setHeader("Commande Codig liée").setAutoWidth(true)
+    grid.addColumn { it.supplier?.name ?: "" }.setHeader("Fournisseur").setFlexGrow(1)
     grid.addColumn(OrderNetstone::orderDate).setHeader("Date").setAutoWidth(true)
     grid.addColumn(OrderNetstone::totalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid.addColumn(OrderNetstone::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
-    grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
+    grid.addColumn { statusLabel(it.status) }.setHeader("Statut").setAutoWidth(true)
     grid.setEmptyStateText("Aucune commande Netstone")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
@@ -56,12 +62,16 @@ internal class CommandNetstoneListView(
   }
 
   private fun openForm(order: OrderNetstone?) {
+    val loadedOrder = order?.id?.let { orderNetstoneService.findDetailedById(it).orElse(order) }
     CommandNetstoneFormDialog(
         orderNetstoneService,
+        clientService,
         orderCodigService,
         incotermService,
+        paymentTermService,
+        fiscalPositionService,
         productService,
-        order,
+        loadedOrder,
         this::refreshGrid,
       )
       .open()
@@ -70,4 +80,11 @@ internal class CommandNetstoneListView(
   private fun refreshGrid() {
     grid.setItems(orderNetstoneService.findAll())
   }
+
+  private fun statusLabel(status: OrderNetstone.OrderNetstoneStatus): String =
+    when (status) {
+      OrderNetstone.OrderNetstoneStatus.SENT -> "Brouillon"
+      OrderNetstone.OrderNetstoneStatus.CANCELLED -> "Annule"
+      else -> "Confirme"
+    }
 }

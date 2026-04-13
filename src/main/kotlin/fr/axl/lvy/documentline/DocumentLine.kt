@@ -77,6 +77,7 @@ class DocumentLine(
     source: DocumentLine,
     overrideVatRate: BigDecimal? = null,
     overrideUnitPrice: BigDecimal? = null,
+    overrideDiscountPercent: BigDecimal? = null,
   ) {
     designation = source.designation
     product = source.product
@@ -87,7 +88,7 @@ class DocumentLine(
     quantity = source.quantity
     unit = source.unit
     unitPriceExclTax = overrideUnitPrice ?: source.unitPriceExclTax
-    discountPercent = source.discountPercent
+    discountPercent = overrideDiscountPercent ?: source.discountPercent
     vatRate = overrideVatRate ?: source.vatRate
     recalculate()
   }
