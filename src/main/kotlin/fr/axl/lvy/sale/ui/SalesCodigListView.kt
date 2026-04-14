@@ -102,18 +102,16 @@ internal class SalesCodigListView(
         loadedOrder,
         this::refreshGrid,
         this::openLinkedOrder,
-        loadedOrder?.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
-        { loadedOrder?.orderCodig?.let(this::openLinkedNetstoneSaleFromCodigOrder) },
+        loadedOrder?.salesNetstone != null,
+        { loadedOrder?.let(this::openLinkedNetstoneSaleFromCodigSale) },
         { loadedOrder?.orderCodig?.let(this::openLinkedNetstoneOrderFromCodigOrder) },
       )
       .open()
   }
 
   private fun openLinkedOrder(sale: SalesCodig) {
-    val linkedOrder =
-      sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }?.orderCodig
-        ?: sale.orderCodig
-        ?: return
+    val reloadedSale = sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }
+    val linkedOrder = (reloadedSale ?: sale).orderCodig ?: return
     val loadedOrder =
       linkedOrder.id?.let { orderCodigService.findDetailedById(it).orElse(linkedOrder) }
         ?: linkedOrder
@@ -129,7 +127,7 @@ internal class SalesCodigListView(
         this::refreshGrid,
         true,
         this::openLinkedSale,
-        loadedOrder.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
+        (reloadedSale ?: sale).salesNetstone != null,
         this::openLinkedNetstoneSaleFromCodigOrder,
         this::openLinkedNetstoneOrderFromCodigOrder,
       )
@@ -148,6 +146,29 @@ internal class SalesCodigListView(
     val loadedSale =
       linkedSale.id?.let { salesNetstoneService.findDetailedById(it).orElse(linkedSale) }
         ?: linkedSale
+    SalesNetstoneFormDialog(
+        salesNetstoneService,
+        clientService,
+        salesCodigService,
+        incotermService,
+        fiscalPositionService,
+        productService,
+        loadedSale,
+        this::refreshGrid,
+        loadedSale.orderNetstone != null,
+        this::openLinkedNetstoneOrder,
+        loadedSale.salesCodig.orderCodig != null,
+        this::openLinkedOrderCodigFromNetstoneSale,
+        { openForm(loadedSale.salesCodig) },
+      )
+      .open()
+  }
+
+  private fun openLinkedNetstoneSaleFromCodigSale(sale: SalesCodig) {
+    val salesNetstone = sale.salesNetstone ?: return
+    val loadedSale =
+      salesNetstone.id?.let { salesNetstoneService.findDetailedById(it).orElse(salesNetstone) }
+        ?: salesNetstone
     SalesNetstoneFormDialog(
         salesNetstoneService,
         clientService,

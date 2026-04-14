@@ -372,6 +372,32 @@ class SalesNetstoneServiceTest {
   }
 
   @Test
+  fun findBySalesCodigId_returns_linked_salesNetstone() {
+    val client = testData.createClient("CLI-SB-FIND", "123 Billing St", "456 Shipping Ave")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-FIND", client)
+    val salesNetstone = SalesNetstone("SB-FIND-01", salesCodig)
+    salesNetstoneService.save(salesNetstone)
+
+    val found = salesNetstoneService.findBySalesCodigId(salesCodig.id!!)
+    assertThat(found).isPresent
+    assertThat(found.get().saleNumber).isEqualTo("SB-FIND-01")
+  }
+
+  @Test
+  fun findBySalesCodigId_excludes_soft_deleted() {
+    val client = testData.createClient("CLI-SB-SD", "123 Billing St", "456 Shipping Ave")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-SD", client)
+    val salesNetstone = SalesNetstone("SB-SD-01", salesCodig)
+    salesNetstoneService.save(salesNetstone)
+
+    salesNetstoneService.delete(salesNetstone.id!!)
+    salesNetstoneRepository.flush()
+
+    val found = salesNetstoneService.findBySalesCodigId(salesCodig.id!!)
+    assertThat(found).isEmpty
+  }
+
+  @Test
   fun save_throws_when_salesCodig_has_no_linked_orderCodig() {
     val client = testData.createClient("CLI-SB-INV", "123 Billing", "456 Shipping")
     val salesCodig = SalesCodig("SA-INV-01", client, LocalDate.of(2026, 3, 1))

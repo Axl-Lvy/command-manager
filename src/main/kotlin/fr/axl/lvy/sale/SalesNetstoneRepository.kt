@@ -25,6 +25,19 @@ interface SalesNetstoneRepository : JpaRepository<SalesNetstone, Long> {
   )
   fun findDetailedById(id: Long): SalesNetstone?
 
+  @Query(
+    """
+      SELECT s
+      FROM SalesNetstone s
+      LEFT JOIN FETCH s.salesCodig sc
+      LEFT JOIN FETCH sc.client
+      LEFT JOIN FETCH sc.orderCodig oc
+      LEFT JOIN FETCH oc.client
+      LEFT JOIN FETCH s.fiscalPosition
+      LEFT JOIN FETCH s.orderNetstone
+      WHERE sc.id = :salesCodigId AND s.deletedAt IS NULL
+    """
+  )
   fun findBySalesCodigId(salesCodigId: Long): SalesNetstone?
 
   @Query(
@@ -37,7 +50,7 @@ interface SalesNetstoneRepository : JpaRepository<SalesNetstone, Long> {
       LEFT JOIN FETCH oc.client
       LEFT JOIN FETCH s.fiscalPosition
       LEFT JOIN FETCH s.orderNetstone
-      WHERE oc.id = :orderCodigId
+      WHERE oc.id = :orderCodigId AND s.deletedAt IS NULL
     """
   )
   fun findByOrderCodigId(orderCodigId: Long): SalesNetstone?
