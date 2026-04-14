@@ -167,7 +167,8 @@ internal class SalesCodigListView(
   }
 
   private fun openLinkedNetstoneSaleFromCodigSale(sale: SalesCodig) {
-    val linkedSale = sale.id?.let { salesNetstoneService.findBySalesCodigId(it).orElse(null) } ?: return
+    val linkedSale =
+      sale.id?.let { salesNetstoneService.findBySalesCodigId(it).orElse(null) } ?: return
     val loadedSale =
       linkedSale.id?.let { salesNetstoneService.findDetailedById(it).orElse(linkedSale) }
         ?: linkedSale
