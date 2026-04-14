@@ -110,10 +110,8 @@ internal class SalesCodigListView(
   }
 
   private fun openLinkedOrder(sale: SalesCodig) {
-    val linkedOrder =
-      sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }?.orderCodig
-        ?: sale.orderCodig
-        ?: return
+    val reloadedSale = sale.id?.let { salesCodigService.findDetailedById(it).orElse(null) }
+    val linkedOrder = (reloadedSale ?: sale).orderCodig ?: return
     val loadedOrder =
       linkedOrder.id?.let { orderCodigService.findDetailedById(it).orElse(linkedOrder) }
         ?: linkedOrder
@@ -129,7 +127,7 @@ internal class SalesCodigListView(
         this::refreshGrid,
         true,
         this::openLinkedSale,
-        loadedOrder.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
+        (reloadedSale ?: sale).salesNetstone != null,
         this::openLinkedNetstoneSaleFromCodigOrder,
         this::openLinkedNetstoneOrderFromCodigOrder,
       )
@@ -167,11 +165,10 @@ internal class SalesCodigListView(
   }
 
   private fun openLinkedNetstoneSaleFromCodigSale(sale: SalesCodig) {
-    val linkedSale =
-      sale.id?.let { salesNetstoneService.findBySalesCodigId(it).orElse(null) } ?: return
+    val salesNetstone = sale.salesNetstone ?: return
     val loadedSale =
-      linkedSale.id?.let { salesNetstoneService.findDetailedById(it).orElse(linkedSale) }
-        ?: linkedSale
+      salesNetstone.id?.let { salesNetstoneService.findDetailedById(it).orElse(salesNetstone) }
+        ?: salesNetstone
     SalesNetstoneFormDialog(
         salesNetstoneService,
         clientService,
