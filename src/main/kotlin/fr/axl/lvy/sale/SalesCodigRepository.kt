@@ -29,6 +29,8 @@ interface SalesCodigRepository : JpaRepository<SalesCodig, Long> {
       LEFT JOIN FETCH s.fiscalPosition
       LEFT JOIN FETCH s.orderCodig o
       LEFT JOIN FETCH o.deliveryNote
+      LEFT JOIN FETCH s.salesNetstone sn
+      LEFT JOIN FETCH sn.orderNetstone
       WHERE s.id = :id
     """
   )

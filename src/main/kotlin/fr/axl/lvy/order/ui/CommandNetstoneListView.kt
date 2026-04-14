@@ -152,9 +152,23 @@ internal class CommandNetstoneListView(
         loadedSale,
         this::refreshGrid,
         this::openCodigOrderFromSale,
-        loadedSale.id?.let { salesNetstoneService.findByOrderCodigId(it).isPresent } == true,
+        loadedSale.salesNetstone != null,
+        { loadedSale.let(this::openLinkedSaleFromCodigSale) },
+        { loadedSale.orderCodig?.let(this::openLinkedOrderNetstoneFromCodigSale) },
       )
       .open()
+  }
+
+  private fun openLinkedSaleFromCodigSale(sale: fr.axl.lvy.sale.SalesCodig) {
+    val linkedSale = sale.id?.let { salesNetstoneService.findBySalesCodigId(it).orElse(null) } ?: return
+    openLinkedSale(linkedSale)
+  }
+
+  private fun openLinkedOrderNetstoneFromCodigSale(saleOrder: fr.axl.lvy.order.OrderCodig) {
+    val linkedSale =
+      saleOrder.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) } ?: return
+    val linkedOrder = linkedSale.orderNetstone ?: return
+    openLinkedOrder(linkedOrder)
   }
 
   private fun openLinkedNetstoneSaleFromCodig(order: fr.axl.lvy.order.OrderCodig) {
