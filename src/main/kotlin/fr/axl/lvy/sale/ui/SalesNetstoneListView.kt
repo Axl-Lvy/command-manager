@@ -19,6 +19,7 @@ import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.order.ui.CommandCodigFormDialog
 import fr.axl.lvy.order.ui.CommandNetstoneFormDialog
 import fr.axl.lvy.paymentterm.PaymentTermService
+import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.sale.SalesNetstone
@@ -37,6 +38,7 @@ internal class SalesNetstoneListView(
   private val paymentTermService: PaymentTermService,
   private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
+  private val pdfService: PdfService,
 ) : VerticalLayout() {
 
   private val grid: Grid<SalesNetstone>
@@ -109,6 +111,7 @@ internal class SalesNetstoneListView(
         paymentTermService,
         fiscalPositionService,
         productService,
+        pdfService,
         linkedOrder,
         this::refreshGrid,
         true,

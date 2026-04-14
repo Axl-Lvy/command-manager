@@ -18,6 +18,7 @@ import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.paymentterm.PaymentTermService
+import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
@@ -39,6 +40,7 @@ internal class CommandCodigListView(
   private val salesCodigService: SalesCodigService,
   private val salesNetstoneService: SalesNetstoneService,
   private val orderNetstoneService: OrderNetstoneService,
+  private val pdfService: PdfService,
 ) : VerticalLayout() {
 
   private val grid: Grid<OrderCodig>
@@ -159,6 +161,7 @@ internal class CommandCodigListView(
         paymentTermService,
         fiscalPositionService,
         productService,
+        pdfService,
         loadedOrder,
         this::refreshGrid,
         true,

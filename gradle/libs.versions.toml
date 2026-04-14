@@ -5,6 +5,8 @@ spring-dependency-management = "1.1.7"
 vaadin = "25.0.7"
 ktfmt = "0.22.0"
 sonarqube = "7.2.3.7755"
+thymeleaf = "3.1.3.RELEASE"
+openhtmltopdf = "1.0.10"
 
 [libraries]
 vaadin = { group = "com.vaadin", name = "vaadin" }
@@ -18,6 +20,8 @@ mysql-connector = { group = "com.mysql", name = "mysql-connector-j" }
 h2 = { group = "com.h2database", name = "h2" }
 spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }
 micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus" }
+thymeleaf = { group = "org.thymeleaf", name = "thymeleaf", version.ref = "thymeleaf" }
+openhtmltopdf-pdfbox = { group = "com.openhtmltopdf", name = "openhtmltopdf-pdfbox", version.ref = "openhtmltopdf" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

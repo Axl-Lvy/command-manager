@@ -6,12 +6,14 @@ import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
+import com.vaadin.flow.component.html.Anchor
 import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import com.vaadin.flow.server.StreamResource
 import fr.axl.lvy.base.ui.DocumentFlowNavigation
 import fr.axl.lvy.base.ui.DocumentFlowNavigator
 import fr.axl.lvy.base.ui.DocumentFlowStep
@@ -31,6 +33,7 @@ import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
+import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesNetstone
 import fr.axl.lvy.sale.SalesNetstoneService
@@ -45,6 +48,7 @@ internal class CommandNetstoneFormDialog(
   paymentTermService: PaymentTermService,
   fiscalPositionService: FiscalPositionService,
   productService: ProductService,
+  private val pdfService: PdfService,
   private val order: OrderNetstone?,
   private val onSave: Runnable,
   private val hasLinkedSale: Boolean = false,
@@ -127,7 +131,21 @@ internal class CommandNetstoneFormDialog(
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
-    footer.add(HorizontalLayout(saveBtn, cancelBtn))
+    val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
+    if (order?.id != null) {
+      val pdfResource =
+        StreamResource("${order.orderNumber}.pdf") {
+          pdfService.generateOrderNetstonePdf(order.id!!).inputStream()
+        }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink =
+        Anchor(pdfResource, "").apply {
+          element.setAttribute("download", true)
+          add(pdfBtn)
+        }
+      footerLayout.add(pdfLink)
+    }
+    footer.add(footerLayout)
 
     if (order != null) {
       populateForm(order)

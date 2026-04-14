@@ -34,6 +34,8 @@ dependencies {
   implementation(libs.spring.boot.starter.actuator)
   runtimeOnly(libs.mysql.connector)
   runtimeOnly(libs.micrometer.registry.prometheus)
+  implementation(libs.thymeleaf)
+  implementation(libs.openhtmltopdf.pdfbox)
   testImplementation(libs.spring.boot.starter.test)
   testRuntimeOnly(libs.h2)
 }
