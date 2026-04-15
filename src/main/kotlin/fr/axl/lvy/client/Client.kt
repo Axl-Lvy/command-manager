@@ -83,6 +83,9 @@ class Client(
   /** Default delivery port/destination, prefilled as "Livrer à" on CoDIG orders. */
   @Column(name = "delivery_port", length = 100) var deliveryPort: String? = null
 
+  /** Own-company logo stored as a data URI so it can be previewed directly in the UI. */
+  @Column(name = "logo_data", columnDefinition = "LONGTEXT") var logoData: String? = null
+
   @Column(name = "default_discount", nullable = false, precision = 5, scale = 2)
   var defaultDiscount: BigDecimal = BigDecimal.ZERO
 

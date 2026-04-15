@@ -21,8 +21,8 @@ import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTermService
 
 @Route("societes")
-@PageTitle("Sociétés")
-@Menu(order = 1.5, icon = "vaadin:building", title = "Sociétés")
+@PageTitle("Mes sociétés")
+@Menu(order = 1.5, icon = "vaadin:building", title = "Mes sociétés")
 internal class CompanyListView(
   private val clientService: ClientService,
   private val paymentTermService: PaymentTermService,
@@ -82,7 +82,7 @@ internal class CompanyListView(
 
     initAsListContainer()
 
-    add(ViewToolbar("Sociétés", addBtn))
+    add(ViewToolbar("Mes sociétés", addBtn))
     add(grid)
   }
 

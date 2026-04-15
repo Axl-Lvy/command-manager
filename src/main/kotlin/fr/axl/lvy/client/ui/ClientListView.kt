@@ -89,6 +89,6 @@ internal class ClientListView(
   }
 
   private fun refreshGrid() {
-    grid.setItems(clientService.findAll())
+    grid.setItems(clientService.findAll().filter { it.type != Client.ClientType.OWN_COMPANY })
   }
 }

@@ -129,10 +129,7 @@ class DatabaseSeeder(
           PaymentTerm("30 jours net"),
           PaymentTerm("45 jours fin de mois"),
           PaymentTerm("60 jours net"),
-          PaymentTerm("Comptant"),
-          PaymentTerm("15 jours net"),
-          PaymentTerm("60 jours fin de mois"),
-          PaymentTerm("Acompte 30% + solde à la livraison"),
+          PaymentTerm("150 jours net"),
         )
         .map { paymentTermService.save(it) }
     logger.info("[Seeder] Created ${paymentTerms.size} payment terms")
@@ -157,7 +154,7 @@ class DatabaseSeeder(
           FiscalPosition("Intra-communautaire"),
           FiscalPosition("Export hors UE"),
           FiscalPosition("DOM-TOM"),
-          FiscalPosition("Suisse"),
+          FiscalPosition("T1 Material"),
         )
         .map { fiscalPositionService.save(it) }
     logger.info("[Seeder] Created ${fiscalPositions.size} fiscal positions")
@@ -208,7 +205,7 @@ class DatabaseSeeder(
 
   /**
    * Returns clients in a fixed order used as indices throughout the seeder: 0=Acme (DOW), 1=Dupont
-   * SARL, 2=NestSupplier (All Plus), 3=Jean Dupont, 4=TechPro, 5=Meridian, 6=Global Parts,
+   * SARL, 2=NestSupplier (All Plus), 3=Jean Dupont, 4=DowVSP, 5=Meridian, 6=Global Parts,
    * 7=Innovatech, 8=Benali, 9=ChinaSource, 10=Boutique Lefèvre, 11=Netstone SAS (OWN_COMPANY). Also
    * creates Codig and Netstone OWN_COMPANY records used by service defaults.
    */
@@ -241,8 +238,14 @@ class DatabaseSeeder(
         visibleCompany = User.Company.CODIG
         email = "contact@codig.fr"
         phone = "+33 1 40 00 00 01"
-        billingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
-        shippingAddress = "1 rue de CoDIG\n75001 Paris\nFrance"
+        billingAddress =
+          """
+          39 - 41, rue du Jeu des Enfants
+          67000 STRASBOURG
+          France
+          """
+            .trimIndent()
+        shippingAddress = ""
         deliveryAddresses.add(
           ClientDeliveryAddress(this, "Codig, Charleston Harbor", "Codig, Charleston Harbor")
             .apply { defaultAddress = true }
@@ -261,16 +264,22 @@ class DatabaseSeeder(
         visibleCompany = User.Company.NETSTONE
         email = "contact@netstone.fr"
         phone = "+33 1 40 00 00 02"
-        billingAddress = "2 avenue Netstone\n69001 Lyon\nFrance"
-        shippingAddress = "2 avenue Netstone\n69001 Lyon\nFrance"
+        billingAddress =
+          """
+          10/F., Guangdong Investment Tower 148 Connaught Road
+          Central
+          Hong Kong
+          """
+            .trimIndent()
+        shippingAddress = ""
       }
     val savedNetstoneOwnCompany = clientService.save(netstoneOwnCompany)
     logger.info(
       "[Seeder] Created own company: ${savedNetstoneOwnCompany.name} (${savedNetstoneOwnCompany.clientCode})"
     )
 
-    val acme =
-      Client(name = "DOW").apply {
+    val dowCh =
+      Client(name = "DOW CHEMICAL").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.CLIENT
         visibleCompany = User.Company.CODIG
@@ -278,8 +287,15 @@ class DatabaseSeeder(
         phone = "+33 1 23 45 67 89"
         siret = "12345678901234"
         vatNumber = "FR12345678901"
-        billingAddress = "10 rue de la Paix\n75001 Paris\nFrance"
-        shippingAddress = "10 rue de la Paix\n75001 Paris\nFrance"
+        billingAddress =
+          """
+          ROHM AND HAAS CHEMICALS LLC
+          100 Independence Mall
+          West PHILADELPHIA PA PA 19106-2399
+          Pennsylvania (US)
+          USA
+          """
+            .trimIndent()
         paymentDelay = 30
         paymentTerm = net30
         defaultDiscount = BigDecimal("2.00")
@@ -287,7 +303,7 @@ class DatabaseSeeder(
           ClientDeliveryAddress(
               this,
               "THE DOW CHEMICAL COMPANY KNX",
-              "ROHM and HAAS CHEMICALS LLC - Knoxville\nPlant\n730 Dale Avenue\nKnoxville TN TN 37921\nÉtats-Unis\n+1 989-633-5596",
+              "ROHM and HAAS CHEMICALS LLC - Knoxville\nPlant\n730 Dale Avenue\nKnoxville TN TN 37921\nUSA\n+1 989-633-5596",
             )
             .apply { defaultAddress = true }
         )
@@ -309,8 +325,8 @@ class DatabaseSeeder(
           }
         )
       }
-    val savedAcme = clientService.save(acme)
-    logger.info("[Seeder] Created client: ${savedAcme.name} (${savedAcme.clientCode})")
+    val saveddowCh = clientService.save(dowCh)
+    logger.info("[Seeder] Created client: ${saveddowCh.name} (${saveddowCh.clientCode})")
 
     val dupont =
       Client(name = "Dupont").apply {
@@ -336,51 +352,33 @@ class DatabaseSeeder(
     val savedDupont = clientService.save(dupont)
     logger.info("[Seeder] Created client: ${savedDupont.name} (${savedDupont.clientCode})")
 
-    val nestSupplier =
-      Client(name = "All Plus").apply {
-        type = Client.ClientType.COMPANY
-        role = Client.ClientRole.PRODUCER
-        visibleCompany = User.Company.BOTH
-        email = "orders@nestsupplier.com"
-        phone = "+33 5 67 89 01 23"
-        billingAddress = "20 ZI Nord\n59000 Lille\nFrance"
-        paymentDelay = 60
-        paymentTerm = net60
-      }
-    val savedNest = clientService.save(nestSupplier)
-    logger.info("[Seeder] Created client: ${savedNest.name} (${savedNest.clientCode})")
-
-    val jean =
-      Client(name = "Dupont").apply {
-        type = Client.ClientType.INDIVIDUAL
-        role = Client.ClientRole.CLIENT
-        visibleCompany = User.Company.CODIG
-        email = "jean.dupont@gmail.com"
-        phone = "+33 6 12 34 56 78"
-        billingAddress = "3 impasse des Lilas\n33000 Bordeaux\nFrance"
-        shippingAddress = "3 impasse des Lilas\n33000 Bordeaux\nFrance"
-      }
-    val savedJean = clientService.save(jean)
-    logger.info("[Seeder] Created client: ${savedJean.name} (${savedJean.clientCode})")
-
-    val techPro =
-      Client(name = "TechPro Industries").apply {
+    val dowVsp =
+      Client(name = "DOW EUROPE GMBH").apply {
         type = Client.ClientType.COMPANY
         role = Client.ClientRole.CLIENT
         visibleCompany = User.Company.BOTH
-        email = "procurement@techpro.eu"
+        email = "procurement@dow.com"
         phone = "+33 3 45 67 89 01"
         siret = "98765432109876"
-        vatNumber = "FR98765432109"
-        billingAddress = "15 ZAC Technopôle\n38000 Grenoble\nFrance"
-        shippingAddress = "15 ZAC Technopôle\n38000 Grenoble\nFrance"
+        vatNumber = "FR03 440 303 949"
+        billingAddress = "DOW EUROPE GMBH\nBACHTOBELSTRASSE 4\nCH-8810 HORGEN"
+        shippingAddress =
+          "VSP PLANT (VILLERS-SAINT-PAUL SPECIALTY)\nRue Frédéric Kuhlmann\nVillers Saint-Paul\nFrance"
         paymentDelay = 30
         paymentTerm = net30
-        deliveryPort = "Grenoble"
+        deliveryPort = "Villers Saint-Paul"
+        deliveryAddresses.add(
+          ClientDeliveryAddress(
+              this,
+              "VSP PLANT (VILLERS-SAINT-PAUL SPECIALTY)",
+              "VSP PLANT (VILLERS-SAINT-PAUL SPECIALTY)\nRue Frédéric Kuhlmann\nVillers Saint-Paul\nFrance",
+            )
+            .apply { defaultAddress = true }
+        )
         contacts.add(
           Contact(this, "Leroy").apply {
             firstName = "Pierre"
-            email = "p.leroy@techpro.eu"
+            email = "p.leroy@dow.com"
             phone = "+33 3 45 67 89 02"
             role = Contact.ContactRole.PRIMARY
             jobTitle = "Head of Procurement"
@@ -389,14 +387,14 @@ class DatabaseSeeder(
         contacts.add(
           Contact(this, "Müller").apply {
             firstName = "Klaus"
-            email = "k.muller@techpro.eu"
+            email = "k.muller@dow.com"
             role = Contact.ContactRole.TECHNICAL
             jobTitle = "Technical Director"
           }
         )
       }
-    val savedTechPro = clientService.save(techPro)
-    logger.info("[Seeder] Created client: ${savedTechPro.name} (${savedTechPro.clientCode})")
+    val savedDowVsp = clientService.save(dowVsp)
+    logger.info("[Seeder] Created client: ${savedDowVsp.name} (${savedDowVsp.clientCode})")
 
     val meridian =
       Client(name = "Meridian Trading Ltd").apply {
@@ -510,11 +508,9 @@ class DatabaseSeeder(
 
     logger.info("[Seeder] Created 14 clients")
     return listOf(
-      savedAcme,
+      saveddowCh,
       savedDupont,
-      savedNest,
-      savedJean,
-      savedTechPro,
+      savedDowVsp,
       savedMeridian,
       savedGlobalParts,
       savedInnovatech,
@@ -741,7 +737,7 @@ class DatabaseSeeder(
     val acme = clients[0]
     val dupont = clients[1]
     val jeanDupont = clients[3]
-    val techPro = clients[4]
+    val dowVsp = clients[4]
     val meridian = clients[5]
     val innovatech = clients[7]
     val boutique = clients[10]
@@ -830,7 +826,7 @@ class DatabaseSeeder(
     logger.info("[Seeder] Created order DRAFT for Acme Corp")
 
     orderCodigService.saveWithLines(
-      OrderCodig("", techPro, LocalDate.now().minusDays(1)).apply {
+      OrderCodig("", dowVsp, LocalDate.now().minusDays(1)).apply {
         subject = "Modules électroniques Q1"
         vatRate = BigDecimal("20.00")
         clientReference = "TP-PO-2024-042"
@@ -838,9 +834,9 @@ class DatabaseSeeder(
         incoterms = "DAP"
         incotermLocation = "Grenoble"
       },
-      listOf(orderLine(electronicModuleY, techPro, "20"), orderLine(sensorModule, techPro, "10")),
+      listOf(orderLine(electronicModuleY, dowVsp, "20"), orderLine(sensorModule, dowVsp, "10")),
     )
-    logger.info("[Seeder] Created order DRAFT for TechPro")
+    logger.info("[Seeder] Created order DRAFT for DOW EUROPE GMBH")
 
     orderCodigService.saveWithLines(
       OrderCodig("", meridian, LocalDate.now()).apply {
@@ -883,7 +879,7 @@ class DatabaseSeeder(
       .also { logger.info("[Seeder] Created order CONFIRMED: ${it.orderNumber}") }
 
     confirmed(
-        OrderCodig("", techPro, LocalDate.now().minusDays(8)).apply {
+        OrderCodig("", dowVsp, LocalDate.now().minusDays(8)).apply {
           subject = "Modules Y + câbles + support"
           vatRate = BigDecimal("20.00")
           clientReference = "TP-PO-2024-043"
@@ -892,9 +888,9 @@ class DatabaseSeeder(
           incotermLocation = "Grenoble"
         },
         listOf(
-          orderLine(electronicModuleY, techPro, "50"),
-          orderLine(cable10m, techPro, "100"),
-          orderLine(techSupport, techPro, "16"),
+          orderLine(electronicModuleY, dowVsp, "50"),
+          orderLine(cable10m, dowVsp, "100"),
+          orderLine(techSupport, dowVsp, "16"),
         ),
       )
       .also { logger.info("[Seeder] Created order CONFIRMED: ${it.orderNumber}") }
@@ -1042,7 +1038,7 @@ class DatabaseSeeder(
     invoiced(
         delivered(
           confirmed(
-            OrderCodig("", techPro, LocalDate.now().minusDays(60)).apply {
+            OrderCodig("", dowVsp, LocalDate.now().minusDays(60)).apply {
               subject = "Capteurs + câbles + formation"
               vatRate = BigDecimal("20.00")
               clientReference = "TP-PO-2024-031"
@@ -1051,17 +1047,17 @@ class DatabaseSeeder(
               incotermLocation = "Grenoble"
             },
             listOf(
-              orderLine(sensorModule, techPro, "30"),
-              orderLine(cable10m, techPro, "200"),
-              orderLine(training, techPro, "8"),
+              orderLine(sensorModule, dowVsp, "30"),
+              orderLine(cable10m, dowVsp, "200"),
+              orderLine(training, dowVsp, "8"),
             ),
           ),
-          techPro,
+          dowVsp,
           "Fedex",
           "FDX789012345",
           6,
         ),
-        techPro,
+        dowVsp,
         30,
         false,
       )
@@ -1119,7 +1115,7 @@ class DatabaseSeeder(
 
     val mto2 =
       confirmed(
-          OrderCodig("", techPro, LocalDate.now().minusDays(18)).apply {
+          OrderCodig("", dowVsp, LocalDate.now().minusDays(18)).apply {
             subject = "Assemblage sur mesure – Projet Alpha"
             vatRate = BigDecimal("20.00")
             clientReference = "TP-PO-2024-MTO-002"
@@ -1127,7 +1123,7 @@ class DatabaseSeeder(
             incoterms = "DAP"
             incotermLocation = "Grenoble"
           },
-          listOf(orderLine(customAssembly, techPro, "3"), orderLine(techSupport, techPro, "8")),
+          listOf(orderLine(customAssembly, dowVsp, "3"), orderLine(techSupport, dowVsp, "8")),
         )
         .also { logger.info("[Seeder] Created MTO order CONFIRMED: ${it.orderNumber}") }
 
@@ -1166,7 +1162,7 @@ class DatabaseSeeder(
     val customAssembly = products[11]
 
     val mto1 = mtoOrders[0] // acme order with Custom Part X
-    val mto2 = mtoOrders[1] // techPro order with Custom Assembly
+    val mto2 = mtoOrders[1] // DowVSP order with Custom Assembly
     val mto3 = mtoOrders[2] // dupont order with Steel Frame Z
 
     // Netstone order 1: RECEIVED (fully processed) — supply for mto1
@@ -1298,7 +1294,7 @@ class DatabaseSeeder(
     val acme = clients[0]
     val dupont = clients[1]
     val jeanDupont = clients[3]
-    val techPro = clients[4]
+    val dowVsp = clients[4]
     val meridian = clients[5]
     val innovatech = clients[7]
     val benali = clients[8]
@@ -1334,16 +1330,16 @@ class DatabaseSeeder(
 
     salesCodigService
       .saveWithLines(
-        SalesCodig("", techPro, LocalDate.now().minusDays(1)).apply {
+        SalesCodig("", dowVsp, LocalDate.now().minusDays(1)).apply {
           subject = "Offre modules électroniques Q2"
           paymentTerm = refData.paymentTerms[0]
           incoterms = "DAP"
           incotermLocation = "Grenoble"
         },
         listOf(
-          salesLine(electronicModuleY, techPro, "30"),
-          salesLine(sensorModule, techPro, "15"),
-          salesLine(techSupport, techPro, "10"),
+          salesLine(electronicModuleY, dowVsp, "30"),
+          salesLine(sensorModule, dowVsp, "15"),
+          salesLine(techSupport, dowVsp, "10"),
         ),
       )
       .also { logger.info("[Seeder] Created sale DRAFT: ${it.saleNumber}") }
@@ -1448,7 +1444,7 @@ class DatabaseSeeder(
 
     salesCodigService
       .saveWithLines(
-        SalesCodig("", techPro, LocalDate.now().minusDays(14)).apply {
+        SalesCodig("", dowVsp, LocalDate.now().minusDays(14)).apply {
           subject = "Assemblage custom A – Projet Beta"
           status = SalesStatus.VALIDATED
           paymentTerm = refData.paymentTerms[0]
@@ -1456,7 +1452,7 @@ class DatabaseSeeder(
           incoterms = "DAP"
           incotermLocation = "Grenoble"
         },
-        listOf(salesLine(customAssembly, techPro, "2"), salesLine(techSupport, techPro, "16")),
+        listOf(salesLine(customAssembly, dowVsp, "2"), salesLine(techSupport, dowVsp, "16")),
       )
       .also {
         logger.info("[Seeder] Created sale VALIDATED (MTO, Custom Assembly A): ${it.saleNumber}")
