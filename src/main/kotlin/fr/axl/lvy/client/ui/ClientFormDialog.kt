@@ -15,7 +15,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.component.upload.Upload
-import com.vaadin.flow.component.upload.receivers.MemoryBuffer
+import com.vaadin.flow.server.streams.UploadHandler
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
@@ -54,8 +54,14 @@ internal class ClientFormDialog(
   private val incoterm = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
   private val deliveryPort = TextField("Port de livraison")
-  private val logoBuffer = MemoryBuffer()
-  private val logoUpload = Upload(logoBuffer)
+  private val logoUpload =
+    Upload(
+      UploadHandler.inMemory { metadata, bytes ->
+        logoDataValue =
+          "data:${metadata.contentType};base64," + Base64.getEncoder().encodeToString(bytes)
+        updateLogoPreview()
+      }
+    )
   private val logoPreview = Image()
   private val clearLogoButton = Button("Supprimer logo")
   private val statusToggle = Button()
@@ -384,11 +390,7 @@ internal class ClientFormDialog(
     logoUpload.setAcceptedFileTypes("image/png", "image/jpeg", "image/webp", "image/svg+xml")
     logoUpload.setMaxFiles(1)
     logoUpload.isDropAllowed = true
-    logoUpload.addSucceededListener { event ->
-      val bytes = logoBuffer.inputStream.readAllBytes()
-      logoDataValue = "data:${event.mimeType};base64," + Base64.getEncoder().encodeToString(bytes)
-      updateLogoPreview()
-    }
+    logoPreview.setAlt("Logo de la société")
     clearLogoButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
     clearLogoButton.addClickListener {
       logoDataValue = null
@@ -408,7 +410,6 @@ internal class ClientFormDialog(
       return
     }
     logoPreview.src = logo
-    logoPreview.element.setAttribute("alt", "Logo de la société")
     logoPreview.isVisible = true
     clearLogoButton.isEnabled = true
   }
