@@ -83,8 +83,7 @@ class PdfServiceTest {
       OrderCodig("CA-PDF-FULL", client, LocalDate.of(2026, 1, 10)).apply { currency = "USD" }
     orderCodigRepository.save(orderCodig)
 
-    val fiscalPosition =
-      fiscalPositionRepository.save(FiscalPosition("Import/Export Hors Europe"))
+    val fiscalPosition = fiscalPositionRepository.save(FiscalPosition("Import/Export Hors Europe"))
 
     val order =
       OrderNetstone("", orderCodig).apply {
