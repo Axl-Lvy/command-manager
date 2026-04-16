@@ -493,6 +493,109 @@ class SalesCodigServiceTest {
   }
 
   @Test
+  fun findDetailedById_returns_sale() {
+    val client = testData.createClient("CLI-SA-DET")
+    val sale = createSalesCodig("SA-DET-01", client)
+
+    val found = salesCodigService.findDetailedById(sale.id!!)
+
+    assertThat(found).isPresent
+    assertThat(found.get().saleNumber).isEqualTo("SA-DET-01")
+  }
+
+  @Test
+  fun findDetailedById_returns_empty_when_missing() {
+    assertThat(salesCodigService.findDetailedById(-1L)).isEmpty
+  }
+
+  @Test
+  fun findByOrderCodigId_returns_sale_linked_to_order() {
+    val client = testData.createClient("CLI-SA-FBO")
+    val sale = createSalesCodig("SA-FBO-01", client)
+    val mtoProduct = testData.createMtoProduct("PRD-SA-FBO")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        sale.id!!,
+        "Widget",
+        product = mtoProduct,
+      )
+    val result = salesCodigService.syncGeneratedOrder(sale, listOf(line))
+    val orderCodigId = result.orderCodig!!.id!!
+
+    val found = salesCodigService.findByOrderCodigId(orderCodigId)
+
+    assertThat(found).isPresent
+    assertThat(found.get().id).isEqualTo(sale.id)
+  }
+
+  @Test
+  fun findAllWithLinkedOrder_includes_only_sales_with_orderCodig() {
+    val client = testData.createClient("CLI-SA-LNK")
+    val linked = createSalesCodig("SA-LNK-01", client)
+    val standalone = createSalesCodig("SA-LNK-02", client)
+    val mtoProduct = testData.createMtoProduct("PRD-SA-LNK")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        linked.id!!,
+        "Widget",
+        product = mtoProduct,
+      )
+    salesCodigService.syncGeneratedOrder(linked, listOf(line))
+    salesCodigRepository.flush()
+
+    val results = salesCodigService.findAllWithLinkedOrder()
+
+    assertThat(results.map { it.id }).contains(linked.id).doesNotContain(standalone.id)
+  }
+
+  @Test
+  fun save_preserves_existing_addresses_and_terms_when_set() {
+    val paymentTerm = paymentTermRepository.saveAndFlush(PaymentTerm("60 jours"))
+    val fiscalPosition = fiscalPositionService.save(FiscalPosition("Preset"))
+    val client = testData.createClient("CLI-SA-PRESET", "client-bill", "client-ship")
+    client.paymentTerm = paymentTermRepository.saveAndFlush(PaymentTerm("client term"))
+    client.fiscalPosition = fiscalPositionService.save(FiscalPosition("client fp"))
+
+    val sale = SalesCodig("SA-PRESET-01", client, LocalDate.of(2026, 3, 1))
+    sale.billingAddress = "sale-bill"
+    sale.shippingAddress = "sale-ship"
+    sale.paymentTerm = paymentTerm
+    sale.fiscalPosition = fiscalPosition
+
+    val saved = salesCodigService.save(sale)
+
+    assertThat(saved.billingAddress).isEqualTo("sale-bill")
+    assertThat(saved.shippingAddress).isEqualTo("sale-ship")
+    assertThat(saved.paymentTerm?.id).isEqualTo(paymentTerm.id)
+    assertThat(saved.fiscalPosition?.id).isEqualTo(fiscalPosition.id)
+  }
+
+  @Test
+  fun syncGeneratedOrder_throws_when_no_default_supplier_configured() {
+    clientService.findDefaultCodigSupplier().ifPresent { supplier ->
+      clientService.delete(supplier.id!!)
+    }
+    val client = testData.createClient("CLI-SA-NOSUP")
+    val sale = createSalesCodig("SA-NOSUP-01", client)
+    val mtoProduct = testData.createMtoProduct("PRD-SA-NOSUP")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        sale.id!!,
+        "Widget",
+        product = mtoProduct,
+      )
+
+    org.assertj.core.api.Assertions.assertThatThrownBy {
+        salesCodigService.syncGeneratedOrder(sale, listOf(line))
+      }
+      .isInstanceOf(IllegalStateException::class.java)
+      .hasMessageContaining("fournisseur Netstone")
+  }
+
+  @Test
   fun syncGeneratedOrder_does_not_delete_order_when_sale_loses_mto_and_order_past_draft() {
     val client = testData.createClient("CLI-SA-GATE-03")
     val sale = createSalesCodig("SA-GATE-03", client)
