@@ -81,7 +81,8 @@ class SalesNetstoneService(
 
   /**
    * Creates or updates a Netstone sale from a Codig sale's MTO line items. Only MTO product lines
-   * are copied. Re-activates a previously cancelled sale if needed.
+   * are copied. Once the Netstone sale has progressed past DRAFT it is independent: further
+   * upstream saves no longer mutate its fields or lines.
    */
   @Transactional
   fun createOrUpdateFromSalesCodig(
@@ -93,6 +94,9 @@ class SalesNetstoneService(
   ): SalesNetstone {
     val sourceOrderCodig = salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
     val existing = salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)
+    if (existing != null && existing.status != SalesStatus.DRAFT) {
+      return existing
+    }
     val isNew = existing == null
     val sale = existing ?: SalesNetstone("", salesCodig).apply { status = SalesStatus.DRAFT }
 
@@ -107,9 +111,6 @@ class SalesNetstoneService(
       clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
     sale.currency = sourceOrderCodig.currency
     sale.exchangeRate = sourceOrderCodig.exchangeRate
-    if (sale.status == SalesStatus.CANCELLED) {
-      sale.status = SalesStatus.DRAFT
-    }
     sale.purchasePriceExclTax =
       sourceLines.fold(BigDecimal.ZERO) { acc, line ->
         acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
@@ -157,12 +158,17 @@ class SalesNetstoneService(
 
   /**
    * Synchronizes the auto-generated [OrderNetstone] from this Netstone sale. Requires that the
-   * parent Codig sale already has a generated [OrderCodig].
+   * parent Codig sale already has a generated [OrderCodig]. Once the Netstone order has progressed
+   * past SENT it becomes independent: further upstream saves no longer mutate it.
    */
   @Transactional
   fun syncGeneratedOrder(sale: SalesNetstone, saleLines: List<DocumentLine>): SalesNetstone {
+    val existingOrder = sale.orderNetstone
+    if (existingOrder != null && existingOrder.status != OrderNetstone.OrderNetstoneStatus.SENT) {
+      return sale
+    }
     val sourceOrderCodig = sale.salesCodig.orderCodig ?: error(ERR_ORDER_CODIG_MISSING)
-    val order = sale.orderNetstone ?: OrderNetstone("", sourceOrderCodig)
+    val order = existingOrder ?: OrderNetstone("", sourceOrderCodig)
 
     order.orderCodig = sourceOrderCodig
     order.supplier =
@@ -218,7 +224,8 @@ class SalesNetstoneService(
 
   /**
    * Saves the sale with its lines. If validated, syncs the generated order; otherwise cleans up any
-   * existing order.
+   * existing order — but only while that order is still in its initial SENT status, to avoid wiping
+   * an order the user has already acted upon.
    */
   @Transactional
   fun saveWithLines(sale: SalesNetstone, lines: List<DocumentLine>): SalesNetstone {
@@ -235,8 +242,12 @@ class SalesNetstoneService(
       return syncGeneratedOrder(saved, persistedLines)
     }
 
-    saved.orderNetstone?.id?.let { orderNetstoneService.delete(it) }
-    saved.orderNetstone = null
+    saved.orderNetstone?.let { order ->
+      if (order.status == OrderNetstone.OrderNetstoneStatus.SENT) {
+        order.id?.let { orderNetstoneService.delete(it) }
+        saved.orderNetstone = null
+      }
+    }
     return salesNetstoneRepository.save(saved)
   }
 

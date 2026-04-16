@@ -85,14 +85,21 @@ class SalesCodigService(
   }
 
   /**
-   * Synchronizes the auto-generated [OrderCodig] from this sale. If no MTO products remain, the
-   * linked order and Netstone sale are deleted. Otherwise, the order is created/updated with the
-   * sale's fields and line items.
+   * Synchronizes the auto-generated [OrderCodig] from this sale. Once the order has progressed past
+   * DRAFT the sale can no longer mutate it (fields, lines, or existence) — it is then an
+   * independent document. If no MTO products remain and the order is still DRAFT, the linked order
+   * and Netstone sale are deleted. Otherwise, the order is created/updated with the sale's fields
+   * and line items.
    */
   @Transactional
   fun syncGeneratedOrder(sale: SalesCodig, saleLines: List<DocumentLine>): SalesCodig {
+    val existingOrder = sale.orderCodig
+    if (existingOrder != null && existingOrder.status != OrderCodig.OrderCodigStatus.DRAFT) {
+      return sale
+    }
+
     if (saleLines.none { it.product?.isMtoProduct() == true }) {
-      sale.orderCodig?.id?.let { orderCodigService.delete(it) }
+      existingOrder?.id?.let { orderCodigService.delete(it) }
       sale.id?.let { salesNetstoneService.deleteBySalesCodigId(it) }
       sale.orderCodig = null
       return salesCodigRepository.save(sale)
