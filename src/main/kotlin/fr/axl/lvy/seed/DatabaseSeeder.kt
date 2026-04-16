@@ -171,7 +171,7 @@ class DatabaseSeeder(
     val franceFiscalPosition =
       refData.fiscalPositions.first { it.position == "France métropolitaine" }
     val exportFiscalPosition = refData.fiscalPositions.first { it.position == "Export hors UE" }
-     val t1tFiscalPosition = refData.fiscalPositions.first { it.position == "T1-material" }
+    val t1tFiscalPosition = refData.fiscalPositions.first { it.position == "T1-material" }
 
     val companies =
       listOf(
