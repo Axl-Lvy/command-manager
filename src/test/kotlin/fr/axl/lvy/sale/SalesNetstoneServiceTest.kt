@@ -10,7 +10,9 @@ import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
 import fr.axl.lvy.order.OrderCodigService
+import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneRepository
+import fr.axl.lvy.order.OrderNetstoneService
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
@@ -34,6 +36,7 @@ class SalesNetstoneServiceTest {
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var orderCodigService: OrderCodigService
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
+  @Autowired lateinit var orderNetstoneService: OrderNetstoneService
   @Autowired lateinit var orderNetstoneRepository: OrderNetstoneRepository
   @Autowired lateinit var testData: TestDataFactory
 
@@ -437,5 +440,79 @@ class SalesNetstoneServiceTest {
     val lines = salesNetstoneService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)
     assertThat(lines[0].designation).isEqualTo("Item B")
+  }
+
+  @Test
+  fun createOrUpdateFromSalesCodig_does_not_overwrite_fields_when_netstone_sale_past_draft() {
+    val client = testData.createClient("CLI-SB-GATE-01", "123 Billing St", "456 Shipping Ave")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-GATE-01", client)
+
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB-GATE-01")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        salesCodig.id!!,
+        "MTO Item",
+        product = mtoProduct,
+      )
+
+    val first =
+      salesNetstoneService.createOrUpdateFromSalesCodig(
+        salesCodig,
+        salesCodig.saleDate,
+        salesCodig.expectedDeliveryDate,
+        "initial-notes",
+        listOf(line),
+      )
+
+    first.status = SalesStatus.VALIDATED
+    first.notes = "user-edited"
+    salesNetstoneRepository.saveAndFlush(first)
+
+    val second =
+      salesNetstoneService.createOrUpdateFromSalesCodig(
+        salesCodig,
+        salesCodig.saleDate,
+        salesCodig.expectedDeliveryDate,
+        "upstream-modified",
+        listOf(line),
+      )
+
+    assertThat(second.id).isEqualTo(first.id)
+    assertThat(second.status).isEqualTo(SalesStatus.VALIDATED)
+    assertThat(second.notes).isEqualTo("user-edited")
+  }
+
+  @Test
+  fun syncGeneratedOrder_does_not_overwrite_fields_when_netstone_order_past_sent() {
+    val client = testData.createClient("CLI-SB-GATE-02", "123 Billing St", "456 Shipping Ave")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-GATE-02", client)
+
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB-GATE-02")
+    val salesNetstone = SalesNetstone("SB-GATE-SYNC-01", salesCodig)
+    salesNetstone.saleDate = LocalDate.of(2026, 3, 1)
+    salesNetstone.status = SalesStatus.VALIDATED
+    val savedSalesNetstone = salesNetstoneRepository.saveAndFlush(salesNetstone)
+
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_NETSTONE,
+        savedSalesNetstone.id!!,
+        "MTO Item",
+        product = mtoProduct,
+      )
+
+    salesNetstoneService.syncGeneratedOrder(savedSalesNetstone, listOf(line))
+    val orderNetstone = savedSalesNetstone.orderNetstone!!
+    orderNetstoneService.changeStatus(orderNetstone, OrderNetstone.OrderNetstoneStatus.CONFIRMED)
+    orderNetstone.notes = "supplier-confirmed-edits"
+    orderNetstoneRepository.saveAndFlush(orderNetstone)
+
+    savedSalesNetstone.notes = "user-changed-on-sale"
+    salesNetstoneService.syncGeneratedOrder(savedSalesNetstone, listOf(line))
+
+    val reloaded = orderNetstoneRepository.findById(orderNetstone.id!!).orElseThrow()
+    assertThat(reloaded.notes).isEqualTo("supplier-confirmed-edits")
+    assertThat(reloaded.status).isEqualTo(OrderNetstone.OrderNetstoneStatus.CONFIRMED)
   }
 }
