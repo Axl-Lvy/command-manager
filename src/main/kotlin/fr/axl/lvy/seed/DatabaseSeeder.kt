@@ -85,10 +85,7 @@ class DatabaseSeeder(
           PaymentTerm("30 jours net"),
           PaymentTerm("45 jours fin de mois"),
           PaymentTerm("60 jours net"),
-          PaymentTerm("Comptant"),
-          PaymentTerm("15 jours net"),
-          PaymentTerm("60 jours fin de mois"),
-          PaymentTerm("Acompte 30% + solde à la livraison"),
+          PaymentTerm("150 days"),
         )
         .map(paymentTermService::save)
     logger.info("[Seeder] Created ${paymentTerms.size} payment terms")
@@ -167,14 +164,14 @@ class DatabaseSeeder(
 
     val net30 = refData.paymentTerms[0]
     val net45 = refData.paymentTerms[1]
-    val net15 = refData.paymentTerms[4]
-    val deposit30 = refData.paymentTerms[6]
+    val net150 = refData.paymentTerms[3]
     val cfr = refData.incoterms.first { it.name == "CFR" }
     val cif = refData.incoterms.first { it.name == "CIF" }
     val ddp = refData.incoterms.first { it.name == "DDP" }
     val franceFiscalPosition =
       refData.fiscalPositions.first { it.position == "France métropolitaine" }
     val exportFiscalPosition = refData.fiscalPositions.first { it.position == "Export hors UE" }
+    val t1tFiscalPosition = refData.fiscalPositions.first { it.position == "T1-material" }
 
     val companies =
       listOf(
@@ -184,6 +181,9 @@ class DatabaseSeeder(
           visibleCompany = User.Company.CODIG
           email = "contact@codig.fr"
           phone = "+33 1 40 00 00 01"
+          incoterm = cfr
+          fiscalPosition = exportFiscalPosition
+          paymentTerm = net30
           billingAddress = "39 - 41, rue du Jeu des Enfants\n67000 Strasbourg\nFrance"
           deliveryAddresses.add(
             ClientDeliveryAddress(this, "Codig, Charleston Harbor", "Codig, Charleston Harbor")
@@ -198,6 +198,9 @@ class DatabaseSeeder(
           role = Client.ClientRole.OWN_COMPANY
           visibleCompany = User.Company.NETSTONE
           email = "contact@netstone.fr"
+          paymentTerm = net30
+          incoterm = cfr
+          fiscalPosition = exportFiscalPosition
           billingAddress =
             "10/F., Guangdong Investment Tower\n148 Connaught Road\nCentral, Hong Kong"
         },
@@ -210,11 +213,11 @@ class DatabaseSeeder(
           billingAddress =
             "ROHM AND HAAS CHEMICALS LLC\n100 Independence Mall West\nPhiladelphia, PA 19106\nUSA"
           paymentDelay = 30
-          paymentTerm = net30
+          paymentTerm = net150
           incoterm = ddp
           incotermLocation = "KNX"
           deliveryPort = "Charleston Harbor"
-          fiscalPosition = exportFiscalPosition
+          fiscalPosition = t1tFiscalPosition
           defaultDiscount = BigDecimal("2.00")
           deliveryAddresses.add(
             ClientDeliveryAddress(
@@ -257,7 +260,7 @@ class DatabaseSeeder(
           billingAddress =
             "999/11 Moo 3, Banchang Subdistrict\nUthai District\nAyutthaya Province\nThailand"
           paymentDelay = 15
-          paymentTerm = net15
+          paymentTerm = net150
         },
         Client(name = "ALL PLUS CHINA").apply {
           type = Client.ClientType.COMPANY
@@ -265,7 +268,6 @@ class DatabaseSeeder(
           visibleCompany = User.Company.BOTH
           email = "export@allplus.cn"
           billingAddress = "188 Guangzhou Road\nNanjing\nChina"
-          paymentTerm = deposit30
           notes = "Lead time: 45 days. FOB Shanghai."
         },
       )
