@@ -6,6 +6,7 @@ import fr.axl.lvy.client.contact.Contact
 import fr.axl.lvy.client.deliveryaddress.ClientDeliveryAddress
 import fr.axl.lvy.currency.Currency
 import fr.axl.lvy.currency.CurrencyService
+import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.Incoterm
@@ -14,9 +15,12 @@ import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.Product
 import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesCodig
+import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.user.User
 import fr.axl.lvy.user.UserRepository
 import java.math.BigDecimal
+import java.time.LocalDate
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
@@ -35,6 +39,7 @@ class DatabaseSeeder(
   private val userRepository: UserRepository,
   private val clientService: ClientService,
   private val productService: ProductService,
+  private val salesCodigService: SalesCodigService,
   private val currencyService: CurrencyService,
   private val paymentTermService: PaymentTermService,
   private val incotermService: IncotermService,
@@ -55,6 +60,7 @@ class DatabaseSeeder(
     seedUsers()
     seedClients(refData)
     seedProducts()
+    seedSalesCodig()
 
     logger.info("[Seeder] Database seeding complete.")
   }
@@ -283,7 +289,10 @@ class DatabaseSeeder(
     logger.info("[Seeder] Creating products...")
 
     val clientsByName = clientService.findAll().associateBy { it.name }
-    val dowChemical = checkNotNull(clientsByName["THE DOW CHEMICAL COMPANY"])
+    val dowChemical =
+      checkNotNull(clientsByName["THE DOW CHEMICAL COMPANY"]?.id).let { clientId ->
+        clientService.findDetailedById(clientId).orElseThrow()
+      }
     val dupont = checkNotNull(clientsByName["Dupont"])
 
     val products =
@@ -332,5 +341,46 @@ class DatabaseSeeder(
       logger.info("[Seeder] Created product: ${saved.name} (${saved.reference})")
     }
     logger.info("[Seeder] Created ${products.size} products")
+  }
+
+  private fun seedSalesCodig() {
+    logger.info("[Seeder] Creating sales Codig...")
+
+    val clientsByName = clientService.findAll().associateBy { it.name }
+    val productsByName = productService.findAll().associateBy { it.name }
+
+    val dowChemical =
+      checkNotNull(clientsByName["THE DOW CHEMICAL COMPANY"]?.id).let { clientId ->
+        clientService.findDetailedById(clientId).orElseThrow()
+      }
+    val product =
+      checkNotNull(productsByName["CO_3104 TH"]?.id).let { productId ->
+        productService.findDetailedById(productId).orElseThrow()
+      }
+
+    val sale =
+      SalesCodig("", dowChemical, LocalDate.of(2025, 10, 26)).apply {
+        clientReference = "4518012746"
+        expectedDeliveryDate = LocalDate.of(2026, 3, 25)
+        currency = "USD"
+        paymentTerm = dowChemical.paymentTerm
+        fiscalPosition = dowChemical.fiscalPosition
+        incoterms = dowChemical.incoterm?.name
+        incotermLocation = dowChemical.incotermLocation
+        billingAddress = dowChemical.billingAddress
+        shippingAddress =
+          dowChemical.deliveryAddresses.firstOrNull { it.defaultAddress }?.address
+            ?: dowChemical.deliveryAddresses.firstOrNull()?.address
+            ?: dowChemical.shippingAddress
+      }
+
+    val line =
+      DocumentLine.fromProduct(DocumentLine.DocumentType.SALES_CODIG, 0L, product, dowChemical)
+    line.quantity = BigDecimal("20.4")
+    line.unitPriceExclTax = BigDecimal("2400")
+    line.recalculate()
+
+    val savedSale = salesCodigService.saveWithLines(sale, listOf(line))
+    logger.info("[Seeder] Created sales Codig: ${savedSale.saleNumber}")
   }
 }
