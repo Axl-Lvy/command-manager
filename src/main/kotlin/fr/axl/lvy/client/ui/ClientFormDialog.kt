@@ -7,15 +7,12 @@ import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.html.H3
-import com.vaadin.flow.component.html.Image
 import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
-import com.vaadin.flow.component.upload.Upload
-import com.vaadin.flow.component.upload.receivers.MemoryBuffer
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.client.contact.Contact
@@ -27,7 +24,6 @@ import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.user.User
-import java.util.Base64
 
 internal class ClientFormDialog(
   private val clientService: ClientService,
@@ -54,10 +50,6 @@ internal class ClientFormDialog(
   private val incoterm = ComboBox<Incoterm>("Incoterm")
   private val incotermLocation = TextField("Emplacement")
   private val deliveryPort = TextField("Port de livraison")
-  private val logoBuffer = MemoryBuffer()
-  private val logoUpload = Upload(logoBuffer)
-  private val logoPreview = Image()
-  private val clearLogoButton = Button("Supprimer logo")
   private val statusToggle = Button()
   private val notes = TextArea("Notes")
 
@@ -68,7 +60,6 @@ internal class ClientFormDialog(
   private val availablePaymentTerms = paymentTermService.findAll()
   private val availableFiscalPositions = fiscalPositionService.findAll()
   private val availableIncoterms = incotermService.findAll()
-  private var logoDataValue: String? = client?.logoData
 
   init {
     setHeaderTitle(
@@ -125,7 +116,6 @@ internal class ClientFormDialog(
     fiscalPosition.setItemLabelGenerator { it.position }
     incoterm.setItems(availableIncoterms)
     incoterm.setItemLabelGenerator { "${it.name} - ${it.label}" }
-    configureLogoUpload()
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
@@ -143,10 +133,6 @@ internal class ClientFormDialog(
     form.add(paymentTerm, fiscalPosition)
     form.add(incoterm, incotermLocation)
     form.add(deliveryPort, 2)
-    if (mode == ClientFormMode.OWN_COMPANY) {
-      form.add(logoUpload, clearLogoButton)
-      form.add(logoPreview, 2)
-    }
     form.add(billingAddress, 2)
     form.add(notes, 2)
 
@@ -227,8 +213,6 @@ internal class ClientFormDialog(
     incoterm.value = c.incoterm
     incotermLocation.value = c.incotermLocation ?: ""
     deliveryPort.value = c.deliveryPort ?: ""
-    logoDataValue = c.logoData
-    updateLogoPreview()
     updateStatusButton(c.status)
     notes.value = c.notes ?: ""
     contacts.addAll(c.contacts)
@@ -328,7 +312,6 @@ internal class ClientFormDialog(
       c.incoterm = incoterm.value
       c.incotermLocation = incotermLocation.value.takeIf { it.isNotBlank() }
       c.deliveryPort = deliveryPort.value.takeIf { it.isNotBlank() }
-      c.logoData = if (mode == ClientFormMode.OWN_COMPANY) logoDataValue else c.logoData
       c.status =
         if (statusToggle.element.getProperty(DATA_STATUS_PROP) == Client.Status.INACTIVE.name) {
           Client.Status.INACTIVE
@@ -378,39 +361,6 @@ internal class ClientFormDialog(
     } else {
       statusToggle.addThemeVariants(ButtonVariant.LUMO_CONTRAST)
     }
-  }
-
-  private fun configureLogoUpload() {
-    logoUpload.setAcceptedFileTypes("image/png", "image/jpeg", "image/webp", "image/svg+xml")
-    logoUpload.setMaxFiles(1)
-    logoUpload.isDropAllowed = true
-    logoUpload.addSucceededListener { event ->
-      val bytes = logoBuffer.inputStream.readAllBytes()
-      logoDataValue = "data:${event.mimeType};base64," + Base64.getEncoder().encodeToString(bytes)
-      updateLogoPreview()
-    }
-    clearLogoButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
-    clearLogoButton.addClickListener {
-      logoDataValue = null
-      updateLogoPreview()
-    }
-    logoPreview.maxWidth = "240px"
-    logoPreview.maxHeight = "120px"
-    updateLogoPreview()
-  }
-
-  private fun updateLogoPreview() {
-    val logo = logoDataValue
-    if (logo.isNullOrBlank()) {
-      logoPreview.isVisible = false
-      logoPreview.src = ""
-      clearLogoButton.isEnabled = false
-      return
-    }
-    logoPreview.src = logo
-    logoPreview.element.setAttribute("alt", "Logo de la société")
-    logoPreview.isVisible = true
-    clearLogoButton.isEnabled = true
   }
 
   enum class ClientFormMode {

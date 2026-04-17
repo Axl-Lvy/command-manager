@@ -10,7 +10,9 @@ import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
 import fr.axl.lvy.order.OrderCodigService
+import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneRepository
+import fr.axl.lvy.order.OrderNetstoneService
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
@@ -34,6 +36,7 @@ class SalesNetstoneServiceTest {
   @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var orderCodigService: OrderCodigService
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
+  @Autowired lateinit var orderNetstoneService: OrderNetstoneService
   @Autowired lateinit var orderNetstoneRepository: OrderNetstoneRepository
   @Autowired lateinit var testData: TestDataFactory
 
@@ -437,5 +440,233 @@ class SalesNetstoneServiceTest {
     val lines = salesNetstoneService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)
     assertThat(lines[0].designation).isEqualTo("Item B")
+  }
+
+  @Test
+  fun createOrUpdateFromSalesCodig_does_not_overwrite_fields_when_netstone_sale_past_draft() {
+    val client = testData.createClient("CLI-SB-GATE-01", "123 Billing St", "456 Shipping Ave")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-GATE-01", client)
+
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB-GATE-01")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        salesCodig.id!!,
+        "MTO Item",
+        product = mtoProduct,
+      )
+
+    val first =
+      salesNetstoneService.createOrUpdateFromSalesCodig(
+        salesCodig,
+        salesCodig.saleDate,
+        salesCodig.expectedDeliveryDate,
+        "initial-notes",
+        listOf(line),
+      )
+
+    first.status = SalesStatus.VALIDATED
+    first.notes = "user-edited"
+    salesNetstoneRepository.saveAndFlush(first)
+
+    val second =
+      salesNetstoneService.createOrUpdateFromSalesCodig(
+        salesCodig,
+        salesCodig.saleDate,
+        salesCodig.expectedDeliveryDate,
+        "upstream-modified",
+        listOf(line),
+      )
+
+    assertThat(second.id).isEqualTo(first.id)
+    assertThat(second.status).isEqualTo(SalesStatus.VALIDATED)
+    assertThat(second.notes).isEqualTo("user-edited")
+  }
+
+  @Test
+  fun findDetailedById_returns_sale() {
+    val client = testData.createClient("CLI-SB-DET")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-DET", client)
+    val sale = SalesNetstone("SB-DET-01", salesCodig)
+    salesNetstoneService.save(sale)
+
+    val found = salesNetstoneService.findDetailedById(sale.id!!)
+
+    assertThat(found).isPresent
+    assertThat(found.get().saleNumber).isEqualTo("SB-DET-01")
+  }
+
+  @Test
+  fun findDetailedById_returns_empty_when_missing() {
+    assertThat(salesNetstoneService.findDetailedById(-1L)).isEmpty
+  }
+
+  @Test
+  fun findByOrderCodigId_returns_linked_salesNetstone() {
+    val client = testData.createClient("CLI-SB-FBO")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-FBO", client)
+    val sale = SalesNetstone("SB-FBO-01", salesCodig)
+    salesNetstoneService.save(sale)
+
+    val found = salesNetstoneService.findByOrderCodigId(salesCodig.orderCodig!!.id!!)
+
+    assertThat(found).isPresent
+    assertThat(found.get().id).isEqualTo(sale.id)
+  }
+
+  @Test
+  fun save_preserves_preset_fields_and_uses_orderCodig_fallbacks() {
+    val client = testData.createClient("CLI-SB-SAVE-F")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-SAVE-F", client)
+    val fiscalPosition = fiscalPositionService.save(FiscalPosition("preset FP"))
+    val sale = SalesNetstone("", salesCodig)
+    sale.incotermLocation = "preset-location"
+    sale.fiscalPosition = fiscalPosition
+    sale.currency = "GBP"
+
+    val saved = salesNetstoneService.save(sale)
+
+    assertThat(saved.saleNumber).startsWith("NST_SO_")
+    assertThat(saved.incotermLocation).isEqualTo("preset-location")
+    assertThat(saved.fiscalPosition?.id).isEqualTo(fiscalPosition.id)
+    assertThat(saved.currency).isEqualTo("GBP")
+  }
+
+  @Test
+  fun save_falls_back_to_orderCodig_when_incotermLocation_and_currency_blank() {
+    val client = testData.createClient("CLI-SB-SAVE-FB")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-SAVE-FB", client)
+    val sale = SalesNetstone("SB-SAVE-FB-01", salesCodig)
+    sale.incotermLocation = ""
+    sale.currency = ""
+
+    val saved = salesNetstoneService.save(sale)
+
+    assertThat(saved.incotermLocation).isEqualTo("Le Havre")
+    assertThat(saved.currency).isEqualTo("USD")
+  }
+
+  @Test
+  fun deleteBySalesCodigId_is_noop_when_no_salesNetstone_exists() {
+    val client = testData.createClient("CLI-SB-NOOP")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-NOOP", client)
+
+    salesNetstoneService.deleteBySalesCodigId(salesCodig.id!!)
+
+    assertThat(salesNetstoneRepository.findBySalesCodigId(salesCodig.id!!)).isNull()
+  }
+
+  @Test
+  fun deleteBySalesCodigId_without_orderNetstone_soft_deletes_sale_only() {
+    val client = testData.createClient("CLI-SB-NO-ORDER")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-NO-ORDER", client)
+    val sale = SalesNetstone("SB-NO-ORDER-01", salesCodig)
+    salesNetstoneService.save(sale)
+
+    salesNetstoneService.deleteBySalesCodigId(salesCodig.id!!)
+    salesNetstoneRepository.flush()
+
+    val reloaded = salesNetstoneRepository.findById(sale.id!!).orElseThrow()
+    assertThat(reloaded.isDeleted()).isTrue
+  }
+
+  @Test
+  fun saveWithLines_validated_with_mto_syncs_orderNetstone() {
+    val client = testData.createClient("CLI-SB-SWL-MTO")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-SWL-MTO", client)
+    val supplier = Client("CLI-SB-SWL-SUP", "Supplier SWL")
+    supplier.role = Client.ClientRole.PRODUCER
+    clientService.save(supplier)
+    val mtoProduct = testData.createMtoProduct("PRD-SB-SWL-MTO")
+    mtoProduct.replaceSuppliers(listOf(supplier))
+
+    val sale = SalesNetstone("", salesCodig)
+    sale.saleDate = LocalDate.of(2026, 3, 1)
+    sale.status = SalesStatus.VALIDATED
+
+    val line = DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, 0L, "MTO Widget")
+    line.product = mtoProduct
+    line.quantity = BigDecimal("2")
+    line.unitPriceExclTax = BigDecimal("100.00")
+    line.discountPercent = BigDecimal.ZERO
+    line.vatRate = BigDecimal("20.00")
+
+    val saved = salesNetstoneService.saveWithLines(sale, listOf(line))
+
+    assertThat(saved.orderNetstone).isNotNull
+    assertThat(saved.orderNetstone!!.orderNumber).startsWith("NST_PO_")
+  }
+
+  @Test
+  fun saveWithLines_cleans_up_existing_sent_order_when_no_longer_validated_with_mto() {
+    val client = testData.createClient("CLI-SB-CLEAN")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-CLEAN", client)
+    val supplier = Client("CLI-SB-CLEAN-SUP", "Supplier Clean")
+    supplier.role = Client.ClientRole.PRODUCER
+    clientService.save(supplier)
+    val mtoProduct = testData.createMtoProduct("PRD-SB-CLEAN")
+    mtoProduct.replaceSuppliers(listOf(supplier))
+
+    val sale = SalesNetstone("SB-CLEAN-01", salesCodig)
+    sale.saleDate = LocalDate.of(2026, 3, 1)
+    sale.status = SalesStatus.VALIDATED
+    val mtoLine = DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, 0L, "MTO Widget")
+    mtoLine.product = mtoProduct
+    mtoLine.quantity = BigDecimal("2")
+    mtoLine.unitPriceExclTax = BigDecimal("100.00")
+    mtoLine.discountPercent = BigDecimal.ZERO
+    mtoLine.vatRate = BigDecimal("20.00")
+    val withOrder = salesNetstoneService.saveWithLines(sale, listOf(mtoLine))
+    val orderId = withOrder.orderNetstone!!.id!!
+    salesNetstoneRepository.flush()
+
+    withOrder.status = SalesStatus.DRAFT
+    val regularProduct = testData.createRegularProduct("PRD-SB-CLEAN-REG")
+    val regularLine = DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, 0L, "Regular Item")
+    regularLine.product = regularProduct
+    regularLine.quantity = BigDecimal("1")
+    regularLine.unitPriceExclTax = BigDecimal("50.00")
+    regularLine.discountPercent = BigDecimal.ZERO
+    regularLine.vatRate = BigDecimal("20.00")
+
+    val cleaned = salesNetstoneService.saveWithLines(withOrder, listOf(regularLine))
+    salesNetstoneRepository.flush()
+
+    assertThat(cleaned.orderNetstone).isNull()
+    val deletedOrder = orderNetstoneRepository.findById(orderId).orElseThrow()
+    assertThat(deletedOrder.isDeleted()).isTrue
+  }
+
+  @Test
+  fun syncGeneratedOrder_does_not_overwrite_fields_when_netstone_order_past_sent() {
+    val client = testData.createClient("CLI-SB-GATE-02", "123 Billing St", "456 Shipping Ave")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-GATE-02", client)
+
+    val mtoProduct = testData.createMtoProduct("PRD-MTO-SB-GATE-02")
+    val salesNetstone = SalesNetstone("SB-GATE-SYNC-01", salesCodig)
+    salesNetstone.saleDate = LocalDate.of(2026, 3, 1)
+    salesNetstone.status = SalesStatus.VALIDATED
+    val savedSalesNetstone = salesNetstoneRepository.saveAndFlush(salesNetstone)
+
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_NETSTONE,
+        savedSalesNetstone.id!!,
+        "MTO Item",
+        product = mtoProduct,
+      )
+
+    salesNetstoneService.syncGeneratedOrder(savedSalesNetstone, listOf(line))
+    val orderNetstone = savedSalesNetstone.orderNetstone!!
+    orderNetstoneService.changeStatus(orderNetstone, OrderNetstone.OrderNetstoneStatus.CONFIRMED)
+    orderNetstone.notes = "supplier-confirmed-edits"
+    orderNetstoneRepository.saveAndFlush(orderNetstone)
+
+    savedSalesNetstone.notes = "user-changed-on-sale"
+    salesNetstoneService.syncGeneratedOrder(savedSalesNetstone, listOf(line))
+
+    val reloaded = orderNetstoneRepository.findById(orderNetstone.id!!).orElseThrow()
+    assertThat(reloaded.notes).isEqualTo("supplier-confirmed-edits")
+    assertThat(reloaded.status).isEqualTo(OrderNetstone.OrderNetstoneStatus.CONFIRMED)
   }
 }
