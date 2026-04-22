@@ -1,12 +1,19 @@
 package fr.axl.lvy.pdf
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
+import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderNetstoneService
+import java.awt.Color
+import java.awt.Font
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.util.Base64
+import java.util.Locale
+import javax.imageio.ImageIO
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.thymeleaf.TemplateEngine
@@ -29,6 +36,7 @@ class PdfService(
           suffix = ".html"
           templateMode = TemplateMode.HTML
           characterEncoding = "UTF-8"
+          isCacheable = false
         }
       )
     }
@@ -49,24 +57,27 @@ class PdfService(
         orderId,
       )
     val ownCompany = clientService.findDefaultCodigSupplier().orElse(null)
+    val supplier = order.supplier
     val currency = order.orderCodig.currency
 
     val ctx = Context()
     ctx.setVariable("order", order)
     ctx.setVariable("lines", lines)
     ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable("supplier", supplier)
     ctx.setVariable(
       "ownCompanyAddressLines",
       ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
     )
     ctx.setVariable(
       "supplierAddressLines",
-      order.orderCodig.client.billingAddress?.lines() ?: emptyList<String>(),
+      supplier?.billingAddress?.lines() ?: emptyList<String>(),
     )
     ctx.setVariable("deliveryLocationLines", order.deliveryLocation?.lines() ?: emptyList<String>())
     ctx.setVariable("noteLines", order.notes?.lines() ?: emptyList<String>())
+    ctx.setVariable("supplierNoteLines", supplier?.notes?.lines() ?: emptyList<String>())
     ctx.setVariable("currencySymbol", currencySymbol(currency))
-    ctx.setVariable("logoSrc", logoBase64())
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
 
     val html = templateEngine.process("order-netstone", ctx)
 
@@ -86,9 +97,46 @@ class PdfService(
     }
 
   /**
-   * Reads the Netstone logo from the classpath and returns a base64 data URI, or null if the file
-   * is not present.
+   * Uses the configured own-company logo first, then falls back to the legacy classpath Netstone
+   * logo when present.
    */
+  private fun logoSrc(ownCompany: Client?): String? =
+    ownCompany?.logoData?.let { normalizeLogoDataUri(it) }
+      ?: logoBase64()
+      ?: generatedLogo(ownCompany?.name ?: "Netstone")
+
+  /**
+   * OpenHTMLToPDF reliably renders PNG/JPEG data URIs. Browser-only formats or incorrect upload
+   * content types are ignored so the PDF does not keep a broken image reference.
+   */
+  private fun normalizeLogoDataUri(logoData: String): String? {
+    val marker = ";base64,"
+    val markerIndex = logoData.indexOf(marker, ignoreCase = true)
+    if (!logoData.startsWith("data:", ignoreCase = true) || markerIndex < 0) return null
+
+    val declaredContentType =
+      logoData.substringAfter("data:").substringBefore(";").lowercase(Locale.ROOT)
+    val base64Data = logoData.substring(markerIndex + marker.length).filterNot { it.isWhitespace() }
+    val bytes =
+      try {
+        Base64.getDecoder().decode(base64Data)
+      } catch (_: IllegalArgumentException) {
+        return null
+      }
+
+    val contentType =
+      when {
+        bytes.isPng() -> "image/png"
+        bytes.isJpeg() -> "image/jpeg"
+        declaredContentType == "image/png" || declaredContentType == "image/jpeg" ->
+          declaredContentType
+        declaredContentType == "image/jpg" -> "image/jpeg"
+        else -> return null
+      }
+    return "data:$contentType;base64," + Base64.getEncoder().encodeToString(bytes)
+  }
+
+  /** Reads the legacy Netstone logo from the classpath and returns a base64 data URI. */
   private fun logoBase64(): String? =
     PdfService::class
       .java
@@ -96,4 +144,42 @@ class PdfService(
       .getResourceAsStream("static/images/logo-netstone.png")
       ?.readBytes()
       ?.let { "data:image/png;base64," + Base64.getEncoder().encodeToString(it) }
+
+  /** Generates a visible PNG wordmark when no uploaded company logo is configured. */
+  private fun generatedLogo(companyName: String): String {
+    val width = 460
+    val height = 170
+    val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+    val graphics = image.createGraphics()
+    try {
+      graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+      graphics.color = Color(255, 255, 255, 0)
+      graphics.fillRect(0, 0, width, height)
+      graphics.color = Color(224, 112, 40)
+      graphics.fillRect(0, 126, width, 10)
+      graphics.color = Color(51, 51, 51)
+      graphics.font = Font(Font.SANS_SERIF, Font.BOLD, 58)
+      graphics.drawString(companyName.uppercase(Locale.ROOT), 0, 92)
+    } finally {
+      graphics.dispose()
+    }
+
+    val out = ByteArrayOutputStream()
+    ImageIO.write(image, "png", out)
+    return "data:image/png;base64," + Base64.getEncoder().encodeToString(out.toByteArray())
+  }
+
+  private fun ByteArray.isPng(): Boolean =
+    size >= 8 &&
+      this[0] == 0x89.toByte() &&
+      this[1] == 0x50.toByte() &&
+      this[2] == 0x4E.toByte() &&
+      this[3] == 0x47.toByte() &&
+      this[4] == 0x0D.toByte() &&
+      this[5] == 0x0A.toByte() &&
+      this[6] == 0x1A.toByte() &&
+      this[7] == 0x0A.toByte()
+
+  private fun ByteArray.isJpeg(): Boolean =
+    size >= 3 && this[0] == 0xFF.toByte() && this[1] == 0xD8.toByte() && this[2] == 0xFF.toByte()
 }

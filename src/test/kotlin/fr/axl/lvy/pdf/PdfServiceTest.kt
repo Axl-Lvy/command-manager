@@ -16,6 +16,9 @@ import java.io.ByteArrayInputStream
 import java.math.BigDecimal
 import java.time.LocalDate
 import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDResources
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
 import org.apache.pdfbox.text.PDFTextStripper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -36,17 +39,27 @@ class PdfServiceTest {
   @Autowired lateinit var fiscalPositionRepository: FiscalPositionRepository
   @Autowired lateinit var testData: TestDataFactory
 
+  private val sampleLogoData =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+  private val sampleLogoDataWithGenericContentType =
+    sampleLogoData.replace("data:image/png;", "data:application/octet-stream;")
+
   @BeforeEach
   fun setupNetstoneOwnCompany() {
-    if (clientService.findDefaultCodigSupplier().isEmpty) {
+    val defaultSupplier = clientService.findDefaultCodigSupplier()
+    if (defaultSupplier.isEmpty) {
       val netstone =
         Client("CLI-PDF-NET", "Netstone").apply {
           type = Client.ClientType.OWN_COMPANY
           role = Client.ClientRole.OWN_COMPANY
           visibleCompany = User.Company.NETSTONE
           billingAddress = "10/F., Guangdong Investment Tower\nHong Kong"
+          logoData = sampleLogoData
         }
       clientService.save(netstone)
+    } else {
+      defaultSupplier.get().logoData = sampleLogoData
     }
   }
 
@@ -64,7 +77,33 @@ class PdfServiceTest {
     val text = extractText(pdfService.generateOrderNetstonePdf(saved.id!!))
 
     assertThat(text).contains(saved.orderNumber)
-    assertThat(text).contains("Minimal Client")
+  }
+
+  /** Verifies that the own-company logo saved on the company record is rendered into the PDF. */
+  @Test
+  fun generatePdf_uses_own_company_logo() {
+    val client = clientRepository.save(Client("CLI-PDF-LOGO", "Logo Client"))
+    val orderCodig = orderCodigRepository.save(OrderCodig("CA-PDF-LOGO", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    val imageCount = countImages(pdfService.generateOrderNetstonePdf(saved.id!!))
+
+    assertThat(imageCount).isGreaterThan(0)
+  }
+
+  /** Verifies uploaded logos still render when the browser provides a generic content type. */
+  @Test
+  fun generatePdf_normalizes_logo_content_type() {
+    clientService.findDefaultCodigSupplier().orElseThrow().logoData =
+      sampleLogoDataWithGenericContentType
+    val client = clientRepository.save(Client("CLI-PDF-LOGO-TYPE", "Logo Type Client"))
+    val orderCodig =
+      orderCodigRepository.save(OrderCodig("CA-PDF-LOGO-TYPE", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    val imageCount = countImages(pdfService.generateOrderNetstonePdf(saved.id!!))
+
+    assertThat(imageCount).isGreaterThan(0)
   }
 
   /**
@@ -84,9 +123,18 @@ class PdfServiceTest {
     orderCodigRepository.save(orderCodig)
 
     val fiscalPosition = fiscalPositionRepository.save(FiscalPosition("Import/Export Hors Europe"))
+    val supplier =
+      clientRepository.save(
+        Client("CLI-PDF-SUP", "Supplier Chemicals").apply {
+          role = Client.ClientRole.PRODUCER
+          billingAddress = "88 Supplier Road\nBangkok\nThailand"
+          notes = "Supplier note line"
+        }
+      )
 
     val order =
       OrderNetstone("", orderCodig).apply {
+        this.supplier = supplier
         incoterms = "CIF"
         incotermLocation = "ANTWERP"
         deliveryLocation = "Port of Antwerp"
@@ -110,7 +158,14 @@ class PdfServiceTest {
 
     // header
     assertThat(text).contains(saved.orderNumber)
-    assertThat(text).contains("Zenji Pharmaceuticals")
+    assertThat(text).contains("Netstone")
+    // supplier block
+    assertThat(text).contains("Supplier Chemicals")
+    assertThat(text).contains("88 Supplier Road")
+    assertThat(text).doesNotContain("Zenji Pharmaceuticals")
+    assertThat(text).contains("DELIVERY ADDRESS:")
+    assertThat(text).doesNotContain("Dellvery")
+    assertThat(text).doesNotContain("Port of:")
     // metadata
     assertThat(text).contains("CIF")
     assertThat(text).contains("ANTWERP")
@@ -122,8 +177,25 @@ class PdfServiceTest {
     // footer
     assertThat(text).contains("Import/Export Hors Europe")
     assertThat(text).contains("One batch per pallet")
+    assertThat(text).contains("Supplier note line AND INSURANCE")
   }
 
   private fun extractText(bytes: ByteArray): String =
     PDDocument.load(ByteArrayInputStream(bytes)).use { doc -> PDFTextStripper().getText(doc) }
+
+  private fun countImages(bytes: ByteArray): Int =
+    PDDocument.load(ByteArrayInputStream(bytes)).use { doc ->
+      doc.pages.sumOf { countImages(it.resources) }
+    }
+
+  private fun countImages(resources: PDResources?): Int {
+    if (resources == null) return 0
+    return resources.xObjectNames.sumOf { name ->
+      when (val xObject = resources.getXObject(name)) {
+        is PDImageXObject -> 1
+        is PDFormXObject -> countImages(xObject.resources)
+        else -> 0
+      }
+    }
+  }
 }

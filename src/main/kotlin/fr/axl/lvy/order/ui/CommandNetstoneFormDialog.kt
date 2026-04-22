@@ -135,8 +135,9 @@ internal class CommandNetstoneFormDialog(
     if (order?.id != null) {
       val pdfResource =
         StreamResource("${order.orderNumber}.pdf") {
-          pdfService.generateOrderNetstonePdf(order.id!!).inputStream()
-        }
+            pdfService.generateOrderNetstonePdf(order.id!!).inputStream()
+          }
+          .apply { cacheTime = 0 }
       val pdfBtn = Button("Télécharger PDF")
       val pdfLink =
         Anchor(pdfResource, "").apply {

@@ -15,15 +15,15 @@
 
     /* ── Header ── */
     .header-table { width: 100%; margin-bottom: 32pt; }
-    .logo-cell    { width: 45%; vertical-align: top; }
-    .logo-cell img { height: 80pt; }
-    .addr-cell    { width: 55%; vertical-align: top; font-size: 10pt; }
+    .logo-cell    { width: 58%; vertical-align: top; }
+    .logo-cell img { height: 80pt; max-width: 180pt; }
+    .addr-cell    { width: 42%; vertical-align: top; font-size: 10pt; }
     .addr-cell .company-name { font-size: 12pt; font-weight: bold; margin-bottom: 4pt; }
 
     /* ── Delivery / supplier block ── */
     .parties-table { width: 100%; margin-bottom: 24pt; }
-    .delivery-cell { width: 45%; vertical-align: top; }
-    .supplier-cell { width: 55%; vertical-align: top; font-size: 10pt; }
+    .delivery-cell { width: 58%; vertical-align: top; }
+    .supplier-cell { width: 42%; vertical-align: top; font-size: 10pt; }
     .supplier-cell .supplier-name { font-size: 11pt; font-weight: bold; margin-bottom: 4pt; }
 
     /* ── Order title ── */
@@ -37,8 +37,14 @@
 
     /* ── Line items ── */
     .lines-table { width: 100%; border-collapse: collapse; margin-bottom: 12pt; }
-    .lines-table thead tr {
+    .lines-table thead .double-rule th {
       border-top: 2pt solid #333333;
+      border-bottom: 1pt solid #333333;
+      height: 3pt;
+      line-height: 3pt;
+      padding: 0;
+    }
+    .lines-table thead tr {
       border-bottom: 2pt solid #333333;
     }
     .lines-table thead th {
@@ -53,8 +59,8 @@
     .lines-table tbody td.right { text-align: right; }
 
     /* ── Totals ── */
-    .totals-table { width: 320pt; border-collapse: collapse; }
-    .totals-table td { padding: 4pt 8pt; font-size: 10pt; }
+    .totals-table { width: 230pt; border-collapse: collapse; }
+    .totals-table td { padding: 4pt 4pt; font-size: 10pt; }
     .totals-table .amount { text-align: right; }
     .totals-table .final-row td {
       color: #E07028;
@@ -98,13 +104,11 @@
   <table class="parties-table" cellspacing="0" cellpadding="0">
     <tr>
       <td class="delivery-cell">
-        <p><strong>Delivery Address:</strong></p>
-        <p th:if="${order.incoterms != null}"
-           th:text="'Port of: ' + (order.incotermLocation != null ? order.incotermLocation : '')"></p>
+        <p><strong>DELIVERY ADDRESS:</strong></p>
         <p th:each="line : ${deliveryLocationLines}" th:text="${line}"></p>
       </td>
-      <td class="supplier-cell">
-        <p class="supplier-name" th:text="${order.orderCodig.client.name}"></p>
+      <td class="supplier-cell" th:if="${supplier != null}">
+        <p class="supplier-name" th:text="${supplier.name}"></p>
         <p th:each="line : ${supplierAddressLines}" th:text="${line}"></p>
       </td>
     </tr>
@@ -133,21 +137,21 @@
   <!-- ═══════════ LINE ITEMS ═══════════ -->
   <table class="lines-table">
     <thead>
+      <tr class="double-rule">
+        <th colspan="6"></th>
+      </tr>
       <tr>
         <th style="width: 34%;">DESCRIPTION</th>
-        <th style="width: 8%;">TAXES</th>
         <th style="width: 16%;">DATE REQ.</th>
         <th class="right" style="width: 16%;">QTY</th>
         <th class="right" style="width: 13%;">UNIT PRICE</th>
+        <th style="width: 8%;">TAXES</th>
         <th class="right" style="width: 13%;">AMOUNT</th>
       </tr>
     </thead>
     <tbody>
       <tr th:each="line : ${lines}">
         <td th:text="${line.designation}"></td>
-        <td th:text="${line.vatRate.signum() != 0
-                       ? #numbers.formatDecimal(line.vatRate, 1, 'NONE', 0, 'COMMA') + '%'
-                       : ''}"></td>
         <td th:text="${order.expectedDeliveryDate != null
                        ? #temporals.format(order.expectedDeliveryDate, 'dd/MM/yyyy')
                        : ''}"></td>
@@ -156,6 +160,9 @@
                        + (line.unit != null ? ' ' + line.unit : '')}"></td>
         <td class="right"
             th:text="${#numbers.formatDecimal(line.unitPriceExclTax, 1, 'NONE', 2, 'COMMA')}"></td>
+        <td th:text="${line.vatRate.signum() != 0
+                       ? #numbers.formatDecimal(line.vatRate, 1, 'NONE', 0, 'COMMA') + '%'
+                       : ''}"></td>
         <td class="right"
             th:text="${currencySymbol + ' ' + #numbers.formatDecimal(line.lineTotalExclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td>
       </tr>
@@ -184,6 +191,10 @@
        th:text="${order.fiscalPosition.position}"></p>
     <div th:if="${not #lists.isEmpty(noteLines)}" style="margin-top: 10pt;">
       <p th:each="noteLine : ${noteLines}" class="note-line" th:text="${noteLine}"></p>
+    </div>
+    <div th:if="${not #lists.isEmpty(supplierNoteLines)}" style="margin-top: 10pt;">
+      <p th:each="supplierNoteLine, iter : ${supplierNoteLines}" class="note-line"
+         th:text="${supplierNoteLine + (iter.last and order.incoterms != null and #strings.equalsIgnoreCase(order.incoterms, 'CIF') ? ' AND INSURANCE' : '')}"></p>
     </div>
   </div>
 
