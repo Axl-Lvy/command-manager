@@ -38,6 +38,8 @@ class DeliveryNoteNetstone(
 
   @Column(name = "container_number", length = 50) var containerNumber: String? = null
 
+  @Column(name = "bill_of_lading", length = 100) var billOfLading: String? = null
+
   @Column(length = 50) var lot: String? = null
 
   @Column(length = 100) var seals: String? = null

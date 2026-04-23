@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class ProductService(
   private val productRepository: ProductRepository,
+  private val productClientCodeRepository: ProductClientCodeRepository,
   private val clientRepository: ClientRepository,
 ) {
 
@@ -26,6 +27,14 @@ class ProductService(
   @Transactional(readOnly = true)
   fun findDetailedById(id: Long): Optional<Product> =
     Optional.ofNullable(productRepository.findDetailedById(id))
+
+  @Transactional(readOnly = true)
+  fun findClientProductCode(productId: Long, clientId: Long): String? =
+    productClientCodeRepository.findCodeByProductIdAndClientId(productId, clientId)
+
+  @Transactional(readOnly = true)
+  fun findFirstClientProductCode(productId: Long): String? =
+    productClientCodeRepository.findCodesByProductId(productId).firstOrNull()
 
   @Transactional
   fun save(product: Product): Product {

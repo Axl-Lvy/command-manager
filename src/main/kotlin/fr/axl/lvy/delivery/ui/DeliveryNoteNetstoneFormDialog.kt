@@ -13,26 +13,29 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.server.StreamResource
-import fr.axl.lvy.delivery.DeliveryNoteCodig
-import fr.axl.lvy.delivery.DeliveryNoteCodigService
+import fr.axl.lvy.base.ui.noGap
 import fr.axl.lvy.delivery.DeliveryNoteNetstone
-import fr.axl.lvy.order.OrderCodig
+import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
+import fr.axl.lvy.documentline.DocumentLine
+import fr.axl.lvy.documentline.ui.DocumentLineEditor
+import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.pdf.PdfService
+import fr.axl.lvy.product.ProductService
 
-internal class DeliveryNoteCodigFormDialog(
-  private val deliveryNoteCodigService: DeliveryNoteCodigService,
+internal class DeliveryNoteNetstoneFormDialog(
+  private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
+  private val productService: ProductService,
   private val pdfService: PdfService,
-  private val orderCodig: OrderCodig,
+  private val orderNetstone: OrderNetstone,
   private val saleNumber: String,
-  private val clientReference: String?,
-  private val netstoneDeliveryNote: DeliveryNoteNetstone?,
-  private val note: DeliveryNoteCodig?,
+  private val deliveryAddress: String?,
+  private val note: DeliveryNoteNetstone?,
+  initialLines: List<DocumentLine>,
   private val onSave: Runnable,
 ) : Dialog() {
 
   private val noteNumber = TextField("N° Livraison")
-  private val saleDocumentNumber = TextField("Vente CoDIG")
-  private val customerReference = TextField("Réf. client")
+  private val saleDocumentNumber = TextField("Vente Netstone")
   private val shippingAddress = TextArea("Adresse livraison")
   private val arrivalDate = DatePicker("Date arrivée")
   private val containerNumber = TextField("N° conteneur")
@@ -40,28 +43,41 @@ internal class DeliveryNoteCodigFormDialog(
   private val lot = TextField("Lot")
   private val seals = TextField("Scellés")
   private val observations = TextArea("Observations")
+  private val lineEditor =
+    DocumentLineEditor(
+      productService = productService,
+      documentType = DocumentLine.DocumentType.DELIVERY_NETSTONE,
+      usePurchasePrice = true,
+      lineTaxMode = DocumentLineEditor.LineTaxMode.VAT,
+      showUnitPrice = false,
+      showTax = false,
+      showLineTotal = false,
+    )
 
   init {
-    headerTitle = if (note == null) "Nouvelle livraison" else "Modifier livraison"
-    width = "760px"
+    headerTitle = if (note == null) "Nouvelle livraison Netstone" else "Modifier livraison Netstone"
+    width = "960px"
+    height = "80%"
 
     noteNumber.isReadOnly = true
     saleDocumentNumber.isReadOnly = true
     saleDocumentNumber.value = saleNumber
-    customerReference.isReadOnly = true
-    customerReference.value = clientReference ?: ""
+    shippingAddress.isReadOnly = true
+    shippingAddress.value = deliveryAddress ?: ""
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
     form.add(noteNumber, saleDocumentNumber)
-    form.add(customerReference, 2)
     form.add(shippingAddress, 2)
     form.add(arrivalDate, containerNumber)
     form.add(billOfLading, lot)
     form.add(seals)
     form.add(observations, 2)
 
-    add(VerticalLayout(form).apply { isPadding = false })
+    lineEditor.setLines(initialLines)
+    val content = VerticalLayout(form, lineEditor)
+    content.noGap()
+    add(content)
 
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
@@ -70,7 +86,7 @@ internal class DeliveryNoteCodigFormDialog(
     if (note?.id != null) {
       val pdfResource =
         StreamResource("${note.deliveryNoteNumber.replace("/", "_")}.pdf") {
-            pdfService.generateDeliveryCodigPdf(note.id!!).inputStream()
+            pdfService.generateDeliveryNetstonePdf(note.id!!).inputStream()
           }
           .apply { cacheTime = 0 }
       val pdfBtn = Button("Télécharger PDF")
@@ -86,47 +102,22 @@ internal class DeliveryNoteCodigFormDialog(
     if (note != null) {
       populateForm(note)
     } else {
-      noteNumber.value = "(auto)"
-      shippingAddress.value = orderCodig.shippingAddress ?: ""
-      populateLogisticsFromNetstone()
+      noteNumber.value = deliveryNoteNetstoneService.previewNextDeliveryNoteNumber()
     }
   }
 
-  private fun populateForm(note: DeliveryNoteCodig) {
+  private fun populateForm(note: DeliveryNoteNetstone) {
     noteNumber.value = note.deliveryNoteNumber
-    shippingAddress.value = note.shippingAddress ?: ""
     arrivalDate.value = note.arrivalDate
     containerNumber.value = note.containerNumber ?: ""
     billOfLading.value = note.billOfLading ?: ""
     lot.value = note.lot ?: ""
     seals.value = note.seals ?: ""
     observations.value = note.observations ?: ""
-    populateMissingLogisticsFromNetstone(note)
-  }
-
-  private fun populateLogisticsFromNetstone() {
-    arrivalDate.value = netstoneDeliveryNote?.arrivalDate
-    containerNumber.value = netstoneDeliveryNote?.containerNumber ?: ""
-    billOfLading.value = netstoneDeliveryNote?.billOfLading ?: ""
-    lot.value = netstoneDeliveryNote?.lot ?: ""
-    seals.value = netstoneDeliveryNote?.seals ?: ""
-  }
-
-  private fun populateMissingLogisticsFromNetstone(note: DeliveryNoteCodig) {
-    if (note.arrivalDate == null) arrivalDate.value = netstoneDeliveryNote?.arrivalDate
-    if (note.containerNumber.isNullOrBlank()) {
-      containerNumber.value = netstoneDeliveryNote?.containerNumber ?: ""
-    }
-    if (note.billOfLading.isNullOrBlank()) {
-      billOfLading.value = netstoneDeliveryNote?.billOfLading ?: ""
-    }
-    if (note.lot.isNullOrBlank()) lot.value = netstoneDeliveryNote?.lot ?: ""
-    if (note.seals.isNullOrBlank()) seals.value = netstoneDeliveryNote?.seals ?: ""
   }
 
   private fun save() {
-    val deliveryNote = note ?: DeliveryNoteCodig("", orderCodig, orderCodig.client)
-    deliveryNote.shippingAddress = shippingAddress.value.takeIf { it.isNotBlank() }
+    val deliveryNote = note ?: DeliveryNoteNetstone("", orderNetstone)
     deliveryNote.arrivalDate = arrivalDate.value
     deliveryNote.containerNumber = containerNumber.value.takeIf { it.isNotBlank() }
     deliveryNote.billOfLading = billOfLading.value.takeIf { it.isNotBlank() }
@@ -134,10 +125,10 @@ internal class DeliveryNoteCodigFormDialog(
     deliveryNote.seals = seals.value.takeIf { it.isNotBlank() }
     deliveryNote.observations = observations.value.takeIf { it.isNotBlank() }
 
-    val saved = deliveryNoteCodigService.save(deliveryNote)
+    val saved = deliveryNoteNetstoneService.saveWithLines(deliveryNote, lineEditor.getLines())
     noteNumber.value = saved.deliveryNoteNumber
 
-    Notification.show("Livraison enregistrée", 3000, Notification.Position.BOTTOM_END)
+    Notification.show("Livraison Netstone enregistrée", 3000, Notification.Position.BOTTOM_END)
       .addThemeVariants(NotificationVariant.LUMO_SUCCESS)
     onSave.run()
     close()

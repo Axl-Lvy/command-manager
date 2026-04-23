@@ -213,12 +213,76 @@ class ProductServiceTest {
   }
 
   @Test
+  fun replaceClientProductCodes_updates_existing_client_code_without_duplicate_insert() {
+    val client = createClient("CLI-R03")
+    val product = Product(name = "Code Update")
+    product.replaceClientProductCodes(listOf(client to "OLD-001"))
+    productService.save(product)
+    productRepository.flush()
+    entityManager.clear()
+
+    val loaded = productService.findDetailedById(product.id!!).orElseThrow()
+    loaded.replaceClientProductCodes(listOf(loaded.clientProductCodes.first().client to "NEW-001"))
+    productService.save(loaded)
+    productRepository.flush()
+    entityManager.clear()
+
+    val found = productService.findDetailedById(product.id!!).orElseThrow()
+    assertThat(found.clientProductCodes).hasSize(1)
+    assertThat(found.clientProductCodes.first().code).isEqualTo("NEW-001")
+  }
+
+  @Test
   fun findClientProductCode_returns_null_for_null_client() {
     val product = Product("REF-NUL", "No Client")
     product.replaceClientProductCodes(listOf(createClient("CLI-X") to "X-001"))
     productService.save(product)
 
     assertThat(product.findClientProductCode(null)).isNull()
+  }
+
+  @Test
+  fun service_findClientProductCode_returns_code_when_present_and_null_when_absent() {
+    val client = createClient("CLI-SVC-PC")
+    val other = createClient("CLI-SVC-OTHER")
+    val product = Product(name = "Svc Product")
+    product.replaceClientProductCodes(listOf(client to "SVC-001"))
+    productService.save(product)
+    productRepository.flush()
+
+    assertThat(productService.findClientProductCode(product.id!!, client.id!!)).isEqualTo("SVC-001")
+    assertThat(productService.findClientProductCode(product.id!!, other.id!!)).isNull()
+  }
+
+  @Test
+  fun service_findFirstClientProductCode_returns_first_or_null() {
+    val client = createClient("CLI-FIRST")
+    val productWithCode = Product(name = "With Code")
+    productWithCode.replaceClientProductCodes(listOf(client to "FIRST-001"))
+    productService.save(productWithCode)
+
+    val productWithout = Product(name = "Without Code")
+    productService.save(productWithout)
+    productRepository.flush()
+
+    assertThat(productService.findFirstClientProductCode(productWithCode.id!!))
+      .isEqualTo("FIRST-001")
+    assertThat(productService.findFirstClientProductCode(productWithout.id!!)).isNull()
+  }
+
+  @Test
+  fun archive_and_delete_execute_without_error() {
+    val product = productService.save(Product(name = "To Archive"))
+    productRepository.flush()
+
+    productService.archive(product.id!!)
+    productService.delete(product.id!!)
+  }
+
+  @Test
+  fun archive_and_delete_ignore_unknown_ids() {
+    productService.archive(-99L)
+    productService.delete(-99L)
   }
 
   @Test

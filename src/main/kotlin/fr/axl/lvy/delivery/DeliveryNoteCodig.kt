@@ -11,9 +11,7 @@ import org.hibernate.type.SqlTypes
 
 /**
  * A delivery note for goods shipped to a customer (Codig side). Linked to the originating
- * [OrderCodig]. Tracks shipping, carrier, and proof of delivery.
- *
- * Status workflow: PREPARED -> SHIPPED -> DELIVERED (or INCIDENT at any stage).
+ * [OrderCodig]. Tracks delivery address and logistics references shared with Netstone deliveries.
  */
 @Entity
 @Table(name = "delivery_notes_codig")
@@ -44,6 +42,16 @@ class DeliveryNoteCodig(
   @Column(name = "tracking_number", length = 100) var trackingNumber: String? = null
 
   @Column(name = "package_count") var packageCount: Int? = null
+
+  @Column(name = "arrival_date") var arrivalDate: LocalDate? = null
+
+  @Column(name = "container_number", length = 50) var containerNumber: String? = null
+
+  @Column(name = "bill_of_lading", length = 100) var billOfLading: String? = null
+
+  @Column(length = 50) var lot: String? = null
+
+  @Column(length = 100) var seals: String? = null
 
   @Column(name = "signed_by", length = 100) var signedBy: String? = null
 

@@ -30,7 +30,7 @@ class DocumentLine(
     name = "document_type",
     nullable = false,
     columnDefinition =
-      "enum('SALES_CODIG','SALES_NETSTONE','ORDER_CODIG','ORDER_NETSTONE','INVOICE_CODIG','INVOICE_NETSTONE')",
+      "enum('SALES_CODIG','SALES_NETSTONE','ORDER_CODIG','ORDER_NETSTONE','DELIVERY_NETSTONE','INVOICE_CODIG','INVOICE_NETSTONE')",
   )
   var documentType: DocumentType,
   @Column(name = "document_id", nullable = false) var documentId: Long,
@@ -151,6 +151,7 @@ class DocumentLine(
     SALES_NETSTONE,
     ORDER_CODIG,
     ORDER_NETSTONE,
+    DELIVERY_NETSTONE,
     INVOICE_CODIG,
     INVOICE_NETSTONE,
   }

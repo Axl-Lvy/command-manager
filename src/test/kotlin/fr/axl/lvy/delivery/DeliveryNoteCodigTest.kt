@@ -32,6 +32,10 @@ class DeliveryNoteCodigTest {
     val note = DeliveryNoteCodig("BL-2026-0001", order, client)
     note.carrier = "DHL"
     note.trackingNumber = "TRACK-001"
+    note.billOfLading = "BL-OCEAN-001"
+    note.containerNumber = "CONT-001"
+    note.lot = "LOT-A"
+    note.seals = "SEAL-123"
     deliveryNoteCodigRepository.save(note)
 
     val found = deliveryNoteCodigRepository.findById(note.id!!)
@@ -39,6 +43,10 @@ class DeliveryNoteCodigTest {
     assertThat(found.get().deliveryNoteNumber).isEqualTo("BL-2026-0001")
     assertThat(found.get().carrier).isEqualTo("DHL")
     assertThat(found.get().trackingNumber).isEqualTo("TRACK-001")
+    assertThat(found.get().billOfLading).isEqualTo("BL-OCEAN-001")
+    assertThat(found.get().containerNumber).isEqualTo("CONT-001")
+    assertThat(found.get().lot).isEqualTo("LOT-A")
+    assertThat(found.get().seals).isEqualTo("SEAL-123")
   }
 
   @Test
@@ -51,6 +59,11 @@ class DeliveryNoteCodigTest {
     assertThat(note.shippingDate).isNull()
     assertThat(note.deliveryDate).isNull()
     assertThat(note.packageCount).isNull()
+    assertThat(note.arrivalDate).isNull()
+    assertThat(note.containerNumber).isNull()
+    assertThat(note.billOfLading).isNull()
+    assertThat(note.lot).isNull()
+    assertThat(note.seals).isNull()
     assertThat(note.signedBy).isNull()
   }
 
@@ -119,6 +132,11 @@ class DeliveryNoteCodigTest {
     note.shippingDate = LocalDate.of(2026, 3, 10)
     note.deliveryDate = LocalDate.of(2026, 3, 15)
     note.shippingAddress = "456 Shipping Ave"
+    note.arrivalDate = LocalDate.of(2026, 3, 16)
+    note.billOfLading = "BL-LOG-01"
+    note.containerNumber = "CONT-LOG-01"
+    note.lot = "LOT-LOG"
+    note.seals = "SEAL-LOG"
     note.packageCount = 3
     note.signedBy = "Jean Dupont"
     note.signatureDate = LocalDate.of(2026, 3, 15)
@@ -129,6 +147,11 @@ class DeliveryNoteCodigTest {
     assertThat(found.shippingDate).isEqualTo(LocalDate.of(2026, 3, 10))
     assertThat(found.deliveryDate).isEqualTo(LocalDate.of(2026, 3, 15))
     assertThat(found.shippingAddress).isEqualTo("456 Shipping Ave")
+    assertThat(found.arrivalDate).isEqualTo(LocalDate.of(2026, 3, 16))
+    assertThat(found.billOfLading).isEqualTo("BL-LOG-01")
+    assertThat(found.containerNumber).isEqualTo("CONT-LOG-01")
+    assertThat(found.lot).isEqualTo("LOT-LOG")
+    assertThat(found.seals).isEqualTo("SEAL-LOG")
     assertThat(found.packageCount).isEqualTo(3)
     assertThat(found.signedBy).isEqualTo("Jean Dupont")
     assertThat(found.observations).isEqualTo("Handle with care")

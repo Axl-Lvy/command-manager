@@ -387,7 +387,7 @@ internal class ClientFormDialog(
   }
 
   private fun configureLogoUpload() {
-    logoUpload.setAcceptedFileTypes("image/png", "image/jpeg", "image/webp", "image/svg+xml")
+    logoUpload.setAcceptedFileTypes("image/png", "image/jpeg")
     logoUpload.setMaxFiles(1)
     logoUpload.isDropAllowed = true
     logoPreview.setAlt("Logo de la société")

@@ -16,6 +16,7 @@ import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.base.ui.initAsListContainer
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.delivery.DeliveryNoteCodigService
+import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.delivery.ui.DeliveryNoteCodigFormDialog
 import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
@@ -43,6 +44,7 @@ internal class SalesCodigListView(
   private val fiscalPositionService: FiscalPositionService,
   private val productService: ProductService,
   private val deliveryNoteCodigService: DeliveryNoteCodigService,
+  private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
   private val orderCodigService: OrderCodigService,
   private val salesNetstoneService: SalesNetstoneService,
   private val orderNetstoneService: OrderNetstoneService,
@@ -260,9 +262,20 @@ internal class SalesCodigListView(
 
     val deliveryNote =
       orderCodig.deliveryNote ?: deliveryNoteCodigService.findByOrderCodigId(orderCodig.id!!)
+    val netstoneDeliveryNote =
+      salesNetstoneService
+        .findByOrderCodigId(orderCodig.id!!)
+        .orElse(null)
+        ?.orderNetstone
+        ?.id
+        ?.let(deliveryNoteNetstoneService::findByOrderNetstoneId)
     DeliveryNoteCodigFormDialog(
         deliveryNoteCodigService,
+        pdfService,
         orderCodig,
+        loadedSale.saleNumber,
+        loadedSale.clientReference,
+        netstoneDeliveryNote,
         deliveryNote,
         this::refreshGrid,
       )

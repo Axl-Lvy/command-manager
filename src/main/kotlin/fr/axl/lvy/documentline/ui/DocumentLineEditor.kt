@@ -31,6 +31,9 @@ class DocumentLineEditor(
   private val usePurchasePrice: Boolean = false,
   private val lineTaxMode: LineTaxMode = LineTaxMode.DISCOUNT,
   private val defaultVatRate: BigDecimal = BigDecimal.ZERO,
+  private val showUnitPrice: Boolean = true,
+  private val showTax: Boolean = true,
+  private val showLineTotal: Boolean = true,
 ) : VerticalLayout() {
 
   private val lines = mutableListOf<DocumentLine>()
@@ -80,22 +83,24 @@ class DocumentLineEditor(
       }
       .setHeader("Unité")
       .setAutoWidth(true)
-    grid
-      .addComponentColumn { line ->
-        BigDecimalField().apply {
-          value = line.unitPriceExclTax
-          placeholder = "PU HT"
-          width = "140px"
-          valueChangeMode = ValueChangeMode.EAGER
-          addValueChangeListener {
-            line.unitPriceExclTax = it.value ?: BigDecimal.ZERO
-            line.recalculate()
-            refreshGrid()
+    if (showUnitPrice) {
+      grid
+        .addComponentColumn { line ->
+          BigDecimalField().apply {
+            value = line.unitPriceExclTax
+            placeholder = "PU HT"
+            width = "140px"
+            valueChangeMode = ValueChangeMode.EAGER
+            addValueChangeListener {
+              line.unitPriceExclTax = it.value ?: BigDecimal.ZERO
+              line.recalculate()
+              refreshGrid()
+            }
           }
         }
-      }
-      .setHeader("PU HT")
-      .setAutoWidth(true)
+        .setHeader("PU HT")
+        .setAutoWidth(true)
+    }
     if (currencySupplier != null && currencyUpdater != null) {
       grid
         .addComponentColumn {
@@ -113,43 +118,47 @@ class DocumentLineEditor(
         .setHeader("Devise")
         .setAutoWidth(true)
     }
-    when (lineTaxMode) {
-      LineTaxMode.DISCOUNT ->
-        grid
-          .addComponentColumn { line ->
-            BigDecimalField().apply {
-              value = line.discountPercent
-              placeholder = "Remise %"
-              width = "120px"
-              valueChangeMode = ValueChangeMode.EAGER
-              addValueChangeListener {
-                line.discountPercent = it.value ?: BigDecimal.ZERO
-                line.recalculate()
-                refreshGrid()
+    if (showTax) {
+      when (lineTaxMode) {
+        LineTaxMode.DISCOUNT ->
+          grid
+            .addComponentColumn { line ->
+              BigDecimalField().apply {
+                value = line.discountPercent
+                placeholder = "Remise %"
+                width = "120px"
+                valueChangeMode = ValueChangeMode.EAGER
+                addValueChangeListener {
+                  line.discountPercent = it.value ?: BigDecimal.ZERO
+                  line.recalculate()
+                  refreshGrid()
+                }
               }
             }
-          }
-          .setHeader("Remise %")
-          .setAutoWidth(true)
-      LineTaxMode.VAT ->
-        grid
-          .addComponentColumn { line ->
-            BigDecimalField().apply {
-              value = line.vatRate
-              placeholder = "TVA %"
-              width = "120px"
-              valueChangeMode = ValueChangeMode.EAGER
-              addValueChangeListener {
-                line.vatRate = it.value ?: BigDecimal.ZERO
-                line.recalculate()
-                refreshGrid()
+            .setHeader("Remise %")
+            .setAutoWidth(true)
+        LineTaxMode.VAT ->
+          grid
+            .addComponentColumn { line ->
+              BigDecimalField().apply {
+                value = line.vatRate
+                placeholder = "TVA %"
+                width = "120px"
+                valueChangeMode = ValueChangeMode.EAGER
+                addValueChangeListener {
+                  line.vatRate = it.value ?: BigDecimal.ZERO
+                  line.recalculate()
+                  refreshGrid()
+                }
               }
             }
-          }
-          .setHeader("TVA %")
-          .setAutoWidth(true)
+            .setHeader("TVA %")
+            .setAutoWidth(true)
+      }
     }
-    grid.addColumn(DocumentLine::lineTotalExclTax).setHeader("Total HT").setAutoWidth(true)
+    if (showLineTotal) {
+      grid.addColumn(DocumentLine::lineTotalExclTax).setHeader("Total HT").setAutoWidth(true)
+    }
     grid
       .addComponentColumn { line ->
         val deleteBtn =

@@ -68,10 +68,33 @@ class Product(
 
   /** Replaces all client-specific product codes with the given entries. */
   fun replaceClientProductCodes(entries: List<Pair<Client, String>>) {
-    clientProductCodes.clear()
-    entries.forEach { (client, code) ->
-      val clientProductCode = ProductClientCode(this, client, code)
-      clientProductCodes.add(clientProductCode)
+    val validEntries = entries.filter { (_, code) -> code.isNotBlank() }
+    val entriesByClientId =
+      validEntries
+        .filter { (client, _) -> client.id != null }
+        .associateBy({ (client, _) -> client.id!! }, { it })
+    val transientEntries = validEntries.filter { (client, _) -> client.id == null }
+
+    val iterator = clientProductCodes.iterator()
+    while (iterator.hasNext()) {
+      val current = iterator.next()
+      val desired = current.client.id?.let(entriesByClientId::get)
+      if (desired == null) {
+        iterator.remove()
+      } else {
+        current.client = desired.first
+        current.code = desired.second
+      }
+    }
+
+    val existingClientIds = clientProductCodes.mapNotNull { it.client.id }.toSet()
+    entriesByClientId.forEach { (clientId, entry) ->
+      if (clientId !in existingClientIds) {
+        clientProductCodes.add(ProductClientCode(this, entry.first, entry.second))
+      }
+    }
+    transientEntries.forEach { (client, code) ->
+      clientProductCodes.add(ProductClientCode(this, client, code))
     }
   }
 

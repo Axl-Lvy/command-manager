@@ -56,4 +56,32 @@ class NumberSequenceServiceTest {
     val orderCodig = numberSequenceService.nextNumber(NumberSequenceService.ORDER_CODIG)
     assertThat(orderCodig).isEqualTo("CoD_PO_001")
   }
+
+  @Test
+  fun nextNumber_throws_for_unknown_entity_type() {
+    org.assertj.core.api.Assertions.assertThatThrownBy {
+        numberSequenceService.nextNumber("NO_SUCH_TYPE")
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  @Test
+  fun previewNextNumber_returns_next_without_advancing_sequence() {
+    val preview = numberSequenceService.previewNextNumber(NumberSequenceService.DELIVERY_NETSTONE)
+    val next = numberSequenceService.nextNumber(NumberSequenceService.DELIVERY_NETSTONE)
+    val secondPreview =
+      numberSequenceService.previewNextNumber(NumberSequenceService.DELIVERY_NETSTONE)
+
+    assertThat(preview).isEqualTo("Netst/OUT/001")
+    assertThat(next).isEqualTo(preview)
+    assertThat(secondPreview).isEqualTo("Netst/OUT/002")
+  }
+
+  @Test
+  fun previewNextNumber_throws_for_unknown_entity_type() {
+    org.assertj.core.api.Assertions.assertThatThrownBy {
+        numberSequenceService.previewNextNumber("NO_SUCH_TYPE")
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
 }
