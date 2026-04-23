@@ -591,6 +591,131 @@ class PdfServiceTest {
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
+  /**
+   * Delivery line with no product + sale line sharing only the designation. Exercises the
+   * designation-match fallback in DeliveryPdfLine.from.
+   */
+  @Test
+  fun generateDeliveryNetstonePdf_matches_sale_line_by_designation_when_no_product_on_delivery() {
+    val customer = clientRepository.save(Client("CLI-PDF-DSN", "Designation Match"))
+    val orderCodig =
+      orderCodigRepository.save(OrderCodig("COD-DSN", customer, LocalDate.of(2026, 6, 1)))
+    val salesCodig =
+      salesCodigRepository.save(
+        SalesCodig("SO-DSN", customer, LocalDate.of(2026, 6, 1)).apply {
+          this.orderCodig = orderCodig
+        }
+      )
+    val saleProduct = productRepository.save(Product("PRD-DSN", "Designation Widget"))
+    val saleLine =
+      DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, 0L, saleProduct.name).apply {
+        this.product = saleProduct
+        quantity = BigDecimal("42.00")
+        unit = "kg"
+        recalculate()
+      }
+    val sale =
+      salesNetstoneService.saveWithLines(SalesNetstone("NST-DSN", salesCodig), listOf(saleLine))
+    val order = orderNetstoneService.save(OrderNetstone("NST-PO-DSN", orderCodig))
+    val deliveryLine =
+      DocumentLine(DocumentLine.DocumentType.DELIVERY_NETSTONE, 0L, saleProduct.name).apply {
+        quantity = BigDecimal("30.00")
+        unit = "kg"
+        recalculate()
+      }
+    val savedDelivery =
+      deliveryNoteNetstoneService.saveWithLines(
+        DeliveryNoteNetstone("", order),
+        listOf(deliveryLine),
+      )
+
+    val text = extractText(pdfService.generateDeliveryNetstonePdf(savedDelivery.id!!))
+
+    assertThat(text).contains("Designation Widget")
+    assertThat(text).contains("42,00 kg")
+    assertThat(text).contains("30,00 kg")
+    assertThat(sale.id).isNotNull
+  }
+
+  /**
+   * Product has a client code for a client that is neither the CoDIG company nor the customer.
+   * Verifies the fallback to findFirstClientProductCode when no pc-client matches.
+   */
+  @Test
+  fun generateDeliveryNetstonePdf_falls_back_to_first_product_code_when_no_pc_client_matches() {
+    val unrelated = clientRepository.save(Client("CLI-UNREL", "Unrelated Ref Holder"))
+    val customer = clientRepository.save(Client("CLI-PDF-FB", "Fallback Customer"))
+    val orderCodig =
+      orderCodigRepository.save(OrderCodig("COD-FB", customer, LocalDate.of(2026, 7, 1)))
+    val product =
+      productRepository.save(
+        Product("PRD-FB", "Fallback Product").apply {
+          replaceClientProductCodes(listOf(unrelated to "PC-FALLBACK"))
+        }
+      )
+    productService.save(product)
+    val order = orderNetstoneService.save(OrderNetstone("NST-PO-FB", orderCodig))
+    val deliveryLine =
+      DocumentLine(DocumentLine.DocumentType.DELIVERY_NETSTONE, 0L, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("5.00")
+        unit = "kg"
+        recalculate()
+      }
+    val savedDelivery =
+      deliveryNoteNetstoneService.saveWithLines(
+        DeliveryNoteNetstone("", order),
+        listOf(deliveryLine),
+      )
+
+    val text = extractText(pdfService.generateDeliveryNetstonePdf(savedDelivery.id!!))
+
+    assertThat(text).contains("PC: PC-FALLBACK")
+  }
+
+  /**
+   * Codig delivery whose order has no linked sale. Exercises the `sale == null` branch and uses
+   * `order.clientReference` as the customer reference.
+   */
+  @Test
+  fun generateDeliveryCodigPdf_without_linked_sale_uses_order_client_reference() {
+    val customer = clientRepository.save(Client("CLI-CD-NOSALE", "Direct Customer"))
+    val orderCodig =
+      orderCodigRepository.save(
+        OrderCodig("COD-NO-SALE-2", customer, LocalDate.of(2026, 8, 1)).apply {
+          clientReference = "PO-DIRECT-123"
+          shippingAddress = "Dock 9\nRotterdam"
+        }
+      )
+    val product =
+      productRepository.save(
+        Product("PRD-CD-NS", "Direct Product").apply {
+          unit = "kg"
+          madeIn = "France"
+        }
+      )
+    val orderLine =
+      DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, orderCodig.id!!, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("10.00")
+        unit = "kg"
+        recalculate()
+      }
+    documentLineRepository.save(orderLine)
+    val delivery =
+      deliveryNoteCodigService.save(
+        DeliveryNoteCodig("", orderCodig, customer).apply {
+          shippingAddress = orderCodig.shippingAddress
+        }
+      )
+
+    val text = extractText(pdfService.generateDeliveryCodigPdf(delivery.id!!))
+
+    assertThat(text).contains("PO-DIRECT-123")
+    assertThat(text).contains("Direct Product")
+    assertThat(text).contains("10,00 kg")
+  }
+
   private fun extractText(bytes: ByteArray): String =
     PDDocument.load(ByteArrayInputStream(bytes)).use { doc -> PDFTextStripper().getText(doc) }
 

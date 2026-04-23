@@ -242,6 +242,50 @@ class ProductServiceTest {
   }
 
   @Test
+  fun service_findClientProductCode_returns_code_when_present_and_null_when_absent() {
+    val client = createClient("CLI-SVC-PC")
+    val other = createClient("CLI-SVC-OTHER")
+    val product = Product(name = "Svc Product")
+    product.replaceClientProductCodes(listOf(client to "SVC-001"))
+    productService.save(product)
+    productRepository.flush()
+
+    assertThat(productService.findClientProductCode(product.id!!, client.id!!)).isEqualTo("SVC-001")
+    assertThat(productService.findClientProductCode(product.id!!, other.id!!)).isNull()
+  }
+
+  @Test
+  fun service_findFirstClientProductCode_returns_first_or_null() {
+    val client = createClient("CLI-FIRST")
+    val productWithCode = Product(name = "With Code")
+    productWithCode.replaceClientProductCodes(listOf(client to "FIRST-001"))
+    productService.save(productWithCode)
+
+    val productWithout = Product(name = "Without Code")
+    productService.save(productWithout)
+    productRepository.flush()
+
+    assertThat(productService.findFirstClientProductCode(productWithCode.id!!))
+      .isEqualTo("FIRST-001")
+    assertThat(productService.findFirstClientProductCode(productWithout.id!!)).isNull()
+  }
+
+  @Test
+  fun archive_and_delete_execute_without_error() {
+    val product = productService.save(Product(name = "To Archive"))
+    productRepository.flush()
+
+    productService.archive(product.id!!)
+    productService.delete(product.id!!)
+  }
+
+  @Test
+  fun archive_and_delete_ignore_unknown_ids() {
+    productService.archive(-99L)
+    productService.delete(-99L)
+  }
+
+  @Test
   fun validateOnUpdate_resets_mto_for_service() {
     val product = Product("REF-UPD", "Service Update")
     product.type = Product.ProductType.PRODUCT
