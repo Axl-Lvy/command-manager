@@ -431,6 +431,166 @@ class PdfServiceTest {
     assertThat(text).contains("LOT : LOT-CODIG")
   }
 
+  /**
+   * No uploaded logo and no classpath logo → generated wordmark fallback still renders an image.
+   */
+  @Test
+  fun generatePdf_falls_back_to_generated_logo_when_no_uploaded_logo() {
+    clientService.findDefaultCodigSupplier().orElseThrow().logoData = null
+    val client = clientRepository.save(Client("CLI-PDF-NOLOGO", "No Logo Client"))
+    val orderCodig = orderCodigRepository.save(OrderCodig("CA-PDF-NOLOGO", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    val imageCount = countImages(pdfService.generateOrderNetstonePdf(saved.id!!))
+
+    assertThat(imageCount).isGreaterThan(0)
+  }
+
+  /** Malformed base64 payload → normalization fails → fallback renders. */
+  @Test
+  fun generatePdf_falls_back_when_logo_is_invalid_base64() {
+    clientService.findDefaultCodigSupplier().orElseThrow().logoData =
+      "data:image/png;base64,!!!not-valid-base64!!!"
+    val client = clientRepository.save(Client("CLI-PDF-BADB64", "Bad Base64 Client"))
+    val orderCodig = orderCodigRepository.save(OrderCodig("CA-PDF-BADB64", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    assertThat(countImages(pdfService.generateOrderNetstonePdf(saved.id!!))).isGreaterThan(0)
+  }
+
+  /** Missing `;base64,` marker → normalization rejects → fallback renders. */
+  @Test
+  fun generatePdf_falls_back_when_logo_has_no_base64_marker() {
+    clientService.findDefaultCodigSupplier().orElseThrow().logoData = "data:image/png,abcdef"
+    val client = clientRepository.save(Client("CLI-PDF-NOMARK", "No Marker Client"))
+    val orderCodig = orderCodigRepository.save(OrderCodig("CA-PDF-NOMARK", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    assertThat(countImages(pdfService.generateOrderNetstonePdf(saved.id!!))).isGreaterThan(0)
+  }
+
+  /** Missing `data:` prefix → normalization rejects → fallback renders. */
+  @Test
+  fun generatePdf_falls_back_when_logo_has_no_data_prefix() {
+    clientService.findDefaultCodigSupplier().orElseThrow().logoData =
+      "image/png;base64,iVBORw0KGgo="
+    val client = clientRepository.save(Client("CLI-PDF-NODP", "No Data Prefix Client"))
+    val orderCodig = orderCodigRepository.save(OrderCodig("CA-PDF-NODP", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    assertThat(countImages(pdfService.generateOrderNetstonePdf(saved.id!!))).isGreaterThan(0)
+  }
+
+  /**
+   * Unknown magic bytes AND unknown declared content type → normalization rejects → fallback
+   * renders.
+   */
+  @Test
+  fun generatePdf_falls_back_when_logo_format_is_unknown() {
+    val gibberish =
+      java.util.Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8))
+    clientService.findDefaultCodigSupplier().orElseThrow().logoData =
+      "data:image/webp;base64,$gibberish"
+    val client = clientRepository.save(Client("CLI-PDF-UNKN", "Unknown Format Client"))
+    val orderCodig = orderCodigRepository.save(OrderCodig("CA-PDF-UNKN", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    assertThat(countImages(pdfService.generateOrderNetstonePdf(saved.id!!))).isGreaterThan(0)
+  }
+
+  /**
+   * `image/jpg` is a common but non-standard content type. Verify it normalizes to `image/jpeg`.
+   */
+  @Test
+  fun generatePdf_accepts_declared_image_jpg_content_type() {
+    val jpegOut = java.io.ByteArrayOutputStream()
+    val img = java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_RGB)
+    javax.imageio.ImageIO.write(img, "jpg", jpegOut)
+    val encoded = java.util.Base64.getEncoder().encodeToString(jpegOut.toByteArray())
+    clientService.findDefaultCodigSupplier().orElseThrow().logoData =
+      "data:image/jpg;base64,$encoded"
+    val client = clientRepository.save(Client("CLI-PDF-JPG", "Jpg Client"))
+    val orderCodig = orderCodigRepository.save(OrderCodig("CA-PDF-JPG", client, LocalDate.now()))
+    val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), emptyList())
+
+    assertThat(countImages(pdfService.generateOrderNetstonePdf(saved.id!!))).isGreaterThan(0)
+  }
+
+  /** Uncommon currency codes pass through as-is; known codes render their symbol. */
+  @Test
+  fun generatePdf_renders_various_currency_symbols() {
+    listOf("EUR" to "€", "USD" to "$", "GBP" to "£", "CNY" to "¥", "RMB" to "¥", "JPY" to "JPY")
+      .forEachIndexed { index, (code, expected) ->
+        val client = clientRepository.save(Client("CLI-PDF-CUR-$index", "Currency Client $code"))
+        val orderCodig =
+          orderCodigRepository.save(
+            OrderCodig("CA-PDF-CUR-$index", client, LocalDate.now()).apply { currency = code }
+          )
+        val line =
+          DocumentLine(DocumentLine.DocumentType.ORDER_NETSTONE, 0L, "Item").apply {
+            quantity = BigDecimal.ONE
+            unitPriceExclTax = BigDecimal("42.00")
+            vatRate = BigDecimal.ZERO
+            discountPercent = BigDecimal.ZERO
+            recalculate()
+          }
+        val saved = orderNetstoneService.saveWithLines(OrderNetstone("", orderCodig), listOf(line))
+
+        val text = extractText(pdfService.generateOrderNetstonePdf(saved.id!!))
+
+        assertThat(text).contains(expected)
+      }
+  }
+
+  /** Null incoterm + null location should render without error and without stray separator. */
+  @Test
+  fun generateDeliveryCodigPdf_handles_missing_incoterm_and_sale() {
+    val customer = clientRepository.save(Client("CLI-PDF-NOSALE", "No Sale Customer"))
+    val orderCodig =
+      orderCodigRepository.save(
+        OrderCodig("COD-NO-SALE", customer, LocalDate.of(2026, 4, 1)).apply {
+          clientReference = "PO-DIRECT-42"
+          shippingAddress = "Dock 7\nHamburg"
+        }
+      )
+    val delivery =
+      deliveryNoteCodigService.save(
+        DeliveryNoteCodig("", orderCodig, customer).apply {
+          shippingAddress = orderCodig.shippingAddress
+          arrivalDate = LocalDate.of(2026, 4, 15)
+        }
+      )
+
+    val text = extractText(pdfService.generateDeliveryCodigPdf(delivery.id!!))
+
+    assertThat(text).contains(delivery.deliveryNoteNumber)
+    assertThat(text).contains("Dock 7")
+    assertThat(text).contains("PO-DIRECT-42")
+  }
+
+  /** Unknown note id → IllegalArgumentException. */
+  @Test
+  fun generateDeliveryNetstonePdf_throws_for_unknown_note() {
+    org.assertj.core.api.Assertions.assertThatThrownBy {
+        pdfService.generateDeliveryNetstonePdf(-1L)
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  /** Unknown note id → IllegalArgumentException. */
+  @Test
+  fun generateDeliveryCodigPdf_throws_for_unknown_note() {
+    org.assertj.core.api.Assertions.assertThatThrownBy { pdfService.generateDeliveryCodigPdf(-1L) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  /** Unknown order id → IllegalArgumentException. */
+  @Test
+  fun generateOrderNetstonePdf_throws_for_unknown_order() {
+    org.assertj.core.api.Assertions.assertThatThrownBy { pdfService.generateOrderNetstonePdf(-1L) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
   private fun extractText(bytes: ByteArray): String =
     PDDocument.load(ByteArrayInputStream(bytes)).use { doc -> PDFTextStripper().getText(doc) }
 
