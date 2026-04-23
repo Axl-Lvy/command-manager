@@ -3,11 +3,14 @@ package fr.axl.lvy.pdf
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.delivery.DeliveryNoteCodigService
 import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.sale.SalesNetstoneService
 import java.awt.Color
 import java.awt.Font
@@ -28,8 +31,11 @@ import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 /** Generates PDF documents from Thymeleaf templates for business objects. */
 @Service
 class PdfService(
+  private val orderCodigService: OrderCodigService,
   private val orderNetstoneService: OrderNetstoneService,
+  private val deliveryNoteCodigService: DeliveryNoteCodigService,
   private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
+  private val salesCodigService: SalesCodigService,
   private val salesNetstoneService: SalesNetstoneService,
   private val productService: ProductService,
   private val documentLineRepository: DocumentLineRepository,
@@ -144,6 +150,51 @@ class PdfService(
     ctx.setVariable("incotermText", incotermText(order.incoterms, order.incotermLocation))
 
     val html = templateEngine.process("delivery-netstone", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
+  /**
+   * Generates a PDF for a Codig delivery note. The Codig sale provides the customer reference and
+   * ordered quantities; the delivery note carries delivered quantities and logistics references.
+   */
+  @Transactional(readOnly = true)
+  fun generateDeliveryCodigPdf(noteId: Long): ByteArray {
+    val note =
+      deliveryNoteCodigService.findById(noteId).orElseThrow {
+        IllegalArgumentException("DeliveryNoteCodig $noteId not found")
+      }
+    val order = orderCodigService.findDetailedById(note.orderCodig.id!!).orElse(note.orderCodig)
+    val sale = order.id?.let { salesCodigService.findByOrderCodigId(it).orElse(null) }
+    val deliveryLines =
+      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+        DocumentLine.DocumentType.ORDER_CODIG,
+        order.id!!,
+      )
+    val saleLines = sale?.id?.let { salesCodigService.findLines(it) } ?: emptyList()
+    val ownCompany = clientService.findDefaultCodigCompany().orElse(null)
+    val pcClients = listOf(order.client)
+    val deliveryPdfLines =
+      deliveryLines.map { line -> DeliveryPdfLine.from(line, saleLines, pcClients, productService) }
+
+    val ctx = Context()
+    ctx.setVariable("note", note)
+    ctx.setVariable("order", order)
+    ctx.setVariable("sale", sale)
+    ctx.setVariable("lines", deliveryPdfLines)
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("deliveryAddressLines", note.shippingAddress?.lines() ?: emptyList<String>())
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+    ctx.setVariable("incotermText", incotermText(order.incoterms, order.incotermLocation))
+    ctx.setVariable("customerReference", sale?.clientReference ?: order.clientReference ?: "")
+
+    val html = templateEngine.process("delivery-codig", ctx)
 
     val out = ByteArrayOutputStream()
     PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()

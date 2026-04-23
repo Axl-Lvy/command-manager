@@ -34,7 +34,7 @@ class DeliveryNoteCodigServiceTest {
     val note = DeliveryNoteCodig("", order, client)
     val saved = deliveryNoteCodigService.save(note)
 
-    assertThat(saved.deliveryNoteNumber).startsWith("BL-")
+    assertThat(saved.deliveryNoteNumber).startsWith("CoD/OUT/")
     assertThat(saved.id).isNotNull
     val reloadedOrder = orderCodigRepository.findById(order.id!!).orElseThrow()
     assertThat(reloadedOrder.deliveryNote!!.id).isEqualTo(saved.id)

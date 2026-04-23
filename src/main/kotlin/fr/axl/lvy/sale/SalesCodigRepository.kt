@@ -36,5 +36,15 @@ interface SalesCodigRepository : JpaRepository<SalesCodig, Long> {
   )
   fun findDetailedById(id: Long): SalesCodig?
 
+  @Query(
+    """
+      SELECT s
+      FROM SalesCodig s
+      LEFT JOIN FETCH s.client
+      LEFT JOIN FETCH s.orderCodig o
+      WHERE o.id = :orderCodigId
+        AND s.deletedAt IS NULL
+    """
+  )
   fun findByOrderCodigId(orderCodigId: Long): SalesCodig?
 }

@@ -4,13 +4,17 @@ import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.delivery.DeliveryNoteCodig
+import fr.axl.lvy.delivery.DeliveryNoteCodigService
 import fr.axl.lvy.delivery.DeliveryNoteNetstone
 import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.documentline.DocumentLine
+import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.fiscalposition.FiscalPositionRepository
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
+import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.product.Product
@@ -18,6 +22,7 @@ import fr.axl.lvy.product.ProductRepository
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigRepository
+import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.sale.SalesNetstone
 import fr.axl.lvy.sale.SalesNetstoneService
 import fr.axl.lvy.user.User
@@ -41,13 +46,17 @@ import org.springframework.transaction.annotation.Transactional
 class PdfServiceTest {
 
   @Autowired lateinit var pdfService: PdfService
+  @Autowired lateinit var orderCodigService: OrderCodigService
   @Autowired lateinit var orderNetstoneService: OrderNetstoneService
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
   @Autowired lateinit var clientRepository: ClientRepository
   @Autowired lateinit var clientService: ClientService
   @Autowired lateinit var fiscalPositionRepository: FiscalPositionRepository
+  @Autowired lateinit var deliveryNoteCodigService: DeliveryNoteCodigService
   @Autowired lateinit var deliveryNoteNetstoneService: DeliveryNoteNetstoneService
+  @Autowired lateinit var documentLineRepository: DocumentLineRepository
   @Autowired lateinit var salesCodigRepository: SalesCodigRepository
+  @Autowired lateinit var salesCodigService: SalesCodigService
   @Autowired lateinit var salesNetstoneService: SalesNetstoneService
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var productService: ProductService
@@ -303,6 +312,123 @@ class PdfServiceTest {
     assertThat(text).doesNotContain("N° de conteneur")
     assertThat(text).contains("SEALS : SEAL-99")
     assertThat(text).contains("LOT : LOT-A")
+  }
+
+  /** Verifies the Codig delivery note PDF uses the customer delivery address and client PO ref. */
+  @Test
+  fun generateCodigDeliveryPdf_renders_customer_delivery_and_client_reference() {
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-CODIG-DLV", "CoDIG SAS").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = "12 rue de Paris\n75001 Paris\nFrance"
+    codigCompany.vatNumber = "FRCODIG123"
+    codigCompany.logoData = sampleLogoData
+    clientService.save(codigCompany)
+
+    val customer =
+      clientRepository.save(
+        Client("CLI-PDF-CODIG-CUST", "Customer Delivery").apply {
+          billingAddress = "1 Buyer Road\nLondon"
+        }
+      )
+    val orderCodig =
+      orderCodigRepository.save(
+        OrderCodig("COD-ORDER-PDF", customer, LocalDate.of(2026, 3, 1)).apply {
+          clientReference = "PO-CUSTOMER-777"
+          shippingAddress = "Customer Warehouse\nRotterdam\nNetherlands"
+          incoterms = "DAP"
+          incotermLocation = "Rotterdam"
+        }
+      )
+    val sale =
+      salesCodigRepository.save(
+        SalesCodig("cod_SO_001", customer, LocalDate.of(2026, 3, 1)).apply {
+          this.orderCodig = orderCodig
+          clientReference = "PO-CUSTOMER-777"
+          shippingAddress = orderCodig.shippingAddress
+          incoterms = orderCodig.incoterms
+          incotermLocation = orderCodig.incotermLocation
+        }
+      )
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-CODIG-DLV", "SODIUM GLUCONATE").apply {
+          unit = "kg"
+          hsCode = "291816"
+          madeIn = "China"
+          specifications = "Technical grade"
+        }
+      )
+    product.replaceClientProductCodes(listOf(customer to "PC-CODIG-001"))
+    productService.save(product)
+
+    val saleLine =
+      DocumentLine(DocumentLine.DocumentType.SALES_CODIG, 0L, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("50.00")
+        unit = "kg"
+        hsCode = product.hsCode
+        madeIn = product.madeIn
+        recalculate()
+      }
+    documentLineRepository.save(
+      DocumentLine(DocumentLine.DocumentType.SALES_CODIG, sale.id!!, saleLine.designation).apply {
+        copyFieldsFrom(saleLine)
+      }
+    )
+    salesCodigRepository.flush()
+    val orderLine =
+      DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, 0L, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("50.00")
+        unit = "kg"
+        hsCode = product.hsCode
+        madeIn = product.madeIn
+        recalculate()
+      }
+    documentLineRepository.save(
+      DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, orderCodig.id!!, orderLine.designation)
+        .apply { copyFieldsFrom(orderLine) }
+    )
+    val delivery =
+      deliveryNoteCodigService.save(
+        DeliveryNoteCodig("", orderCodig, customer).apply {
+          shippingAddress = orderCodig.shippingAddress
+          arrivalDate = LocalDate.of(2026, 5, 8)
+          billOfLading = "BL-CODIG-001"
+          containerNumber = "CONT-CODIG"
+          seals = "SEAL-CODIG"
+          lot = "LOT-CODIG"
+        }
+      )
+
+    val text = extractText(pdfService.generateDeliveryCodigPdf(delivery.id!!))
+
+    assertThat(text).contains(delivery.deliveryNoteNumber)
+    assertThat(text).contains("TVA: FRCODIG123")
+    assertThat(text).contains("DELIVERY ADDRESS:")
+    assertThat(text).contains("Customer Warehouse")
+    assertThat(text).doesNotContain("CUSTOMER ADDRESS:")
+    assertThat(text).contains("cod_SO_001")
+    assertThat(text).contains("08/05/2026")
+    assertThat(text).contains("PO-CUSTOMER-777")
+    assertThat(text).contains("DAP Rotterdam")
+    assertThat(text).contains("SODIUM GLUCONATE")
+    assertThat(text).contains("50,00 kg")
+    assertThat(text).contains("PO : PO-CUSTOMER-777 / DAP Rotterdam / Made in : China")
+    assertThat(text).contains("Technical grade")
+    assertThat(text).contains("PC: PC-CODIG-001")
+    assertThat(text).contains("HS CODE : 291816")
+    assertThat(text).contains("BL : BL-CODIG-001 / CONT-CODIG")
+    assertThat(text).contains("SEALS : SEAL-CODIG")
+    assertThat(text).contains("LOT : LOT-CODIG")
   }
 
   private fun extractText(bytes: ByteArray): String =

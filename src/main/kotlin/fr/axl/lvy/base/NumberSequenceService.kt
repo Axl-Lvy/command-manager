@@ -62,7 +62,7 @@ class NumberSequenceService(
         ORDER_NETSTONE to SequenceConfig("NST_PO_", 3),
         SALES_CODIG to SequenceConfig("CoD_SO_", 3),
         SALES_NETSTONE to SequenceConfig("NST_SO_", 3),
-        DELIVERY_CODIG to SequenceConfig("BL-", 6),
+        DELIVERY_CODIG to SequenceConfig("CoD/OUT/", 3),
         DELIVERY_NETSTONE to SequenceConfig("Netst/OUT/", 3),
       )
   }

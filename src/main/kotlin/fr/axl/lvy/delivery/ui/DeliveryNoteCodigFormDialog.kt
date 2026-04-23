@@ -2,38 +2,43 @@ package fr.axl.lvy.delivery.ui
 
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
-import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
+import com.vaadin.flow.component.html.Anchor
 import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
-import com.vaadin.flow.component.textfield.IntegerField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import com.vaadin.flow.server.StreamResource
 import fr.axl.lvy.delivery.DeliveryNoteCodig
 import fr.axl.lvy.delivery.DeliveryNoteCodigService
+import fr.axl.lvy.delivery.DeliveryNoteNetstone
 import fr.axl.lvy.order.OrderCodig
+import fr.axl.lvy.pdf.PdfService
 
 internal class DeliveryNoteCodigFormDialog(
   private val deliveryNoteCodigService: DeliveryNoteCodigService,
+  private val pdfService: PdfService,
   private val orderCodig: OrderCodig,
+  private val saleNumber: String,
+  private val clientReference: String?,
+  private val netstoneDeliveryNote: DeliveryNoteNetstone?,
   private val note: DeliveryNoteCodig?,
   private val onSave: Runnable,
 ) : Dialog() {
 
   private val noteNumber = TextField("N° Livraison")
-  private val status = ComboBox<DeliveryNoteCodig.DeliveryNoteCodigStatus>("Statut")
-  private val shippingDate = DatePicker("Date expédition")
-  private val deliveryDate = DatePicker("Date livraison")
+  private val saleDocumentNumber = TextField("Vente CoDIG")
+  private val customerReference = TextField("Réf. client")
   private val shippingAddress = TextArea("Adresse livraison")
-  private val carrier = TextField("Transporteur")
-  private val trackingNumber = TextField("N° suivi")
-  private val packageCount = IntegerField("Nombre de colis")
-  private val signedBy = TextField("Signé par")
-  private val signatureDate = DatePicker("Date signature")
+  private val arrivalDate = DatePicker("Date arrivée")
+  private val containerNumber = TextField("N° conteneur")
+  private val billOfLading = TextField("BL")
+  private val lot = TextField("Lot")
+  private val seals = TextField("Scellés")
   private val observations = TextArea("Observations")
 
   init {
@@ -41,24 +46,19 @@ internal class DeliveryNoteCodigFormDialog(
     width = "760px"
 
     noteNumber.isReadOnly = true
-    status.setItems(*DeliveryNoteCodig.DeliveryNoteCodigStatus.entries.toTypedArray())
-    status.setItemLabelGenerator {
-      when (it) {
-        DeliveryNoteCodig.DeliveryNoteCodigStatus.PREPARED -> "Préparée"
-        DeliveryNoteCodig.DeliveryNoteCodigStatus.SHIPPED -> "Expédiée"
-        DeliveryNoteCodig.DeliveryNoteCodigStatus.DELIVERED -> "Livrée"
-        DeliveryNoteCodig.DeliveryNoteCodigStatus.INCIDENT -> "Incident"
-      }
-    }
+    saleDocumentNumber.isReadOnly = true
+    saleDocumentNumber.value = saleNumber
+    customerReference.isReadOnly = true
+    customerReference.value = clientReference ?: ""
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
-    form.add(noteNumber, status)
-    form.add(shippingDate, deliveryDate)
-    form.add(carrier, trackingNumber)
-    form.add(packageCount, signedBy)
-    form.add(signatureDate)
+    form.add(noteNumber, saleDocumentNumber)
+    form.add(customerReference, 2)
     form.add(shippingAddress, 2)
+    form.add(arrivalDate, containerNumber)
+    form.add(billOfLading, lot)
+    form.add(seals)
     form.add(observations, 2)
 
     add(VerticalLayout(form).apply { isPadding = false })
@@ -66,42 +66,72 @@ internal class DeliveryNoteCodigFormDialog(
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
     val cancelBtn = Button("Annuler") { close() }
-    footer.add(HorizontalLayout(saveBtn, cancelBtn))
+    val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
+    if (note?.id != null) {
+      val pdfResource =
+        StreamResource("${note.deliveryNoteNumber.replace("/", "_")}.pdf") {
+            pdfService.generateDeliveryCodigPdf(note.id!!).inputStream()
+          }
+          .apply { cacheTime = 0 }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink =
+        Anchor(pdfResource, "").apply {
+          element.setAttribute("download", true)
+          add(pdfBtn)
+        }
+      footerLayout.add(pdfLink)
+    }
+    footer.add(footerLayout)
 
     if (note != null) {
       populateForm(note)
     } else {
       noteNumber.value = "(auto)"
-      status.value = DeliveryNoteCodig.DeliveryNoteCodigStatus.PREPARED
       shippingAddress.value = orderCodig.shippingAddress ?: ""
+      populateLogisticsFromNetstone()
     }
   }
 
   private fun populateForm(note: DeliveryNoteCodig) {
     noteNumber.value = note.deliveryNoteNumber
-    status.value = note.status
-    shippingDate.value = note.shippingDate
-    deliveryDate.value = note.deliveryDate
     shippingAddress.value = note.shippingAddress ?: ""
-    carrier.value = note.carrier ?: ""
-    trackingNumber.value = note.trackingNumber ?: ""
-    packageCount.value = note.packageCount
-    signedBy.value = note.signedBy ?: ""
-    signatureDate.value = note.signatureDate
+    arrivalDate.value = note.arrivalDate
+    containerNumber.value = note.containerNumber ?: ""
+    billOfLading.value = note.billOfLading ?: ""
+    lot.value = note.lot ?: ""
+    seals.value = note.seals ?: ""
     observations.value = note.observations ?: ""
+    populateMissingLogisticsFromNetstone(note)
+  }
+
+  private fun populateLogisticsFromNetstone() {
+    arrivalDate.value = netstoneDeliveryNote?.arrivalDate
+    containerNumber.value = netstoneDeliveryNote?.containerNumber ?: ""
+    billOfLading.value = netstoneDeliveryNote?.billOfLading ?: ""
+    lot.value = netstoneDeliveryNote?.lot ?: ""
+    seals.value = netstoneDeliveryNote?.seals ?: ""
+  }
+
+  private fun populateMissingLogisticsFromNetstone(note: DeliveryNoteCodig) {
+    if (note.arrivalDate == null) arrivalDate.value = netstoneDeliveryNote?.arrivalDate
+    if (note.containerNumber.isNullOrBlank()) {
+      containerNumber.value = netstoneDeliveryNote?.containerNumber ?: ""
+    }
+    if (note.billOfLading.isNullOrBlank()) {
+      billOfLading.value = netstoneDeliveryNote?.billOfLading ?: ""
+    }
+    if (note.lot.isNullOrBlank()) lot.value = netstoneDeliveryNote?.lot ?: ""
+    if (note.seals.isNullOrBlank()) seals.value = netstoneDeliveryNote?.seals ?: ""
   }
 
   private fun save() {
     val deliveryNote = note ?: DeliveryNoteCodig("", orderCodig, orderCodig.client)
-    deliveryNote.status = status.value ?: DeliveryNoteCodig.DeliveryNoteCodigStatus.PREPARED
-    deliveryNote.shippingDate = shippingDate.value
-    deliveryNote.deliveryDate = deliveryDate.value
     deliveryNote.shippingAddress = shippingAddress.value.takeIf { it.isNotBlank() }
-    deliveryNote.carrier = carrier.value.takeIf { it.isNotBlank() }
-    deliveryNote.trackingNumber = trackingNumber.value.takeIf { it.isNotBlank() }
-    deliveryNote.packageCount = packageCount.value
-    deliveryNote.signedBy = signedBy.value.takeIf { it.isNotBlank() }
-    deliveryNote.signatureDate = signatureDate.value
+    deliveryNote.arrivalDate = arrivalDate.value
+    deliveryNote.containerNumber = containerNumber.value.takeIf { it.isNotBlank() }
+    deliveryNote.billOfLading = billOfLading.value.takeIf { it.isNotBlank() }
+    deliveryNote.lot = lot.value.takeIf { it.isNotBlank() }
+    deliveryNote.seals = seals.value.takeIf { it.isNotBlank() }
     deliveryNote.observations = observations.value.takeIf { it.isNotBlank() }
 
     val saved = deliveryNoteCodigService.save(deliveryNote)
