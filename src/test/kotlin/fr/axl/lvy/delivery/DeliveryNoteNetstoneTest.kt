@@ -2,10 +2,13 @@ package fr.axl.lvy.delivery
 
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientRepository
+import fr.axl.lvy.documentline.DocumentLine
+import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneRepository
+import java.math.BigDecimal
 import java.time.LocalDate
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -21,6 +24,8 @@ class DeliveryNoteNetstoneTest {
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
   @Autowired lateinit var orderNetstoneRepository: OrderNetstoneRepository
   @Autowired lateinit var clientRepository: ClientRepository
+  @Autowired lateinit var deliveryNoteNetstoneService: DeliveryNoteNetstoneService
+  @Autowired lateinit var documentLineRepository: DocumentLineRepository
 
   private fun createOrderNetstone(number: String): OrderNetstone {
     val client = clientRepository.save(Client("CLI-DB-$number", "Client"))
@@ -34,6 +39,7 @@ class DeliveryNoteNetstoneTest {
     val orderNetstone = createOrderNetstone("CB-DB-01")
     val note = DeliveryNoteNetstone("BLB-2026-0001", orderNetstone)
     note.containerNumber = "CONT-001"
+    note.billOfLading = "BL-001"
     note.lot = "LOT-A"
     note.seals = "SEAL-123"
     deliveryNoteNetstoneRepository.save(note)
@@ -42,6 +48,7 @@ class DeliveryNoteNetstoneTest {
     assertThat(found).isPresent
     assertThat(found.get().deliveryNoteNumber).isEqualTo("BLB-2026-0001")
     assertThat(found.get().containerNumber).isEqualTo("CONT-001")
+    assertThat(found.get().billOfLading).isEqualTo("BL-001")
     assertThat(found.get().lot).isEqualTo("LOT-A")
     assertThat(found.get().seals).isEqualTo("SEAL-123")
   }
@@ -126,5 +133,48 @@ class DeliveryNoteNetstoneTest {
     assertThat(found.arrivalDate).isEqualTo(LocalDate.of(2026, 3, 20))
     assertThat(found.pdfPath).isEqualTo("/documents/blb-001.pdf")
     assertThat(found.observations).isEqualTo("Fragile cargo")
+  }
+
+  @Test
+  fun saveWithLines_generates_netstone_out_number_and_delivery_lines() {
+    val orderNetstone = createOrderNetstone("CB-DB-08")
+    val line =
+      DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, 0L, "Delivered product").apply {
+        quantity = BigDecimal("12.50")
+        unit = "kg"
+        recalculate()
+      }
+
+    val saved =
+      deliveryNoteNetstoneService.saveWithLines(
+        DeliveryNoteNetstone("", orderNetstone),
+        listOf(line),
+      )
+
+    assertThat(saved.deliveryNoteNumber).startsWith("Netst/OUT/")
+    assertThat(deliveryNoteNetstoneService.findByOrderNetstoneId(orderNetstone.id!!)?.id)
+      .isEqualTo(saved.id)
+    val lines =
+      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+        DocumentLine.DocumentType.DELIVERY_NETSTONE,
+        saved.id!!,
+      )
+    assertThat(lines).hasSize(1)
+    assertThat(lines.first().designation).isEqualTo("Delivered product")
+    assertThat(lines.first().quantity).isEqualByComparingTo("12.50")
+  }
+
+  @Test
+  fun previewNextDeliveryNoteNumber_does_not_create_delivery_before_save() {
+    val orderNetstone = createOrderNetstone("CB-DB-09")
+
+    val preview = deliveryNoteNetstoneService.previewNextDeliveryNoteNumber()
+
+    assertThat(preview).startsWith("Netst/OUT/")
+    assertThat(deliveryNoteNetstoneRepository.findByDeletedAtIsNull()).isEmpty()
+
+    val saved = deliveryNoteNetstoneService.save(DeliveryNoteNetstone("", orderNetstone))
+
+    assertThat(saved.deliveryNoteNumber).isEqualTo(preview)
   }
 }

@@ -4,6 +4,9 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.button.ButtonVariant
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.grid.GridVariant
+import com.vaadin.flow.component.notification.Notification
+import com.vaadin.flow.component.notification.NotificationVariant
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
@@ -11,6 +14,8 @@ import com.vaadin.flow.router.Route
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.base.ui.initAsListContainer
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
+import fr.axl.lvy.delivery.ui.DeliveryNoteNetstoneFormDialog
 import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderCodigService
@@ -31,6 +36,7 @@ import fr.axl.lvy.sale.SalesNetstoneService
 internal class SalesNetstoneListView(
   private val salesNetstoneService: SalesNetstoneService,
   private val orderNetstoneService: OrderNetstoneService,
+  private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
   private val clientService: ClientService,
   private val salesCodigService: SalesCodigService,
   private val incotermService: IncotermService,
@@ -64,6 +70,20 @@ internal class SalesNetstoneListView(
     grid.addColumn(SalesNetstone::totalExclTax).setHeader("Total HT").setAutoWidth(true)
     grid.addColumn(SalesNetstone::totalInclTax).setHeader("Total TTC").setAutoWidth(true)
     grid.addColumn { it.status.name }.setHeader("Statut").setAutoWidth(true)
+    grid
+      .addComponentColumn { sale ->
+        val viewButton = Button("Ouvrir") { openForm(sale) }
+        viewButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY)
+        val deliveryButton = Button("Livraison") { openDeliveryForm(sale) }
+        deliveryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
+        deliveryButton.isEnabled = sale.orderNetstone != null
+        HorizontalLayout(viewButton, deliveryButton).apply {
+          isPadding = false
+          isSpacing = true
+        }
+      }
+      .setHeader("Actions")
+      .setAutoWidth(true)
     grid.setEmptyStateText("Aucune vente Netstone")
     grid.setSizeFull()
     grid.addThemeVariants(GridVariant.LUMO_NO_BORDER)
@@ -198,6 +218,39 @@ internal class SalesNetstoneListView(
     val linkedSale =
       order.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) } ?: return
     openForm(linkedSale)
+  }
+
+  private fun openDeliveryForm(sale: SalesNetstone) {
+    val loadedSale = sale.id?.let { salesNetstoneService.findDetailedById(it).orElse(sale) } ?: sale
+    val linkedOrder = loadedSale.orderNetstone
+    if (linkedOrder?.id == null) {
+      Notification.show(
+          "Générez d'abord la commande Netstone liée",
+          4000,
+          Notification.Position.BOTTOM_END,
+        )
+        .addThemeVariants(NotificationVariant.LUMO_ERROR)
+      return
+    }
+    val orderNetstone = orderNetstoneService.findDetailedById(linkedOrder.id!!).orElse(linkedOrder)
+    val deliveryNote = deliveryNoteNetstoneService.findByOrderNetstoneId(orderNetstone.id!!)
+    val initialLines =
+      deliveryNote?.id?.let { deliveryNoteNetstoneService.findLines(it) }
+        ?: loadedSale.id?.let { salesNetstoneService.findLines(it) }
+        ?: emptyList()
+
+    DeliveryNoteNetstoneFormDialog(
+        deliveryNoteNetstoneService,
+        productService,
+        pdfService,
+        orderNetstone,
+        loadedSale.saleNumber,
+        loadedSale.shippingAddress,
+        deliveryNote,
+        initialLines,
+        this::refreshGrid,
+      )
+      .open()
   }
 
   private fun refreshGrid() {

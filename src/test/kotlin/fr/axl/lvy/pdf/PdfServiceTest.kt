@@ -4,6 +4,8 @@ import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.delivery.DeliveryNoteNetstone
+import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.fiscalposition.FiscalPositionRepository
@@ -11,6 +13,13 @@ import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
+import fr.axl.lvy.product.Product
+import fr.axl.lvy.product.ProductRepository
+import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesCodig
+import fr.axl.lvy.sale.SalesCodigRepository
+import fr.axl.lvy.sale.SalesNetstone
+import fr.axl.lvy.sale.SalesNetstoneService
 import fr.axl.lvy.user.User
 import java.io.ByteArrayInputStream
 import java.math.BigDecimal
@@ -37,6 +46,11 @@ class PdfServiceTest {
   @Autowired lateinit var clientRepository: ClientRepository
   @Autowired lateinit var clientService: ClientService
   @Autowired lateinit var fiscalPositionRepository: FiscalPositionRepository
+  @Autowired lateinit var deliveryNoteNetstoneService: DeliveryNoteNetstoneService
+  @Autowired lateinit var salesCodigRepository: SalesCodigRepository
+  @Autowired lateinit var salesNetstoneService: SalesNetstoneService
+  @Autowired lateinit var productRepository: ProductRepository
+  @Autowired lateinit var productService: ProductService
   @Autowired lateinit var testData: TestDataFactory
 
   private val sampleLogoData =
@@ -178,6 +192,117 @@ class PdfServiceTest {
     assertThat(text).contains("Import/Export Hors Europe")
     assertThat(text).contains("One batch per pallet")
     assertThat(text).contains("Supplier note line AND INSURANCE")
+  }
+
+  /** Verifies the delivery note PDF renders the Netstone delivery-specific logistics fields. */
+  @Test
+  fun generateDeliveryPdf_renders_delivery_note_sections() {
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-CODIG", "CoDIG SAS").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = "12 rue de Paris\n75001 Paris\nFrance"
+    codigCompany.vatNumber = "FR12345678901"
+    clientService.save(codigCompany)
+
+    val customer = clientRepository.save(Client("CLI-PDF-DEL-CUST", "Final Customer"))
+    val orderCodig =
+      orderCodigRepository.save(
+        OrderCodig("Cod_PO_001", customer, LocalDate.of(2026, 2, 10)).apply { currency = "USD" }
+      )
+    val salesCodig =
+      salesCodigRepository.save(
+        SalesCodig("SO-CODIG-PDF", customer, LocalDate.of(2026, 2, 10)).apply {
+          this.orderCodig = orderCodig
+          shippingAddress = "Warehouse A\nLe Havre\nFrance"
+        }
+      )
+    val sale =
+      SalesNetstone("NST_SO_001", salesCodig).apply {
+        shippingAddress = "Warehouse A\nLe Havre\nFrance"
+        incoterms = "CFR"
+        incotermLocation = "Le Havre"
+      }
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-DEL", "N-METHYLGLUCAMINE").apply {
+          unit = "kg"
+          hsCode = "292219"
+          madeIn = "China"
+          specifications = "White crystalline powder"
+        }
+      )
+    val saleLine =
+      DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, 0L, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("100.00")
+        unit = "kg"
+        hsCode = product.hsCode
+        madeIn = product.madeIn
+        clientProductCode = "PC-OLD-001"
+        recalculate()
+      }
+    val savedSale = salesNetstoneService.saveWithLines(sale, listOf(saleLine))
+    product.replaceClientProductCodes(listOf(codigCompany to "PC-CURRENT-001"))
+    productService.save(product)
+    val order =
+      orderNetstoneService.save(
+        OrderNetstone("NST-PO-PDF", orderCodig).apply {
+          incoterms = "CFR"
+          incotermLocation = "Le Havre"
+          deliveryLocation = savedSale.shippingAddress
+        }
+      )
+    val delivery =
+      DeliveryNoteNetstone("", order).apply {
+        arrivalDate = LocalDate.of(2026, 5, 4)
+        billOfLading = "BL-7788"
+        containerNumber = "CONT-42"
+        seals = "SEAL-99"
+        lot = "LOT-A"
+      }
+    val deliveryLine =
+      DocumentLine(DocumentLine.DocumentType.DELIVERY_NETSTONE, 0L, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("80.00")
+        unit = "kg"
+        hsCode = product.hsCode
+        madeIn = product.madeIn
+        clientProductCode = "PC-OLD-001"
+        recalculate()
+      }
+    val savedDelivery = deliveryNoteNetstoneService.saveWithLines(delivery, listOf(deliveryLine))
+
+    val text = extractText(pdfService.generateDeliveryNetstonePdf(savedDelivery.id!!))
+
+    assertThat(text).contains(savedDelivery.deliveryNoteNumber)
+    assertThat(text).contains("DELIVERY ADDRESS:")
+    assertThat(text).contains("Warehouse A")
+    assertThat(text).contains("CUSTOMER ADDRESS:")
+    assertThat(text).contains("CoDIG SAS")
+    assertThat(text).contains("TVA: FR12345678901")
+    assertThat(text).contains("NST_SO_001")
+    assertThat(text).contains("04/05/2026")
+    assertThat(text).contains("Cod_PO_001")
+    assertThat(text).contains("CFR Le Havre")
+    assertThat(text).contains("N-METHYLGLUCAMINE")
+    assertThat(text).contains("100,00 kg")
+    assertThat(text).contains("80,00 kg")
+    assertThat(text).contains("PO : Cod_PO_001 / CFR Le Havre / Made in : China")
+    assertThat(text).contains("White crystalline powder")
+    assertThat(text).contains("PC: PC-CURRENT-001")
+    assertThat(text).doesNotContain("PC: PC-OLD-001")
+    assertThat(text).contains("HS CODE : 292219")
+    assertThat(text).contains("BL : BL-7788 / CONT-42")
+    assertThat(text).doesNotContain("N° de conteneur")
+    assertThat(text).contains("SEALS : SEAL-99")
+    assertThat(text).contains("LOT : LOT-A")
   }
 
   private fun extractText(bytes: ByteArray): String =

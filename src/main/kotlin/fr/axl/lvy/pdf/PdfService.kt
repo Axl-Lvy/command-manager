@@ -3,14 +3,18 @@ package fr.axl.lvy.pdf
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.order.OrderNetstoneService
+import fr.axl.lvy.product.ProductService
+import fr.axl.lvy.sale.SalesNetstoneService
 import java.awt.Color
 import java.awt.Font
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.math.BigDecimal
 import java.util.Base64
 import java.util.Locale
 import javax.imageio.ImageIO
@@ -25,6 +29,9 @@ import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 @Service
 class PdfService(
   private val orderNetstoneService: OrderNetstoneService,
+  private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
+  private val salesNetstoneService: SalesNetstoneService,
+  private val productService: ProductService,
   private val documentLineRepository: DocumentLineRepository,
   private val clientService: ClientService,
 ) {
@@ -85,6 +92,118 @@ class PdfService(
     PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
     return out.toByteArray()
   }
+
+  /**
+   * Generates a PDF for a Netstone delivery note. The delivery lines provide delivered quantities;
+   * the linked Netstone sale provides the original ordered quantities and delivery address.
+   */
+  @Transactional(readOnly = true)
+  fun generateDeliveryNetstonePdf(noteId: Long): ByteArray {
+    val note =
+      deliveryNoteNetstoneService.findById(noteId).orElseThrow {
+        IllegalArgumentException("DeliveryNoteNetstone $noteId not found")
+      }
+    val order =
+      orderNetstoneService.findDetailedById(note.orderNetstone.id!!).orElse(note.orderNetstone)
+    val sale = order.orderCodig.id?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) }
+    val deliveryLines = deliveryNoteNetstoneService.findLines(noteId)
+    val saleLines = sale?.id?.let { salesNetstoneService.findLines(it) } ?: emptyList()
+    val ownCompany = clientService.findDefaultCodigSupplier().orElse(null)
+    val codigCompany =
+      clientService
+        .findDefaultCodigCompany()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+    val customer = order.orderCodig.client
+    val pcClients = listOfNotNull(codigCompany, customer).distinctBy { it.id }
+    val deliveryPdfLines =
+      deliveryLines.map { line -> DeliveryPdfLine.from(line, saleLines, pcClients, productService) }
+
+    val ctx = Context()
+    ctx.setVariable("note", note)
+    ctx.setVariable("order", order)
+    ctx.setVariable("sale", sale)
+    ctx.setVariable("lines", deliveryPdfLines)
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable("codigCompany", codigCompany)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "deliveryAddressLines",
+      sale?.shippingAddress?.lines() ?: order.deliveryLocation?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "codigAddressLines",
+      codigCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+    ctx.setVariable("incotermText", incotermText(order.incoterms, order.incotermLocation))
+
+    val html = templateEngine.process("delivery-netstone", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
+  private data class DeliveryPdfLine(
+    val designation: String,
+    val orderedQuantity: BigDecimal,
+    val deliveredQuantity: BigDecimal,
+    val unit: String?,
+    val madeIn: String?,
+    val specifications: String?,
+    val clientProductCode: String?,
+    val hsCode: String?,
+  ) {
+    companion object {
+      fun from(
+        deliveryLine: DocumentLine,
+        saleLines: List<DocumentLine>,
+        pcClients: List<Client>,
+        productService: ProductService,
+      ): DeliveryPdfLine {
+        val saleLine =
+          saleLines.firstOrNull { saleLine ->
+            val deliveryProductId = deliveryLine.product?.id
+            deliveryProductId != null && saleLine.product?.id == deliveryProductId
+          } ?: saleLines.firstOrNull { it.designation == deliveryLine.designation }
+        val product =
+          (deliveryLine.product ?: saleLine?.product)?.id?.let {
+            productService.findDetailedById(it).orElse(null)
+          } ?: deliveryLine.product ?: saleLine?.product
+        val productId = product?.id ?: deliveryLine.product?.id ?: saleLine?.product?.id
+        return DeliveryPdfLine(
+          designation = deliveryLine.designation,
+          orderedQuantity = saleLine?.quantity ?: deliveryLine.quantity,
+          deliveredQuantity = deliveryLine.quantity,
+          unit = deliveryLine.unit ?: saleLine?.unit,
+          madeIn = deliveryLine.madeIn ?: saleLine?.madeIn ?: product?.madeIn,
+          specifications =
+            product?.specifications ?: deliveryLine.description ?: saleLine?.description,
+          clientProductCode =
+            productId?.let { currentClientProductCode(it, pcClients, productService) },
+          hsCode = deliveryLine.hsCode ?: saleLine?.hsCode ?: product?.hsCode,
+        )
+      }
+
+      private fun currentClientProductCode(
+        productId: Long,
+        pcClients: List<Client>,
+        productService: ProductService,
+      ): String? =
+        pcClients.firstNotNullOfOrNull { client ->
+          client.id?.let { productService.findClientProductCode(productId, it) }
+        } ?: productService.findFirstClientProductCode(productId)
+    }
+  }
+
+  private fun incotermText(incoterm: String?, location: String?): String =
+    listOfNotNull(incoterm, location?.takeIf { it.isNotBlank() }).joinToString(" ")
 
   private fun currencySymbol(currency: String): String =
     when (currency.uppercase()) {

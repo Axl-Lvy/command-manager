@@ -213,6 +213,26 @@ class ProductServiceTest {
   }
 
   @Test
+  fun replaceClientProductCodes_updates_existing_client_code_without_duplicate_insert() {
+    val client = createClient("CLI-R03")
+    val product = Product(name = "Code Update")
+    product.replaceClientProductCodes(listOf(client to "OLD-001"))
+    productService.save(product)
+    productRepository.flush()
+    entityManager.clear()
+
+    val loaded = productService.findDetailedById(product.id!!).orElseThrow()
+    loaded.replaceClientProductCodes(listOf(loaded.clientProductCodes.first().client to "NEW-001"))
+    productService.save(loaded)
+    productRepository.flush()
+    entityManager.clear()
+
+    val found = productService.findDetailedById(product.id!!).orElseThrow()
+    assertThat(found.clientProductCodes).hasSize(1)
+    assertThat(found.clientProductCodes.first().code).isEqualTo("NEW-001")
+  }
+
+  @Test
   fun findClientProductCode_returns_null_for_null_client() {
     val product = Product("REF-NUL", "No Client")
     product.replaceClientProductCodes(listOf(createClient("CLI-X") to "X-001"))

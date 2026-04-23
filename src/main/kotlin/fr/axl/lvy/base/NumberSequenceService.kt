@@ -26,6 +26,14 @@ class NumberSequenceService(
     return nextNumber(entityType, config.prefix, config.padding)
   }
 
+  @Transactional(readOnly = true)
+  fun previewNextNumber(entityType: String): String {
+    val config =
+      CONFIGS[entityType] ?: throw IllegalArgumentException("Unknown entity type: $entityType")
+    val current = repository.findById(entityType).map { it.nextVal }.orElse(1)
+    return config.prefix + current.toString().padStart(config.padding, '0')
+  }
+
   @Transactional
   fun nextNumber(entityType: String, prefix: String, padding: Int): String {
     val seq = repository.findForUpdate(entityType) ?: repository.save(NumberSequence(entityType))
@@ -45,6 +53,7 @@ class NumberSequenceService(
     const val SALES_CODIG = "SALES_CODIG"
     const val SALES_NETSTONE = "SALES_NETSTONE"
     const val DELIVERY_CODIG = "DELIVERY_CODIG"
+    const val DELIVERY_NETSTONE = "DELIVERY_NETSTONE"
 
     val CONFIGS =
       mapOf(
@@ -54,6 +63,7 @@ class NumberSequenceService(
         SALES_CODIG to SequenceConfig("CoD_SO_", 3),
         SALES_NETSTONE to SequenceConfig("NST_SO_", 3),
         DELIVERY_CODIG to SequenceConfig("BL-", 6),
+        DELIVERY_NETSTONE to SequenceConfig("Netst/OUT/", 3),
       )
   }
 }
