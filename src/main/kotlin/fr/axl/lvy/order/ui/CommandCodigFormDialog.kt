@@ -94,7 +94,7 @@ internal class CommandCodigFormDialog(
     status.setItems(visibleStatuses)
     status.setItemLabelGenerator(::statusLabel)
 
-    clientCombo.setItems(clientService.findAll().filter { it.isSupplierForProduct() })
+    clientCombo.setItems(clientService.findSuppliersForProduct())
     clientCombo.setItemLabelGenerator { it.name }
     clientCombo.addValueChangeListener { event ->
       val client = event.value ?: return@addValueChangeListener

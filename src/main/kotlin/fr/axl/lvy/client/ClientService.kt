@@ -70,6 +70,16 @@ class ClientService(
   fun findProducersVisibleFor(company: User.Company): List<Client> =
     clientRepository.findProducersVisibleFor(company)
 
+  /** Clients that can act as a buyer. */
+  @Transactional(readOnly = true) fun findClients(): List<Client> = clientRepository.findClients()
+
+  /** Clients that can be set as product supplier (producers + own companies). */
+  @Transactional(readOnly = true)
+  fun findSuppliersForProduct(): List<Client> = clientRepository.findSuppliersForProduct()
+
+  @Transactional(readOnly = true)
+  fun findByRole(role: Client.ClientRole): List<Client> = clientRepository.findByRole(role)
+
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<Client> = clientRepository.findById(id)
 

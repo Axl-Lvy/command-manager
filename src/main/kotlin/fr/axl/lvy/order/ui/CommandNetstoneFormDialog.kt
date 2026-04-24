@@ -90,7 +90,7 @@ internal class CommandNetstoneFormDialog(
     allIncoterms = incotermService.findAll()
     incotermCombo.setItems(allIncoterms)
     incotermCombo.setItemLabelGenerator { it.name }
-    supplierCombo.setItems(clientService.findAll().filter { it.isSupplierForProduct() })
+    supplierCombo.setItems(clientService.findSuppliersForProduct())
     supplierCombo.setItemLabelGenerator { it.name }
     paymentTermCombo.setItems(paymentTermService.findAll())
     paymentTermCombo.setItemLabelGenerator { it.label }

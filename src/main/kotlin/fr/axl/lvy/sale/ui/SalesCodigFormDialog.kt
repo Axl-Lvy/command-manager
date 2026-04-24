@@ -98,7 +98,7 @@ internal class SalesCodigFormDialog(
       }
     }
 
-    clientCombo.setItems(clientService.findAll().filter { it.isClient() })
+    clientCombo.setItems(clientService.findClients())
     clientCombo.setItemLabelGenerator { it.name }
     clientCombo.addValueChangeListener { event ->
       val client = event.value ?: return@addValueChangeListener
