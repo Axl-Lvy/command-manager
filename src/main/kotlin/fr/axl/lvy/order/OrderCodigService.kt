@@ -123,7 +123,7 @@ class OrderCodigService(
       if (originatingSale != null) {
         val saleId = originatingSale.id ?: return saved
         if (newStatus == OrderCodig.OrderCodigStatus.CONFIRMED) {
-          val lines = findLines(savedId)
+          val lines = findLinesWithProduct(savedId)
           if (lines.any { it.product?.isMtoProduct() == true }) {
             salesNetstoneService.createOrUpdateFromSalesCodig(
               originatingSale,
@@ -205,7 +205,7 @@ class OrderCodigService(
   @Transactional
   fun handleMto(order: OrderCodig, orderNetstoneNumber: String) {
     val lines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      documentLineRepository.findWithProductByDocumentTypeAndDocumentId(
         DocumentLine.DocumentType.ORDER_CODIG,
         order.id!!,
       )
@@ -247,6 +247,10 @@ class OrderCodigService(
   @Transactional(readOnly = true)
   fun findLines(orderId: Long): List<DocumentLine> =
     documentLineService.findLines(DocumentLine.DocumentType.ORDER_CODIG, orderId)
+
+  @Transactional(readOnly = true)
+  fun findLinesWithProduct(orderId: Long): List<DocumentLine> =
+    documentLineService.findLinesWithProduct(DocumentLine.DocumentType.ORDER_CODIG, orderId)
 
   /**
    * Saves the order and replaces its line items atomically. Recalculates totals and purchase price,
