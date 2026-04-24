@@ -930,6 +930,49 @@ class PdfServiceTest {
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
+  /** Unknown order id → IllegalArgumentException. */
+  @Test
+  fun generateOrderCodigPdf_throws_for_unknown_order() {
+    org.assertj.core.api.Assertions.assertThatThrownBy { pdfService.generateOrderCodigPdf(-1L) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  /** Unknown sale id → IllegalArgumentException. */
+  @Test
+  fun generateSalesCodigPdf_throws_for_unknown_sale() {
+    org.assertj.core.api.Assertions.assertThatThrownBy { pdfService.generateSalesCodigPdf(-1L) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  /** Unknown sale id → IllegalArgumentException. */
+  @Test
+  fun generateSalesNetstonePdf_throws_for_unknown_sale() {
+    org.assertj.core.api.Assertions.assertThatThrownBy { pdfService.generateSalesNetstonePdf(-1L) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  /**
+   * Codig sale where the client has no billing address → fallback uses sale.billingAddress then
+   * sale.shippingAddress for `clientAddressLines`. Exercises the null-chain branches in
+   * generateSalesCodigPdf.
+   */
+  @Test
+  fun generateSalesCodigPdf_falls_back_to_sale_shipping_when_client_has_no_billing() {
+    val customer = clientRepository.save(Client("CLI-PDF-NOBILL", "No Billing Customer"))
+    val sale =
+      salesCodigRepository.save(
+        SalesCodig("Cod-SO-NOBILL", customer, LocalDate.of(2026, 4, 14)).apply {
+          shippingAddress = "Ship Only Warehouse\nSomewhere"
+          currency = "EUR"
+        }
+      )
+
+    val text = extractText(pdfService.generateSalesCodigPdf(sale.id!!))
+
+    assertThat(text).contains(sale.saleNumber)
+    assertThat(text).contains("Ship Only Warehouse")
+  }
+
   /**
    * Delivery line with no product + sale line sharing only the designation. Exercises the
    * designation-match fallback in DeliveryPdfLine.from.
