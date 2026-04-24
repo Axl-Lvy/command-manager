@@ -20,8 +20,10 @@
     .company-name { font-size: 12pt; font-weight: bold; margin-bottom: 4pt; }
 
     .parties-table { width: 100%; margin-bottom: 24pt; }
-    .delivery-cell { width: 58%; vertical-align: top; font-size: 10pt; }
+    .left-cell { width: 58%; vertical-align: top; font-size: 10pt; }
+    .right-cell { width: 42%; vertical-align: top; font-size: 10pt; }
     .block-label { font-weight: bold; margin-bottom: 4pt; }
+    .address-block { margin-bottom: 12pt; }
 
     .document-title {
       color: #E07028;
@@ -74,6 +76,16 @@
       margin-top: 3pt;
     }
 
+    .totals-table { width: 220pt; margin-left: auto; border-collapse: collapse; }
+    .totals-table td { padding: 4pt 4pt; font-size: 10pt; }
+    .totals-table .amount { text-align: right; }
+    .totals-table .final-row td {
+      border-top: 2pt solid #333333;
+      color: #E07028;
+      font-weight: bold;
+      font-size: 12pt;
+    }
+
     .details-block {
       margin-top: 10pt;
       font-size: 10pt;
@@ -108,29 +120,39 @@
 
   <table class="parties-table" cellspacing="0" cellpadding="0">
     <tr>
-      <td class="delivery-cell">
-        <p class="block-label">DELIVERY ADDRESS:</p>
-        <p th:each="line : ${deliveryAddressLines}" th:text="${line}"></p>
+      <td class="left-cell">
+        <div class="address-block">
+          <p class="block-label">INVOICING ADDRESS :</p>
+          <p th:each="line : ${invoicingAddressLines}" th:text="${line}"></p>
+        </div>
+        <div class="address-block">
+          <p class="block-label">SHIPPING ADDRESS :</p>
+          <p th:each="line : ${shippingAddressLines}" th:text="${line}"></p>
+        </div>
+      </td>
+      <td class="right-cell" th:if="${client != null}">
+        <p class="company-name" th:text="${client.name}"></p>
+        <p th:each="line : ${clientAddressLines}" th:text="${line}"></p>
       </td>
     </tr>
   </table>
 
-  <p class="document-title" th:text="'Delivery Note #' + ${note.deliveryNoteNumber}"></p>
+  <p class="document-title" th:text="'Order # ' + ${sale.saleNumber}"></p>
 
   <table class="meta-table">
     <thead>
       <tr>
-        <th style="width: 25%;">Order :</th>
-        <th style="width: 25%;">Arrival date :</th>
         <th style="width: 25%;">Custommer ref. :</th>
+        <th style="width: 25%;">Order date :</th>
+        <th style="width: 25%;">Request ETA :</th>
         <th style="width: 25%;">Incoterm :</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td th:text="${sale != null ? sale.saleNumber : ''}"></td>
-        <td th:text="${note.arrivalDate != null ? #temporals.format(note.arrivalDate, 'dd/MM/yyyy') : ''}"></td>
         <td th:text="${customerReference}"></td>
+        <td th:text="${sale.saleDate != null ? #temporals.format(sale.saleDate, 'dd/MM/yyyy') : ''}"></td>
+        <td th:text="${sale.expectedDeliveryDate != null ? #temporals.format(sale.expectedDeliveryDate, 'dd/MM/yyyy') : ''}"></td>
         <td th:text="${incotermText}"></td>
       </tr>
     </tbody>
@@ -139,9 +161,11 @@
   <table class="lines-table">
     <thead>
       <tr>
-        <th style="width: 50%;">PRODUCT</th>
-        <th class="right" style="width: 25%;">ORDERED</th>
-        <th class="right" style="width: 25%;">DELIVERED</th>
+        <th style="width: 39%;">PRODUCT</th>
+        <th class="right" style="width: 15%;">Quantity</th>
+        <th class="right" style="width: 16%;">Unit price</th>
+        <th style="width: 10%;">Taxe</th>
+        <th class="right" style="width: 20%;">Amount</th>
       </tr>
     </thead>
     <tbody>
@@ -151,31 +175,36 @@
           <p class="product-sub" th:if="${line.shortDescription != null}" th:text="${line.shortDescription}"></p>
         </td>
         <td class="right"
-            th:text="${#numbers.formatDecimal(line.orderedQuantity, 1, 'WHITESPACE', 2, 'COMMA')
+            th:text="${#numbers.formatDecimal(line.quantity, 1, 'WHITESPACE', 2, 'COMMA')
                        + (line.unit != null ? ' ' + line.unit : '')}"></td>
         <td class="right"
-            th:text="${#numbers.formatDecimal(line.deliveredQuantity, 1, 'WHITESPACE', 2, 'COMMA')
-                       + (line.unit != null ? ' ' + line.unit : '')}"></td>
+            th:text="${currencySymbol + ' ' + #numbers.formatDecimal(line.unitPriceExclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td>
+        <td th:text="${line.vatRate.signum() != 0 ? #numbers.formatDecimal(line.vatRate, 1, 'NONE', 0, 'COMMA') + '%' : ''}"></td>
+        <td class="right"
+            th:text="${currencySymbol + ' ' + #numbers.formatDecimal(line.lineTotalExclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td>
       </tr>
     </tbody>
   </table>
 
+  <table class="totals-table">
+    <tr class="final-row">
+      <td>TOTAL</td>
+      <td class="amount"
+          th:text="${currencySymbol + ' ' + #numbers.formatDecimal(sale.totalInclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td>
+    </tr>
+  </table>
+
   <div class="details-block" th:each="line : ${lines}">
+    <p class="detail-line" th:if="${line.description != null}" th:text="${line.description}"></p>
     <p class="detail-line"
        th:text="${'PO : ' + customerReference
                  + (incotermText != '' ? ' / ' + incotermText : '')
                  + (line.madeIn != null ? ' / Made in : ' + line.madeIn : '')}"></p>
-    <p class="detail-line" th:if="${line.specifications != null}" th:text="${line.specifications}"></p>
-    <p class="detail-line" th:if="${line.clientProductCode != null}" th:text="${'PC: ' + line.clientProductCode}"></p>
-    <p class="detail-line" th:if="${line.hsCode != null}" th:text="'HS CODE : ' + ${line.hsCode}"></p>
-  </div>
-
-  <div class="details-block">
     <p class="detail-line"
-       th:text="${'BL : ' + (note.billOfLading != null ? note.billOfLading : '')
-                 + (note.containerNumber != null ? ' / ' + note.containerNumber : '')
-                 + (note.seals != null ? ' / SEALS : ' + note.seals : '')
-                 + (note.lot != null ? ' / LOT : ' + note.lot : '')}"></p>
+       th:if="${line.hsCode != null or line.madeIn != null}"
+       th:text="${'HS CODE : '
+                 + (line.hsCode != null ? line.hsCode : '')
+                 + (line.madeIn != null ? ' / Made in : ' + line.madeIn : '')}"></p>
   </div>
 
 </body>

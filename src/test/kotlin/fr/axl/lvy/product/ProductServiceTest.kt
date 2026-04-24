@@ -25,6 +25,9 @@ class ProductServiceTest {
   @Test
   fun save_and_retrieve_product() {
     val product = Product(name = "Steel Beam")
+    product.label = "Steel beam EN10025"
+    product.shortDescription = "Short beam description"
+    product.longDescription = "Long beam description with full commercial details."
     product.sellingPriceExclTax = BigDecimal("150.00")
     product.sellingCurrency = "USD"
     product.purchasePriceExclTax = BigDecimal("80.00")
@@ -36,6 +39,10 @@ class ProductServiceTest {
     val found = productService.findById(product.id!!)
     assertThat(found).isPresent
     assertThat(found.get().name).isEqualTo("Steel Beam")
+    assertThat(found.get().label).isEqualTo("Steel beam EN10025")
+    assertThat(found.get().shortDescription).isEqualTo("Short beam description")
+    assertThat(found.get().longDescription)
+      .isEqualTo("Long beam description with full commercial details.")
     assertThat(found.get().reference).matches("""P\d{6}""")
     assertThat(found.get().sellingPriceExclTax).isEqualByComparingTo("150.00")
     assertThat(found.get().sellingCurrency).isEqualTo("USD")

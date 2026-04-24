@@ -69,6 +69,11 @@
       vertical-align: top;
     }
     .lines-table td.right { text-align: right; }
+    .product-sub {
+      font-size: 9pt;
+      color: #666666;
+      margin-top: 3pt;
+    }
 
     .details-block {
       margin-top: 10pt;
@@ -148,7 +153,10 @@
     </thead>
     <tbody>
       <tr th:each="line : ${lines}">
-        <td th:text="${line.designation}"></td>
+        <td>
+          <p th:text="${line.displayName}"></p>
+          <p class="product-sub" th:if="${line.shortDescription != null}" th:text="${line.shortDescription}"></p>
+        </td>
         <td class="right"
             th:text="${#numbers.formatDecimal(line.orderedQuantity, 1, 'WHITESPACE', 2, 'COMMA')
                        + (line.unit != null ? ' ' + line.unit : '')}"></td>
