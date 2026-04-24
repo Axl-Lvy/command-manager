@@ -16,6 +16,16 @@ interface ProductRepository : JpaRepository<Product, Long> {
   )
   fun findByDeletedAtIsNullAndActiveTrue(): List<Product>
 
+  @Query(
+    """
+      SELECT DISTINCT p
+      FROM Product p
+      LEFT JOIN FETCH p.clientProductCodes c
+      LEFT JOIN FETCH c.client
+      LEFT JOIN FETCH p.suppliers s
+      WHERE p.deletedAt IS NULL
+    """
+  )
   fun findByDeletedAtIsNull(): List<Product>
 
   @Query(
