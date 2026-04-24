@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -79,6 +80,22 @@ class SalesNetstoneServiceTest {
     val found = salesNetstoneService.findById(salesNetstone.id!!)
     assertThat(found).isPresent
     assertThat(found.get().saleNumber).startsWith("NST_SO_")
+  }
+
+  @Test
+  fun findAll_paginated_excludes_soft_deleted() {
+    val client = testData.createClient("CLI-SB-PAGE", "a", "b")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-PAGE", client)
+    val kept = SalesNetstone("SB-PAGE-KEEP", salesCodig)
+    val gone = SalesNetstone("SB-PAGE-GONE", salesCodig)
+    salesNetstoneService.save(kept)
+    salesNetstoneService.save(gone)
+    salesNetstoneService.delete(gone.id!!)
+    salesNetstoneRepository.flush()
+
+    val page = salesNetstoneService.findAll(PageRequest.of(0, 100))
+    assertThat(page.content).anyMatch { it.id == kept.id }
+    assertThat(page.content).noneMatch { it.id == gone.id }
   }
 
   @Test

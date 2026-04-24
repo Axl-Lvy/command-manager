@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -134,6 +135,19 @@ class SalesCodigServiceTest {
     salesCodigRepository.flush()
 
     assertThat(salesCodigService.findAll()).noneMatch { it.saleNumber == "SA-DEL-01" }
+  }
+
+  @Test
+  fun findAll_paginated_excludes_soft_deleted() {
+    val client = testData.createClient("CLI-SA-PAGE")
+    val kept = createSalesCodig("SA-PAGE-KEEP", client)
+    val gone = createSalesCodig("SA-PAGE-GONE", client)
+    salesCodigService.delete(gone.id!!)
+    salesCodigRepository.flush()
+
+    val page = salesCodigService.findAll(PageRequest.of(0, 100))
+    assertThat(page.content).anyMatch { it.saleNumber == kept.saleNumber }
+    assertThat(page.content).noneMatch { it.saleNumber == gone.saleNumber }
   }
 
   @Test

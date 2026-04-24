@@ -12,6 +12,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -179,6 +180,36 @@ class ClientServiceTest {
     assertThat(result).anyMatch { it.clientCode == "CLI-ROLE-P1" }
     assertThat(result).anyMatch { it.clientCode == "CLI-ROLE-P2" }
     assertThat(result).noneMatch { it.clientCode == "CLI-ROLE-B" }
+  }
+
+  @Test
+  fun findCustomersAndSuppliers_excludes_own_companies_and_paginates() {
+    val regular = Client("CLI-CS-REG", "Regular")
+    regular.type = Client.ClientType.COMPANY
+    clientService.save(regular)
+
+    val ownCo = Client("CLI-CS-OWN", "My Company")
+    ownCo.type = Client.ClientType.OWN_COMPANY
+    clientService.save(ownCo)
+
+    val page = clientService.findCustomersAndSuppliers(PageRequest.of(0, 50))
+    assertThat(page.content).anyMatch { it.clientCode == "CLI-CS-REG" }
+    assertThat(page.content).noneMatch { it.clientCode == "CLI-CS-OWN" }
+  }
+
+  @Test
+  fun findOwnCompanies_paginated_returns_only_own_companies() {
+    val ownCo = Client("CLI-OC-OWN", "Own Co")
+    ownCo.type = Client.ClientType.OWN_COMPANY
+    clientService.save(ownCo)
+
+    val regular = Client("CLI-OC-REG", "Regular")
+    regular.type = Client.ClientType.COMPANY
+    clientService.save(regular)
+
+    val page = clientService.findOwnCompanies(PageRequest.of(0, 50))
+    assertThat(page.content).anyMatch { it.clientCode == "CLI-OC-OWN" }
+    assertThat(page.content).noneMatch { it.clientCode == "CLI-OC-REG" }
   }
 
   @Test

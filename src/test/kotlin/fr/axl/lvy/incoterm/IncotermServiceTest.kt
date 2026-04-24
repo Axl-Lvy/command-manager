@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -50,6 +51,16 @@ class IncotermServiceTest {
     incoterm.label = "Updated Label"
     val updated = incotermService.save(incoterm)
     assertThat(updated.label).isEqualTo("Updated Label")
+  }
+
+  @Test
+  fun findAll_paginated_returns_all_incoterms() {
+    incotermService.save(Incoterm(name = "ddp", label = "Delivered Duty Paid"))
+    incotermService.save(Incoterm(name = "fca", label = "Free Carrier"))
+
+    val page = incotermService.findAll(PageRequest.of(0, 100))
+
+    assertThat(page.content.map { it.name }).contains("DDP", "FCA")
   }
 
   @Test

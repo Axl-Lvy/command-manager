@@ -1,5 +1,6 @@
 package fr.axl.lvy.sale
 
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -9,6 +10,8 @@ interface SalesCodigRepository : JpaRepository<SalesCodig, Long> {
 
   @Query("SELECT s FROM SalesCodig s LEFT JOIN FETCH s.client WHERE s.deletedAt IS NULL")
   fun findByDeletedAtIsNull(): List<SalesCodig>
+
+  fun findByDeletedAtIsNull(pageable: Pageable): Page<SalesCodig>
 
   @Query(
     """

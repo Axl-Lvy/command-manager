@@ -1,6 +1,8 @@
 package fr.axl.lvy.client
 
 import fr.axl.lvy.user.User
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 
@@ -8,7 +10,15 @@ interface ClientRepository : JpaRepository<Client, Long> {
 
   fun findByDeletedAtIsNull(): List<Client>
 
+  /** Paginated fetch excluding own-company entries (used by the customer/supplier list view). */
+  fun findByDeletedAtIsNullAndTypeNot(type: Client.ClientType, pageable: Pageable): Page<Client>
+
   fun findByDeletedAtIsNullAndTypeOrderByNameAsc(type: Client.ClientType): List<Client>
+
+  fun findByDeletedAtIsNullAndTypeOrderByNameAsc(
+    type: Client.ClientType,
+    pageable: Pageable,
+  ): Page<Client>
 
   fun existsByClientCode(clientCode: String): Boolean
 

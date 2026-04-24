@@ -8,6 +8,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
+import com.vaadin.flow.spring.data.VaadinSpringDataHelpers
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.base.ui.initAsListContainer
 import fr.axl.lvy.client.ClientService
@@ -188,7 +189,9 @@ internal class CommandNetstoneListView(
   }
 
   private fun refreshGrid() {
-    grid.setItems(orderNetstoneService.findAll())
+    grid.setItems { query ->
+      orderNetstoneService.findAll(VaadinSpringDataHelpers.toSpringPageRequest(query)).stream()
+    }
   }
 
   /**

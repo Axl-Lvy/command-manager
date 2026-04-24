@@ -12,7 +12,9 @@ import java.math.BigDecimal
 import java.util.Optional
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -53,6 +55,11 @@ class OrderCodigService(
 
   @Transactional(readOnly = true)
   fun findAll(): List<OrderCodig> = orderCodigRepository.findByDeletedAtIsNull()
+
+  /** Paginated fetch for Vaadin lazy-loading grids. */
+  @Transactional(readOnly = true)
+  fun findAll(pageable: Pageable): Page<OrderCodig> =
+    orderCodigRepository.findByDeletedAtIsNull(pageable)
 
   /** Paginated search for ComboBox lazy loading. Matches orderNumber or client name. */
   @Transactional(readOnly = true)

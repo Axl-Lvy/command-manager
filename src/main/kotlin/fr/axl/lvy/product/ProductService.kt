@@ -2,6 +2,8 @@ package fr.axl.lvy.product
 
 import fr.axl.lvy.client.ClientRepository
 import java.util.Optional
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -17,6 +19,10 @@ class ProductService(
 
   @Transactional(readOnly = true)
   fun findAll(): List<Product> = productRepository.findByDeletedAtIsNull()
+
+  /** Paginated variant for Vaadin lazy-loading grids. */
+  @Transactional(readOnly = true)
+  fun findAll(pageable: Pageable): Page<Product> = productRepository.findByDeletedAtIsNull(pageable)
 
   @Transactional(readOnly = true)
   fun findActive(): List<Product> = productRepository.findByDeletedAtIsNullAndActiveTrue()

@@ -11,7 +11,9 @@ import java.math.BigDecimal
 import java.util.Optional
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -37,6 +39,11 @@ class SalesCodigService(
 
   @Transactional(readOnly = true)
   fun findAll(): List<SalesCodig> = salesCodigRepository.findByDeletedAtIsNull()
+
+  /** Paginated fetch for Vaadin lazy-loading grids. */
+  @Transactional(readOnly = true)
+  fun findAll(pageable: Pageable): Page<SalesCodig> =
+    salesCodigRepository.findByDeletedAtIsNull(pageable)
 
   @Transactional(readOnly = true)
   fun findAllWithLinkedOrder(): List<SalesCodig> =
