@@ -12,6 +12,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.router.Menu
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
+import com.vaadin.flow.spring.data.VaadinSpringDataHelpers
 import fr.axl.lvy.base.ui.ViewToolbar
 import fr.axl.lvy.base.ui.initAsListContainer
 import fr.axl.lvy.incoterm.Incoterm
@@ -80,6 +81,8 @@ internal class IncotermListView(private val incotermService: IncotermService) : 
   }
 
   private fun refreshGrid() {
-    grid.setItems(incotermService.findAll())
+    grid.setItems { query ->
+      incotermService.findAll(VaadinSpringDataHelpers.toSpringPageRequest(query)).stream()
+    }
   }
 }

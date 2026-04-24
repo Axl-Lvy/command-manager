@@ -11,6 +11,8 @@ import java.time.LocalDate
 import java.util.Optional
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -42,6 +44,11 @@ class OrderNetstoneService(
 
   @Transactional(readOnly = true)
   fun findAll(): List<OrderNetstone> = orderNetstoneRepository.findByDeletedAtIsNull()
+
+  /** Paginated fetch for Vaadin lazy-loading grids. */
+  @Transactional(readOnly = true)
+  fun findAll(pageable: Pageable): Page<OrderNetstone> =
+    orderNetstoneRepository.findByDeletedAtIsNull(pageable)
 
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderNetstone> = orderNetstoneRepository.findById(id)

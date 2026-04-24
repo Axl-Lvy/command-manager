@@ -6,6 +6,8 @@ import io.micrometer.core.instrument.MeterRegistry
 import java.util.Locale
 import java.util.Optional
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -29,6 +31,19 @@ class ClientService(
   @Transactional(readOnly = true)
   fun findByType(type: Client.ClientType): List<Client> =
     clientRepository.findByDeletedAtIsNullAndTypeOrderByNameAsc(type)
+
+  /** Paginated clients excluding own-company entries. For the customer/supplier list view. */
+  @Transactional(readOnly = true)
+  fun findCustomersAndSuppliers(pageable: Pageable): Page<Client> =
+    clientRepository.findByDeletedAtIsNullAndTypeNot(Client.ClientType.OWN_COMPANY, pageable)
+
+  /** Paginated own-company entries for the Company list view. */
+  @Transactional(readOnly = true)
+  fun findOwnCompanies(pageable: Pageable): Page<Client> =
+    clientRepository.findByDeletedAtIsNullAndTypeOrderByNameAsc(
+      Client.ClientType.OWN_COMPANY,
+      pageable,
+    )
 
   /**
    * Returns the default supplier for CoDIG purchase orders — the own-company record representing

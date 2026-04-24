@@ -1,6 +1,8 @@
 package fr.axl.lvy.incoterm
 
 import java.util.Optional
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -10,6 +12,10 @@ class IncotermService(private val incotermRepository: IncotermRepository) {
 
   @Transactional(readOnly = true)
   fun findAll(): List<Incoterm> = incotermRepository.findAllByOrderByNameAsc()
+
+  /** Paginated fetch for Vaadin lazy-loading grids. */
+  @Transactional(readOnly = true)
+  fun findAll(pageable: Pageable): Page<Incoterm> = incotermRepository.findAll(pageable)
 
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<Incoterm> = incotermRepository.findById(id)

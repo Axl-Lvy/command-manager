@@ -1,6 +1,8 @@
 package fr.axl.lvy.order
 
 import java.time.Instant
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -9,6 +11,8 @@ interface OrderCodigRepository : JpaRepository<OrderCodig, Long> {
 
   @Query("SELECT o FROM OrderCodig o LEFT JOIN FETCH o.client WHERE o.deletedAt IS NULL")
   fun findByDeletedAtIsNull(): List<OrderCodig>
+
+  fun findByDeletedAtIsNull(pageable: Pageable): Page<OrderCodig>
 
   /**
    * Counts CONFIRMED orders whose [BaseEntity.updatedAt] predates [threshold]. Used by
