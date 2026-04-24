@@ -33,6 +33,9 @@ internal class ProductFormDialog(
 ) : Dialog() {
 
   private val name = TextField("Nom")
+  private val label = TextField("Libellé")
+  private val shortDescription = TextArea("Description courte")
+  private val longDescription = TextArea("Description longue")
   private val specifications = TextArea("Spécifications")
   private val type = ComboBox<Product.ProductType>("Type")
   private val priceType = TextField("Conditions prix achat")
@@ -85,6 +88,9 @@ internal class ProductFormDialog(
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
     form.add(name, type)
+    form.add(label, 2)
+    form.add(shortDescription, 2)
+    form.add(longDescription, 2)
     form.add(priceType, mto)
     form.add(specifications, 2)
     form.add(unitOption, customUnit)
@@ -116,6 +122,9 @@ internal class ProductFormDialog(
 
   private fun populateForm(p: Product) {
     name.value = p.name
+    label.value = p.label ?: ""
+    shortDescription.value = p.shortDescription ?: ""
+    longDescription.value = p.longDescription ?: ""
     specifications.value = p.specifications ?: ""
     type.value = p.type
     priceType.value = p.priceType ?: ""
@@ -159,6 +168,9 @@ internal class ProductFormDialog(
     try {
       val p = product ?: Product(name = name.value)
       p.name = name.value
+      p.label = label.value.takeIf { it.isNotBlank() }
+      p.shortDescription = shortDescription.value.takeIf { it.isNotBlank() }
+      p.longDescription = longDescription.value.takeIf { it.isNotBlank() }
       p.specifications = if (specifications.value.isBlank()) null else specifications.value
       p.type = type.value
       p.priceType = priceType.value.takeIf { it.isNotBlank() }

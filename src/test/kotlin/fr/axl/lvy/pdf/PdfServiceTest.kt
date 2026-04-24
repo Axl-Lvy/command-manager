@@ -175,6 +175,14 @@ class PdfServiceTest {
         vatRate = BigDecimal.ZERO
         recalculate()
       }
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-ON", "N-METHYLGLUCAMINE").apply {
+          label = "NMG"
+          shortDescription = "Buffering agent"
+        }
+      )
+    line.product = product
 
     val saved = orderNetstoneService.saveWithLines(order, listOf(line))
     val text = extractText(pdfService.generateOrderNetstonePdf(saved.id!!))
@@ -193,7 +201,8 @@ class PdfServiceTest {
     assertThat(text).contains("CIF")
     assertThat(text).contains("ANTWERP")
     // line item
-    assertThat(text).contains("N-METHYLGLUCAMINE")
+    assertThat(text).contains("NMG")
+    assertThat(text).contains("Buffering agent")
     assertThat(text).contains("10,50")
     // totals  (8000 × 10.50 = 84 000)
     assertThat(text).contains("84")
@@ -241,6 +250,8 @@ class PdfServiceTest {
     val product =
       productRepository.save(
         Product("PRD-PDF-DEL", "N-METHYLGLUCAMINE").apply {
+          label = "NMG"
+          shortDescription = "Buffering agent"
           unit = "kg"
           hsCode = "292219"
           madeIn = "China"
@@ -300,7 +311,8 @@ class PdfServiceTest {
     assertThat(text).contains("04/05/2026")
     assertThat(text).contains("Cod_PO_001")
     assertThat(text).contains("CFR Le Havre")
-    assertThat(text).contains("N-METHYLGLUCAMINE")
+    assertThat(text).contains("NMG")
+    assertThat(text).contains("Buffering agent")
     assertThat(text).contains("100,00 kg")
     assertThat(text).contains("80,00 kg")
     assertThat(text).contains("PO : Cod_PO_001 / CFR Le Havre / Made in : China")
@@ -360,6 +372,8 @@ class PdfServiceTest {
     val product =
       productRepository.save(
         Product("PRD-PDF-CODIG-DLV", "SODIUM GLUCONATE").apply {
+          label = "Sodium gluconate food"
+          shortDescription = "Food additive"
           unit = "kg"
           hsCode = "291816"
           madeIn = "China"
@@ -420,7 +434,8 @@ class PdfServiceTest {
     assertThat(text).contains("08/05/2026")
     assertThat(text).contains("PO-CUSTOMER-777")
     assertThat(text).contains("DAP Rotterdam")
-    assertThat(text).contains("SODIUM GLUCONATE")
+    assertThat(text).contains("Sodium gluconate food")
+    assertThat(text).contains("Food additive")
     assertThat(text).contains("50,00 kg")
     assertThat(text).contains("PO : PO-CUSTOMER-777 / DAP Rotterdam / Made in : China")
     assertThat(text).contains("Technical grade")
@@ -429,6 +444,330 @@ class PdfServiceTest {
     assertThat(text).contains("BL : BL-CODIG-001 / CONT-CODIG")
     assertThat(text).contains("SEALS : SEAL-CODIG")
     assertThat(text).contains("LOT : LOT-CODIG")
+  }
+
+  /** Verifies the Codig sale PDF renders addresses, pricing columns, total, and footer details. */
+  @Test
+  fun generateSalesCodigPdf_renders_requested_layout() {
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-CODIG-SALE", "CoDIG SAS").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = "12 rue de Paris\n75001 Paris\nFrance"
+    codigCompany.vatNumber = "FRCODIGSALE123"
+    codigCompany.logoData = sampleLogoData
+    clientService.save(codigCompany)
+
+    val customer =
+      clientRepository.save(
+        Client("CLI-PDF-SALE-CUST", "Customer Buyer").apply {
+          billingAddress = "8 Client Street\nBrussels\nBelgium"
+        }
+      )
+    val sale =
+      salesCodigRepository.save(
+        SalesCodig("Cod-SO0001", customer, LocalDate.of(2026, 4, 10)).apply {
+          clientReference = "cod_PO_456"
+          expectedDeliveryDate = LocalDate.of(2026, 5, 12)
+          incoterms = "CFR"
+          incotermLocation = "Antwerp"
+          billingAddress = "Invoice Dept\nBrussels\nBelgium"
+          shippingAddress = "Port Warehouse\nAntwerp\nBelgium"
+          currency = "USD"
+        }
+      )
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-SALE", "CITRIC ACID").apply {
+          label = "Citric acid mono"
+          shortDescription = "Acidulant"
+          unit = "kg"
+          hsCode = "291814"
+          madeIn = "China"
+          specifications = "Food grade"
+          sellingPriceExclTax = BigDecimal("2.50")
+        }
+      )
+    val saleLine =
+      DocumentLine(DocumentLine.DocumentType.SALES_CODIG, sale.id!!, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("120.00")
+        unit = "kg"
+        unitPriceExclTax = BigDecimal("2.50")
+        vatRate = BigDecimal("20")
+        hsCode = product.hsCode
+        madeIn = product.madeIn
+        description = product.specifications
+        recalculate()
+      }
+    documentLineRepository.save(saleLine)
+    sale.recalculateTotals(listOf(saleLine))
+    salesCodigRepository.saveAndFlush(sale)
+
+    val text = extractText(pdfService.generateSalesCodigPdf(sale.id!!))
+
+    assertThat(text).contains("CoDIG SAS")
+    assertThat(text).contains("TVA: FRCODIGSALE123")
+    assertThat(text).contains("Customer Buyer")
+    assertThat(text).contains("8 Client Street")
+    assertThat(text).contains("INVOICING ADDRESS :")
+    assertThat(text).contains("Invoice Dept")
+    assertThat(text).contains("SHIPPING ADDRESS :")
+    assertThat(text).contains("Port Warehouse")
+    assertThat(text).contains("Order # Cod-SO0001")
+    assertThat(text).contains("cod_PO_456")
+    assertThat(text).contains("10/04/2026")
+    assertThat(text).contains("12/05/2026")
+    assertThat(text).contains("CFR Antwerp")
+    assertThat(text).contains("Citric acid mono")
+    assertThat(text).contains("Acidulant")
+    assertThat(text).contains("120,00 kg")
+    assertThat(text).contains("$ 2,50")
+    assertThat(text).contains("20%")
+    assertThat(text).contains("$ 300,00")
+    assertThat(text).contains("TOTAL")
+    assertThat(text).contains("$ 360,00")
+    assertThat(text).contains("PO : cod_PO_456 / CFR Antwerp / Made in : China")
+    assertThat(text).contains("Food grade")
+    assertThat(text).contains("HS CODE : 291814 / Made in : China")
+  }
+
+  /** Verifies the Netstone sale PDF reuses the Codig sale layout with Netstone/CoDIG parties. */
+  @Test
+  fun generateSalesNetstonePdf_renders_requested_layout() {
+    val netstoneCompany =
+      clientService.findDefaultCodigSupplier().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-NETSTONE-SALE", "Netstone").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.NETSTONE
+          }
+        )
+      }
+    netstoneCompany.billingAddress = "10/F., Guangdong Investment Tower\nHong Kong"
+    netstoneCompany.vatNumber = "HK123456"
+    netstoneCompany.logoData = sampleLogoData
+    clientService.save(netstoneCompany)
+
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-COD-NET", "CoDIG SAS").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = "12 rue de Paris\n75001 Paris\nFrance"
+    clientService.save(codigCompany)
+
+    val customer =
+      clientRepository.save(
+        Client("CLI-PDF-NET-CUS", "External Customer").apply {
+          billingAddress = "7 Customer Road\nLyon\nFrance"
+        }
+      )
+    val orderCodig =
+      orderCodigRepository.save(
+        OrderCodig("COD-PO-789", customer, LocalDate.of(2026, 4, 11)).apply {
+          clientReference = "CLIENT-REF-789"
+          shippingAddress = "Customer Warehouse\nMarseille\nFrance"
+          incoterms = "CFR"
+          incotermLocation = "Marseille"
+          currency = "USD"
+        }
+      )
+    val salesCodig =
+      salesCodigRepository.save(
+        SalesCodig("Cod-SO0099", customer, LocalDate.of(2026, 4, 11)).apply {
+          this.orderCodig = orderCodig
+          clientReference = "SALE-REF-789"
+          shippingAddress = "Customer Warehouse\nMarseille\nFrance"
+        }
+      )
+    val sale =
+      salesNetstoneService.save(
+        SalesNetstone("NST-SO0001", salesCodig).apply {
+          saleDate = LocalDate.of(2026, 4, 12)
+          expectedDeliveryDate = LocalDate.of(2026, 5, 18)
+          incoterms = "CFR"
+          incotermLocation = "Marseille"
+          shippingAddress = "CoDIG Warehouse\nLe Havre\nFrance"
+          currency = "USD"
+        }
+      )
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-NET-SALE", "ASCORBIC ACID").apply {
+          label = "Vitamin C"
+          shortDescription = "Antioxidant"
+          unit = "kg"
+          hsCode = "293627"
+          madeIn = "China"
+          specifications = "Pharma grade"
+          purchasePriceExclTax = BigDecimal("3.75")
+        }
+      )
+    val saleLine =
+      DocumentLine(DocumentLine.DocumentType.SALES_NETSTONE, sale.id!!, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("240.00")
+        unit = "kg"
+        unitPriceExclTax = BigDecimal("3.75")
+        vatRate = BigDecimal.ZERO
+        hsCode = product.hsCode
+        madeIn = product.madeIn
+        recalculate()
+      }
+    documentLineRepository.save(saleLine)
+    sale.recalculateTotals(listOf(saleLine))
+    salesNetstoneService.save(sale)
+
+    val text = extractText(pdfService.generateSalesNetstonePdf(sale.id!!))
+
+    assertThat(text).contains("Netstone")
+    assertThat(text).contains("TVA: HK123456")
+    assertThat(text).contains("CoDIG SAS")
+    assertThat(text).contains("12 rue de Paris")
+    assertThat(text).contains("INVOICING ADDRESS :")
+    assertThat(text).contains("10/F., Guangdong Investment Tower")
+    assertThat(text).contains("SHIPPING ADDRESS :")
+    assertThat(text).contains("CoDIG Warehouse")
+    assertThat(text).contains("Order # NST-SO0001")
+    assertThat(text).contains("COD-PO-789")
+    assertThat(text).doesNotContain("CLIENT-REF-789")
+    assertThat(text).doesNotContain("SALE-REF-789")
+    assertThat(text).contains("12/04/2026")
+    assertThat(text).contains("18/05/2026")
+    assertThat(text).contains("CFR Marseille")
+    assertThat(text).contains("Vitamin C")
+    assertThat(text).contains("Antioxidant")
+    assertThat(text).contains("240,00 kg")
+    assertThat(text).contains("$ 3,75")
+    assertThat(text).contains("$ 900,00")
+    assertThat(text).contains("TOTAL")
+    assertThat(text).contains("Pharma grade")
+    assertThat(text).contains("PO : COD-PO-789 / CFR Marseille / Made in : China")
+    assertThat(text).contains("HS CODE : 293627 / Made in : China")
+  }
+
+  /** Verifies the Codig order PDF mirrors the Netstone order PDF structure for Codig parties. */
+  @Test
+  fun generateOrderCodigPdf_renders_codig_order_layout() {
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-CODIG-ORD", "CoDIG SAS").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = "12 rue de Paris\n75001 Paris\nFrance"
+    codigCompany.vatNumber = "FRCODIGORD123"
+    codigCompany.logoData = sampleLogoData
+    clientService.save(codigCompany)
+
+    val customer =
+      clientRepository.save(
+        Client("CLI-PDF-ORD-CUST", "Order Customer").apply {
+          billingAddress = "4 Buyer Avenue\nMadrid\nSpain"
+        }
+      )
+    val order =
+      orderCodigRepository.save(
+        OrderCodig("COD-PO-001", customer, LocalDate.of(2026, 4, 15)).apply {
+          currency = "USD"
+          deliveryLocation = "Port of Valencia"
+          shippingAddress = "Customer Port\nValencia\nSpain"
+          expectedDeliveryDate = LocalDate.of(2026, 5, 20)
+          incoterms = "CFR"
+          incotermLocation = "Valencia"
+          notes = "Deliver in dry container"
+          conditions = "Payment 30 days"
+        }
+      )
+    salesNetstoneService.save(
+      SalesNetstone(
+          "NST-SO-001",
+          salesCodigRepository.save(
+            SalesCodig("COD-SALE-LINK", customer, LocalDate.of(2026, 4, 15)).apply {
+              this.orderCodig = order
+            }
+          ),
+        )
+        .apply {
+          incoterms = "CFR"
+          incotermLocation = "Valencia"
+        }
+    )
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-ORD", "XANTHAN GUM").apply {
+          label = "Xanthan gum 200 mesh"
+          shortDescription = "Thickener"
+          unit = "kg"
+          purchasePriceExclTax = BigDecimal("4.25")
+          replaceSuppliers(
+            listOf(
+              clientRepository.save(
+                Client("CLI-PDF-ORD-SUP", "Supplier Notes").apply {
+                  role = Client.ClientRole.PRODUCER
+                  notes = "Supplier note for product"
+                }
+              )
+            )
+          )
+        }
+      )
+    val orderLine =
+      DocumentLine(DocumentLine.DocumentType.ORDER_CODIG, order.id!!, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("200.00")
+        unit = "kg"
+        unitPriceExclTax = BigDecimal("4.25")
+        vatRate = BigDecimal.ZERO
+        recalculate()
+      }
+    documentLineRepository.save(orderLine)
+    order.recalculateTotals(listOf(orderLine))
+    orderCodigRepository.saveAndFlush(order)
+
+    val text = extractText(pdfService.generateOrderCodigPdf(order.id!!))
+
+    assertThat(text).contains(order.orderNumber)
+    assertThat(text).contains("CoDIG SAS")
+    assertThat(text).contains("TVA: FRCODIGORD123")
+    assertThat(text).contains("DELIVERY ADDRESS:")
+    assertThat(text).contains("Port of Valencia")
+    assertThat(text).contains("Order Customer")
+    assertThat(text).contains("4 Buyer Avenue")
+    assertThat(text).contains("Purchase Order #COD-PO-001")
+    assertThat(text).contains("Your order ref.")
+    assertThat(text).contains("NST-SO-001")
+    assertThat(text).contains("15/04/2026")
+    assertThat(text).contains("CFR")
+    assertThat(text).contains("Valencia")
+    assertThat(text).contains("Xanthan gum 200 mesh")
+    assertThat(text).contains("Thickener")
+    assertThat(text).contains("200,00 kg")
+    assertThat(text).contains("4,25")
+    assertThat(text).contains("$ 850,00")
+    assertThat(text).contains("$ 850,00")
+    assertThat(text).contains("Untaxed amount")
+    assertThat(text).doesNotContain("Amount")
+    assertThat(text).contains("Deliver in dry container")
+    assertThat(text).contains("Payment 30 days")
+    assertThat(text).contains("Supplier note for product")
   }
 
   /**

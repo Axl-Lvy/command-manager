@@ -22,6 +22,16 @@ class Product(
   @NotBlank @Column(nullable = false, unique = true, length = 50) var reference: String = "",
   @NotBlank @Column(name = "designation", nullable = false) var name: String,
 ) : SoftDeletableEntity() {
+  /** Alternate commercial wording used on documents when the product name is too technical. */
+  @Column(name = "label", length = 255) var label: String? = null
+
+  /** Short customer-facing summary shown in compact contexts. */
+  @Column(name = "short_description", length = 500) var shortDescription: String? = null
+
+  /** Long-form commercial or technical description kept on the product sheet. */
+  @Column(name = "long_description", columnDefinition = "TEXT") var longDescription: String? = null
+
+  /** Technical specifications reused by current document PDFs and detailed product content. */
   @Column(name = "description", columnDefinition = "TEXT") var specifications: String? = null
 
   @Enumerated(EnumType.STRING)
