@@ -539,6 +539,56 @@ class SalesCodigServiceTest {
   }
 
   @Test
+  fun searchWithLinkedOrder_matches_saleNumber_and_counts() {
+    val client = testData.createClient("CLI-SA-SRCH-1")
+    val withOrder = createSalesCodig("SA-SRCH-GAMMA", client)
+    createSalesCodig("SA-SRCH-DELTA", client) // standalone sale, no order
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SRCH-1")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        withOrder.id!!,
+        "Widget",
+        product = mtoProduct,
+      )
+    salesCodigService.syncGeneratedOrder(withOrder, listOf(line))
+    salesCodigRepository.flush()
+
+    val byGamma = salesCodigService.searchWithLinkedOrder("gamma", 0, 10).map { it.saleNumber }
+    assertThat(byGamma).contains("SA-SRCH-GAMMA").doesNotContain("SA-SRCH-DELTA")
+
+    assertThat(salesCodigService.countSearchWithLinkedOrder("gamma")).isEqualTo(1)
+    // Standalone sale without order must not be counted even with empty filter.
+    assertThat(salesCodigService.countSearchWithLinkedOrder("SA-SRCH-DELTA")).isEqualTo(0)
+  }
+
+  @Test
+  fun searchWithLinkedOrder_matches_client_name_and_paginates() {
+    val client = testData.createClient("CLI-SA-SRCH-2")
+    client.name = "Globex Corp"
+    clientService.save(client)
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SRCH-2")
+    repeat(3) { index ->
+      val sale = createSalesCodig("SA-SRCH-PAGE-$index", client)
+      val line =
+        testData.createDocumentLine(
+          DocumentLine.DocumentType.SALES_CODIG,
+          sale.id!!,
+          "Widget",
+          product = mtoProduct,
+        )
+      salesCodigService.syncGeneratedOrder(sale, listOf(line))
+    }
+    salesCodigRepository.flush()
+
+    val page1 = salesCodigService.searchWithLinkedOrder("globex", 0, 2)
+    val page2 = salesCodigService.searchWithLinkedOrder("globex", 2, 2)
+    assertThat(page1).hasSize(2)
+    assertThat(page2).hasSize(1)
+    assertThat(salesCodigService.countSearchWithLinkedOrder("globex")).isEqualTo(3)
+  }
+
+  @Test
   fun findAllWithLinkedOrder_includes_only_sales_with_orderCodig() {
     val client = testData.createClient("CLI-SA-LNK")
     val linked = createSalesCodig("SA-LNK-01", client)
