@@ -540,4 +540,44 @@ class OrderCodigServiceTest {
     assertThat(lines).hasSize(1)
     assertThat(lines[0].designation).isEqualTo("Widget B")
   }
+
+  @Test
+  fun search_matches_orderNumber_case_insensitive() {
+    val client = testData.createClient("CLI-OA-SRCH-1")
+    val a = OrderCodig("CA-SRCH-ALPHA", client, LocalDate.of(2026, 3, 1))
+    val b = OrderCodig("CA-SRCH-BETA", client, LocalDate.of(2026, 3, 1))
+    orderCodigRepository.saveAllAndFlush(listOf(a, b))
+
+    val byAlpha = orderCodigService.search("alpha", 0, 20).map { it.orderNumber }
+    assertThat(byAlpha).contains("CA-SRCH-ALPHA").doesNotContain("CA-SRCH-BETA")
+
+    assertThat(orderCodigService.countSearch("alpha")).isEqualTo(1)
+  }
+
+  @Test
+  fun search_matches_client_name_and_paginates() {
+    val client = testData.createClient("CLI-OA-SRCH-2")
+    client.name = "Acme Widgets SA"
+    clientService.save(client)
+    repeat(3) { index ->
+      orderCodigRepository.save(OrderCodig("CA-PAGE-$index", client, LocalDate.of(2026, 3, 1)))
+    }
+    orderCodigRepository.flush()
+
+    val page1 = orderCodigService.search("acme", 0, 2)
+    val page2 = orderCodigService.search("acme", 2, 2)
+    assertThat(page1).hasSize(2)
+    assertThat(page2).hasSize(1)
+    assertThat(orderCodigService.countSearch("acme")).isEqualTo(3)
+  }
+
+  @Test
+  fun search_with_empty_filter_returns_all_active_orders() {
+    val client = testData.createClient("CLI-OA-SRCH-3")
+    val created = orderCodigRepository.save(OrderCodig("CA-EMPTY-FILTER", client, LocalDate.now()))
+    orderCodigRepository.flush()
+
+    val numbers = orderCodigService.search("", 0, 100).map { it.orderNumber }
+    assertThat(numbers).contains(created.orderNumber)
+  }
 }

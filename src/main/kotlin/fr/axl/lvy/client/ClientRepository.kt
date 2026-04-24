@@ -41,4 +41,21 @@ interface ClientRepository : JpaRepository<Client, Long> {
     "SELECT c FROM Client c WHERE c.deletedAt IS NULL AND c.role IN ('PRODUCER', 'BOTH') AND (c.visibleCompany = :company OR c.visibleCompany = 'BOTH')"
   )
   fun findProducersVisibleFor(company: User.Company): List<Client>
+
+  /** All non-deleted clients that can act as a buyer (role CLIENT or BOTH). */
+  @Query("SELECT c FROM Client c WHERE c.deletedAt IS NULL AND c.role IN ('CLIENT', 'BOTH')")
+  fun findClients(): List<Client>
+
+  /**
+   * All non-deleted clients usable as a product supplier: producers, both-role clients, and
+   * own-company entries (for inter-company flows).
+   */
+  @Query(
+    "SELECT c FROM Client c WHERE c.deletedAt IS NULL AND c.role IN ('PRODUCER', 'BOTH', 'OWN_COMPANY')"
+  )
+  fun findSuppliersForProduct(): List<Client>
+
+  /** All non-deleted clients with the given role. */
+  @Query("SELECT c FROM Client c WHERE c.deletedAt IS NULL AND c.role = :role")
+  fun findByRole(role: Client.ClientRole): List<Client>
 }

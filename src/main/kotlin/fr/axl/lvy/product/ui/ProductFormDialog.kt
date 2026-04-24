@@ -51,9 +51,9 @@ internal class ProductFormDialog(
   private val madeIn = ComboBox<String>("Origine")
   private val active = Checkbox("Actif")
   private val clientCodeRows = VerticalLayout()
-  private val availableClients: List<Client> = clientService.findAll().filter { it.isClient() }
+  private val availableClients: List<Client> = clientService.findClients()
   private val availableSuppliers: List<Client> =
-    clientService.findAll().filter { it.role == Client.ClientRole.PRODUCER }
+    clientService.findByRole(Client.ClientRole.PRODUCER)
   private val clientCodeEntries = mutableListOf<ClientCodeRow>()
 
   init {

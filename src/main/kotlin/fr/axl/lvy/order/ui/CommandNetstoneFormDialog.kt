@@ -13,6 +13,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import com.vaadin.flow.data.provider.DataProvider
 import com.vaadin.flow.server.StreamResource
 import fr.axl.lvy.base.ui.DocumentFlowNavigation
 import fr.axl.lvy.base.ui.DocumentFlowNavigator
@@ -89,7 +90,7 @@ internal class CommandNetstoneFormDialog(
     allIncoterms = incotermService.findAll()
     incotermCombo.setItems(allIncoterms)
     incotermCombo.setItemLabelGenerator { it.name }
-    supplierCombo.setItems(clientService.findAll().filter { it.isSupplierForProduct() })
+    supplierCombo.setItems(clientService.findSuppliersForProduct())
     supplierCombo.setItemLabelGenerator { it.name }
     paymentTermCombo.setItems(paymentTermService.findAll())
     paymentTermCombo.setItemLabelGenerator { it.label }
@@ -99,7 +100,14 @@ internal class CommandNetstoneFormDialog(
     status.setItems(visibleStatuses)
     status.setItemLabelGenerator(::statusLabel)
 
-    orderCodigCombo.setItems(orderCodigService.findAll())
+    orderCodigCombo.setItems(
+      DataProvider.fromFilteringCallbacks<OrderCodig, String>(
+        { query ->
+          orderCodigService.search(query.filter.orElse(""), query.offset, query.limit).stream()
+        },
+        { query -> orderCodigService.countSearch(query.filter.orElse("")) },
+      )
+    )
     orderCodigCombo.setItemLabelGenerator { "${it.orderNumber} - ${it.client.name}" }
     orderCodigCombo.addValueChangeListener { applyLinkedSaleDefaults() }
 
