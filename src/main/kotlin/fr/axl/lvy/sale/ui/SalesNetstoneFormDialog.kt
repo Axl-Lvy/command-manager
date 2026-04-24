@@ -12,6 +12,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
+import com.vaadin.flow.data.provider.DataProvider
 import fr.axl.lvy.base.ui.DocumentFlowNavigation
 import fr.axl.lvy.base.ui.DocumentFlowNavigator
 import fr.axl.lvy.base.ui.DocumentFlowStep
@@ -85,7 +86,16 @@ internal class SalesNetstoneFormDialog(
     fiscalPositionCombo.setItemLabelGenerator { it.position }
     deliveryAddressCombo.setItemLabelGenerator { it.label }
 
-    orderCodigCombo.setItems(salesCodigService.findAllWithLinkedOrder())
+    orderCodigCombo.setItems(
+      DataProvider.fromFilteringCallbacks<SalesCodig, String>(
+        { query ->
+          salesCodigService
+            .searchWithLinkedOrder(query.filter.orElse(""), query.offset, query.limit)
+            .stream()
+        },
+        { query -> salesCodigService.countSearchWithLinkedOrder(query.filter.orElse("")) },
+      )
+    )
     orderCodigCombo.setItemLabelGenerator {
       val linkedOrder = it.orderCodig
       if (linkedOrder == null) {
