@@ -112,6 +112,76 @@ class ClientServiceTest {
   }
 
   @Test
+  fun findClients_returns_roles_CLIENT_and_BOTH() {
+    val clientOnly = Client("CLI-FC-C", "Client Only")
+    clientOnly.role = Client.ClientRole.CLIENT
+    clientService.save(clientOnly)
+
+    val producer = Client("CLI-FC-P", "Producer")
+    producer.role = Client.ClientRole.PRODUCER
+    clientService.save(producer)
+
+    val both = Client("CLI-FC-B", "Both")
+    both.role = Client.ClientRole.BOTH
+    clientService.save(both)
+
+    val ownCo = Client("CLI-FC-O", "Own Company")
+    ownCo.role = Client.ClientRole.OWN_COMPANY
+    clientService.save(ownCo)
+
+    val result = clientService.findClients()
+    assertThat(result).anyMatch { it.clientCode == "CLI-FC-C" }
+    assertThat(result).anyMatch { it.clientCode == "CLI-FC-B" }
+    assertThat(result).noneMatch { it.clientCode == "CLI-FC-P" }
+    assertThat(result).noneMatch { it.clientCode == "CLI-FC-O" }
+  }
+
+  @Test
+  fun findSuppliersForProduct_returns_producers_both_and_own_companies() {
+    val clientOnly = Client("CLI-SFP-C", "Client Only")
+    clientOnly.role = Client.ClientRole.CLIENT
+    clientService.save(clientOnly)
+
+    val producer = Client("CLI-SFP-P", "Producer")
+    producer.role = Client.ClientRole.PRODUCER
+    clientService.save(producer)
+
+    val both = Client("CLI-SFP-B", "Both")
+    both.role = Client.ClientRole.BOTH
+    clientService.save(both)
+
+    val ownCo = Client("CLI-SFP-O", "Own Company")
+    ownCo.role = Client.ClientRole.OWN_COMPANY
+    clientService.save(ownCo)
+
+    val result = clientService.findSuppliersForProduct()
+    assertThat(result).anyMatch { it.clientCode == "CLI-SFP-P" }
+    assertThat(result).anyMatch { it.clientCode == "CLI-SFP-B" }
+    assertThat(result).anyMatch { it.clientCode == "CLI-SFP-O" }
+    assertThat(result).noneMatch { it.clientCode == "CLI-SFP-C" }
+  }
+
+  @Test
+  fun findByRole_filters_exact_role() {
+    val producerOne = Client("CLI-ROLE-P1", "Producer One")
+    producerOne.role = Client.ClientRole.PRODUCER
+    clientService.save(producerOne)
+
+    val producerTwo = Client("CLI-ROLE-P2", "Producer Two")
+    producerTwo.role = Client.ClientRole.PRODUCER
+    clientService.save(producerTwo)
+
+    val both = Client("CLI-ROLE-B", "Both")
+    both.role = Client.ClientRole.BOTH
+    clientService.save(both)
+
+    val result = clientService.findByRole(Client.ClientRole.PRODUCER)
+    assertThat(result).anyMatch { it.clientCode == "CLI-ROLE-P1" }
+    assertThat(result).anyMatch { it.clientCode == "CLI-ROLE-P2" }
+    assertThat(result).noneMatch { it.clientCode == "CLI-ROLE-B" }
+  }
+
+  @Test
   fun findByType_filters_own_companies() {
     val ownCompany = Client("CLI-OWN", "My Company A")
     ownCompany.type = Client.ClientType.OWN_COMPANY
