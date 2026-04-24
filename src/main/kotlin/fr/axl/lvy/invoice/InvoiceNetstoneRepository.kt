@@ -1,7 +1,17 @@
 package fr.axl.lvy.invoice
 
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 
 interface InvoiceNetstoneRepository : JpaRepository<InvoiceNetstone, Long> {
+  @Query(
+    """
+      SELECT DISTINCT i FROM InvoiceNetstone i
+      LEFT JOIN FETCH i.recipient
+      LEFT JOIN FETCH i.orderNetstone
+      LEFT JOIN FETCH i.verifiedBy
+      WHERE i.deletedAt IS NULL
+    """
+  )
   fun findByDeletedAtIsNull(): List<InvoiceNetstone>
 }

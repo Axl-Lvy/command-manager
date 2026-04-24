@@ -98,24 +98,23 @@ class SalesCodigService(
   }
 
   /**
-   * Synchronizes the auto-generated [OrderCodig] from this sale. Once the order has progressed past
-   * DRAFT the sale can no longer mutate it (fields, lines, or existence) — it is then an
-   * independent document. If no MTO products remain and the order is still DRAFT, the linked order
-   * and Netstone sale are deleted. Otherwise, the order is created/updated with the sale's fields
-   * and line items.
+   * Generates the auto-created [OrderCodig] from this sale, once. Runs only when the sale has no
+   * linked order yet and contains at least one MTO product line. Once the order exists, further
+   * sale edits do not alter it — the order becomes an independent document.
+   *
+   * This one-shot rule (issue #32) prevents routine sale modifications from silently overwriting
+   * order fields that a user or the procurement workflow may have since changed.
    */
   @Transactional
   fun syncGeneratedOrder(sale: SalesCodig, saleLines: List<DocumentLine>): SalesCodig {
-    val existingOrder = sale.orderCodig
-    if (existingOrder != null && existingOrder.status != OrderCodig.OrderCodigStatus.DRAFT) {
+    if (sale.orderCodig != null) {
+      // Order already generated: automation disabled, do not mutate the linked order.
       return sale
     }
 
     if (saleLines.none { it.product?.isMtoProduct() == true }) {
-      existingOrder?.id?.let { orderCodigService.delete(it) }
-      sale.id?.let { salesNetstoneService.deleteBySalesCodigId(it) }
-      sale.orderCodig = null
-      return salesCodigRepository.save(sale)
+      // No MTO line, nothing to generate.
+      return sale
     }
 
     val supplier =
@@ -124,9 +123,8 @@ class SalesCodigService(
           "Aucun fournisseur Netstone par defaut n'est configure dans les societes internes"
         )
       }
-    val order = sale.orderCodig ?: OrderCodig("", supplier, sale.saleDate)
+    val order = OrderCodig("", supplier, sale.saleDate)
     val codigCompany = clientService.findDefaultCodigCompany().orElse(null)
-    val isNewOrder = sale.orderCodig == null
 
     order.client = supplier
     order.orderDate = sale.saleDate
@@ -145,9 +143,7 @@ class SalesCodigService(
     order.shippingAddress = sale.shippingAddress
     order.notes = sale.notes
     order.conditions = sale.conditions
-    if (sale.orderCodig == null) {
-      order.status = OrderCodig.OrderCodigStatus.DRAFT
-    }
+    order.status = OrderCodig.OrderCodigStatus.DRAFT
 
     val savedOrder = orderCodigService.save(order)
     val generatedLines =
@@ -166,11 +162,7 @@ class SalesCodigService(
     MDC.put("saleNumber", sale.saleNumber)
     MDC.put("orderNumber", savedOrder.orderNumber)
     try {
-      if (isNewOrder) {
-        log.info("SalesCodig {} generated OrderCodig {}", sale.saleNumber, savedOrder.orderNumber)
-      } else {
-        log.info("SalesCodig {} synced OrderCodig {}", sale.saleNumber, savedOrder.orderNumber)
-      }
+      log.info("SalesCodig {} generated OrderCodig {}", sale.saleNumber, savedOrder.orderNumber)
     } finally {
       MDC.remove("saleNumber")
       MDC.remove("orderNumber")
