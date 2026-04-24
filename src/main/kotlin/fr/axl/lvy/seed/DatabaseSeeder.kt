@@ -308,9 +308,7 @@ class DatabaseSeeder(
           unit = "Mt"
           hsCode = "9031.80"
           madeIn = "China"
-          replaceClientProductCodes(
-            listOf(dowChemical to "DOW-CO3104-CN", dupont to "DUP-CO3104-CN")
-          )
+          replaceClientProductCodes(listOf(dowChemical to "10041948", dupont to "DUP-CO3104-CN"))
         },
         Product(name = "CO_3104 TH").apply {
           type = Product.ProductType.PRODUCT
@@ -323,9 +321,7 @@ class DatabaseSeeder(
           unit = "Mt"
           hsCode = "9031.80.234"
           madeIn = "Thailand"
-          replaceClientProductCodes(
-            listOf(dowChemical to "DOW-CO3104-TH", dupont to "DUP-CO3104-TH")
-          )
+          replaceClientProductCodes(listOf(dowChemical to "10041948", dupont to "DUP-CO3104-TH"))
         },
         Product(name = "Demurrage").apply {
           type = Product.ProductType.SERVICE

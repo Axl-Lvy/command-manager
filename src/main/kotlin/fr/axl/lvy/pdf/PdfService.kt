@@ -69,13 +69,14 @@ class PdfService(
         DocumentLine.DocumentType.ORDER_NETSTONE,
         orderId,
       )
+    val pdfLines = lines.map { PdfLine.from(it, productService) }
     val ownCompany = clientService.findDefaultCodigSupplier().orElse(null)
     val supplier = order.supplier
     val currency = order.orderCodig.currency
 
     val ctx = Context()
     ctx.setVariable("order", order)
-    ctx.setVariable("lines", lines)
+    ctx.setVariable("lines", pdfLines)
     ctx.setVariable("ownCompany", ownCompany)
     ctx.setVariable("supplier", supplier)
     ctx.setVariable(
@@ -93,6 +94,70 @@ class PdfService(
     ctx.setVariable("logoSrc", logoSrc(ownCompany))
 
     val html = templateEngine.process("order-netstone", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
+  /**
+   * Generates a PDF for a Codig customer order. Uses the Netstone order PDF structure adapted to
+   * CoDIG parties and Codig order lines.
+   */
+  @Transactional(readOnly = true)
+  fun generateOrderCodigPdf(orderId: Long): ByteArray {
+    val order =
+      orderCodigService.findDetailedById(orderId).orElseThrow {
+        IllegalArgumentException("OrderCodig $orderId not found")
+      }
+    val lines = orderCodigService.findLines(orderId)
+    val pdfLines = lines.map { PdfLine.from(it, productService) }
+    val ownCompany =
+      clientService
+        .findDefaultCodigCompany()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+    val client = order.client
+    val linkedNetstoneSale = salesNetstoneService.findByOrderCodigId(orderId).orElse(null)
+    val supplierNoteLines =
+      lines
+        .mapNotNull { line ->
+          line.product?.id?.let { productId ->
+            productService.findDetailedById(productId).orElse(null)?.let { product ->
+              product.suppliers.firstOrNull { supplier -> supplier.id == order.client.id }?.notes
+                ?: product.suppliers.firstOrNull()?.notes
+            }
+          }
+        }
+        .flatMap { it.lines() }
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .distinct()
+
+    val ctx = Context()
+    ctx.setVariable("order", order)
+    ctx.setVariable("lines", pdfLines)
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable("client", client)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("clientAddressLines", client.billingAddress?.lines() ?: emptyList<String>())
+    ctx.setVariable(
+      "deliveryLocationLines",
+      order.deliveryLocation?.lines() ?: order.shippingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("noteLines", order.notes?.lines() ?: emptyList<String>())
+    ctx.setVariable("conditionLines", order.conditions?.lines() ?: emptyList<String>())
+    ctx.setVariable("supplierNoteLines", supplierNoteLines)
+    ctx.setVariable("yourOrderRef", linkedNetstoneSale?.saleNumber ?: "")
+    ctx.setVariable("currencySymbol", currencySymbol(order.currency))
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+
+    val html = templateEngine.process("order-codig", ctx)
 
     val out = ByteArrayOutputStream()
     PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
@@ -201,8 +266,128 @@ class PdfService(
     return out.toByteArray()
   }
 
+  /**
+   * Generates a PDF for a Codig sale. Renders customer invoicing/shipping addresses, sale metadata,
+   * and product lines with pricing.
+   */
+  @Transactional(readOnly = true)
+  fun generateSalesCodigPdf(saleId: Long): ByteArray {
+    val sale =
+      salesCodigService.findDetailedById(saleId).orElseThrow {
+        IllegalArgumentException("SalesCodig $saleId not found")
+      }
+    val lines = salesCodigService.findLines(saleId)
+    val pdfLines = lines.map { PdfLine.from(it, productService) }
+    val ownCompany =
+      clientService
+        .findDefaultCodigCompany()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+    val client = sale.client
+
+    val ctx = Context()
+    ctx.setVariable("sale", sale)
+    ctx.setVariable("client", client)
+    ctx.setVariable("lines", pdfLines)
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "clientAddressLines",
+      client.billingAddress?.lines()
+        ?: sale.billingAddress?.lines()
+        ?: sale.shippingAddress?.lines()
+        ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "invoicingAddressLines",
+      sale.billingAddress?.lines() ?: client.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("shippingAddressLines", sale.shippingAddress?.lines() ?: emptyList<String>())
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+    ctx.setVariable("currencySymbol", currencySymbol(sale.currency))
+    ctx.setVariable("incotermText", incotermText(sale.incoterms, sale.incotermLocation))
+
+    val html = templateEngine.process("sales-codig", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
+  /**
+   * Generates a PDF for a Netstone sale. Mirrors the Codig sale PDF layout with Netstone as the
+   * issuing company and CoDIG as the internal customer reference.
+   */
+  @Transactional(readOnly = true)
+  fun generateSalesNetstonePdf(saleId: Long): ByteArray {
+    val sale =
+      salesNetstoneService.findDetailedById(saleId).orElseThrow {
+        IllegalArgumentException("SalesNetstone $saleId not found")
+      }
+    val lines = salesNetstoneService.findLines(saleId).map { PdfLine.from(it, productService) }
+    val ownCompany =
+      clientService
+        .findDefaultCodigSupplier()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+    val codigCompany =
+      clientService
+        .findDefaultCodigCompany()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+
+    val ctx = Context()
+    ctx.setVariable("sale", sale)
+    ctx.setVariable("client", codigCompany)
+    ctx.setVariable("lines", lines)
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "clientAddressLines",
+      codigCompany?.billingAddress?.lines()
+        ?: sale.salesCodig.billingAddress?.lines()
+        ?: sale.shippingAddress?.lines()
+        ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "invoicingAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("shippingAddressLines", sale.shippingAddress?.lines() ?: emptyList<String>())
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+    ctx.setVariable("currencySymbol", currencySymbol(sale.currency))
+    ctx.setVariable("incotermText", incotermText(sale.incoterms, sale.incotermLocation))
+    ctx.setVariable(
+      "customerReference",
+      sale.salesCodig.orderCodig?.orderNumber
+        ?: sale.salesCodig.orderCodig?.clientReference
+        ?: sale.salesCodig.clientReference
+        ?: "",
+    )
+
+    val html = templateEngine.process("sales-netstone", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
   private data class DeliveryPdfLine(
     val designation: String,
+    val displayName: String,
+    val shortDescription: String?,
     val orderedQuantity: BigDecimal,
     val deliveredQuantity: BigDecimal,
     val unit: String?,
@@ -230,6 +415,8 @@ class PdfService(
         val productId = product?.id ?: deliveryLine.product?.id ?: saleLine?.product?.id
         return DeliveryPdfLine(
           designation = deliveryLine.designation,
+          displayName = product?.label?.takeIf { it.isNotBlank() } ?: deliveryLine.designation,
+          shortDescription = product?.shortDescription,
           orderedQuantity = saleLine?.quantity ?: deliveryLine.quantity,
           deliveredQuantity = deliveryLine.quantity,
           unit = deliveryLine.unit ?: saleLine?.unit,
@@ -250,6 +437,39 @@ class PdfService(
         pcClients.firstNotNullOfOrNull { client ->
           client.id?.let { productService.findClientProductCode(productId, it) }
         } ?: productService.findFirstClientProductCode(productId)
+    }
+  }
+
+  private data class PdfLine(
+    val designation: String,
+    val displayName: String,
+    val shortDescription: String?,
+    val description: String?,
+    val hsCode: String?,
+    val madeIn: String?,
+    val quantity: BigDecimal,
+    val unit: String?,
+    val unitPriceExclTax: BigDecimal,
+    val vatRate: BigDecimal,
+    val lineTotalExclTax: BigDecimal,
+  ) {
+    companion object {
+      fun from(line: DocumentLine, productService: ProductService): PdfLine {
+        val product = line.product?.id?.let { productService.findDetailedById(it).orElse(null) }
+        return PdfLine(
+          designation = line.designation,
+          displayName = product?.label?.takeIf { it.isNotBlank() } ?: line.designation,
+          shortDescription = product?.shortDescription,
+          description = line.description ?: product?.specifications,
+          hsCode = line.hsCode ?: product?.hsCode,
+          madeIn = line.madeIn ?: product?.madeIn,
+          quantity = line.quantity,
+          unit = line.unit,
+          unitPriceExclTax = line.unitPriceExclTax,
+          vatRate = line.vatRate,
+          lineTotalExclTax = line.lineTotalExclTax,
+        )
+      }
     }
   }
 
