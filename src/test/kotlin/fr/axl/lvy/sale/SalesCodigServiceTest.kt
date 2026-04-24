@@ -210,7 +210,7 @@ class SalesCodigServiceTest {
   }
 
   @Test
-  fun syncGeneratedOrder_updates_existing_order() {
+  fun syncGeneratedOrder_does_not_overwrite_existing_order() {
     val client = testData.createClient("CLI-SA05")
     val sale = createSalesCodig("SA-SYNC-02", client)
     salesCodigRepository.flush()
@@ -227,6 +227,10 @@ class SalesCodigServiceTest {
 
     salesCodigService.syncGeneratedOrder(sale, listOf(line1))
     val firstOrderId = sale.orderCodig!!.id!!
+    // Capture field that later "sale" modifications would try to overwrite.
+    val originalNotes = "locked by procurement"
+    sale.orderCodig!!.notes = originalNotes
+    orderCodigRepository.saveAndFlush(sale.orderCodig!!)
 
     val line2 =
       testData.createDocumentLine(
@@ -235,10 +239,15 @@ class SalesCodigServiceTest {
         "Widget B",
         product = mtoProduct,
       )
+    sale.notes = "changed on sale"
 
     salesCodigService.syncGeneratedOrder(sale, listOf(line2))
 
+    // Order reference unchanged.
     assertThat(sale.orderCodig!!.id).isEqualTo(firstOrderId)
+    // Per issue #32, the sale's later edits must not overwrite the generated order.
+    val reloaded = orderCodigRepository.findById(firstOrderId).orElseThrow()
+    assertThat(reloaded.notes).isEqualTo(originalNotes)
   }
 
   @Test
