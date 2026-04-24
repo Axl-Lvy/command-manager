@@ -11,6 +11,7 @@ import java.math.BigDecimal
 import java.util.Optional
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -40,6 +41,18 @@ class SalesCodigService(
   @Transactional(readOnly = true)
   fun findAllWithLinkedOrder(): List<SalesCodig> =
     salesCodigRepository.findByDeletedAtIsNullAndOrderCodigIsNotNull()
+
+  /** Paginated search of sales that have a generated Codig order. For ComboBox lazy loading. */
+  @Transactional(readOnly = true)
+  fun searchWithLinkedOrder(filter: String, offset: Int, limit: Int): List<SalesCodig> =
+    salesCodigRepository.searchActiveWithLinkedOrder(
+      filter,
+      PageRequest.of(offset / limit.coerceAtLeast(1), limit),
+    )
+
+  @Transactional(readOnly = true)
+  fun countSearchWithLinkedOrder(filter: String): Int =
+    salesCodigRepository.countActiveWithLinkedOrder(filter).toInt()
 
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<SalesCodig> = salesCodigRepository.findById(id)
