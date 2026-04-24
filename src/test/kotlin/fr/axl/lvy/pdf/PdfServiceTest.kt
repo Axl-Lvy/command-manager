@@ -24,6 +24,7 @@ import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigRepository
 import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.sale.SalesNetstone
+import fr.axl.lvy.sale.SalesNetstoneRepository
 import fr.axl.lvy.sale.SalesNetstoneService
 import fr.axl.lvy.user.User
 import java.io.ByteArrayInputStream
@@ -58,6 +59,7 @@ class PdfServiceTest {
   @Autowired lateinit var salesCodigRepository: SalesCodigRepository
   @Autowired lateinit var salesCodigService: SalesCodigService
   @Autowired lateinit var salesNetstoneService: SalesNetstoneService
+  @Autowired lateinit var salesNetstoneRepository: SalesNetstoneRepository
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var productService: ProductService
   @Autowired lateinit var testData: TestDataFactory
@@ -971,6 +973,44 @@ class PdfServiceTest {
 
     assertThat(text).contains(sale.saleNumber)
     assertThat(text).contains("Ship Only Warehouse")
+  }
+
+  /**
+   * Codig sale where every address is null → `clientAddressLines` resolves to the trailing empty
+   * list. Exercises the final fallback branch in generateSalesCodigPdf.
+   */
+  @Test
+  fun generateSalesCodigPdf_falls_back_to_empty_when_all_addresses_null() {
+    val customer = clientRepository.save(Client("CLI-PDF-EMPTY", "No Address Customer"))
+    val sale =
+      salesCodigRepository.save(SalesCodig("Cod-SO-EMPTY", customer, LocalDate.of(2026, 4, 20)))
+
+    val bytes = pdfService.generateSalesCodigPdf(sale.id!!)
+
+    assertThat(bytes).isNotEmpty()
+    assertThat(extractText(bytes)).contains(sale.saleNumber)
+  }
+
+  /**
+   * Netstone sale persisted directly via repository (bypassing [SalesNetstoneService.save]) with no
+   * CoDIG own-company seeded, no salesCodig billing/shipping and no linked orderCodig. Exercises
+   * the fallback chain for `clientAddressLines` (lines 360-362) and the `customerReference`
+   * fallback chain (lines 375-377) in generateSalesNetstonePdf.
+   */
+  @Test
+  fun generateSalesNetstonePdf_fallback_when_codig_and_references_missing() {
+    val customer = clientRepository.save(Client("CLI-PDF-NET-MIN", "Minimal Netstone Customer"))
+    val salesCodig =
+      salesCodigRepository.save(SalesCodig("Cod-SO-MIN", customer, LocalDate.of(2026, 4, 21)))
+    val sale =
+      salesNetstoneRepository.save(
+        SalesNetstone("NST-SO-MIN", salesCodig).apply { saleDate = LocalDate.of(2026, 4, 21) }
+      )
+
+    val bytes = pdfService.generateSalesNetstonePdf(sale.id!!)
+
+    assertThat(bytes).isNotEmpty()
+    assertThat(extractText(bytes)).contains(sale.saleNumber)
   }
 
   /**
