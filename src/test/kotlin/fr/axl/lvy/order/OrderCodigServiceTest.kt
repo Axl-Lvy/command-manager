@@ -24,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -539,5 +540,18 @@ class OrderCodigServiceTest {
     val lines = orderCodigService.findLines(saved.id!!)
     assertThat(lines).hasSize(1)
     assertThat(lines[0].designation).isEqualTo("Widget B")
+  }
+
+  @Test
+  fun findAll_paginated_excludes_soft_deleted() {
+    val client = testData.createClient("CLI-OA-PAGE")
+    val kept = createOrderCodig("CA-PAGE-KEEP", client, OrderCodig.OrderCodigStatus.DRAFT)
+    val gone = createOrderCodig("CA-PAGE-GONE", client, OrderCodig.OrderCodigStatus.DRAFT)
+    orderCodigService.delete(gone.id!!)
+    orderCodigRepository.flush()
+
+    val page = orderCodigService.findAll(PageRequest.of(0, 100))
+    assertThat(page.content).anyMatch { it.orderNumber == kept.orderNumber }
+    assertThat(page.content).noneMatch { it.orderNumber == gone.orderNumber }
   }
 }

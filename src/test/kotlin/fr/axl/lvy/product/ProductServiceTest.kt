@@ -8,6 +8,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -41,6 +42,20 @@ class ProductServiceTest {
     assertThat(found.get().sellingCurrency).isEqualTo("USD")
     assertThat(found.get().purchaseCurrency).isEqualTo("CNY")
     assertThat(found.get().priceType).isEqualTo("Prix départ usine")
+  }
+
+  @Test
+  fun findAll_paginated_excludes_soft_deleted() {
+    val keep = Product("REF-PAGE-KEEP", "Keep Me")
+    productService.save(keep)
+    val gone = Product("REF-PAGE-GONE", "Remove Me")
+    productService.save(gone)
+    productService.delete(gone.id!!)
+    productRepository.flush()
+
+    val page = productService.findAll(PageRequest.of(0, 100))
+    assertThat(page.content).anyMatch { it.reference == "REF-PAGE-KEEP" }
+    assertThat(page.content).noneMatch { it.reference == "REF-PAGE-GONE" }
   }
 
   @Test

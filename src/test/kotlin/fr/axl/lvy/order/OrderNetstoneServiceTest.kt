@@ -20,6 +20,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -111,6 +112,22 @@ class OrderNetstoneServiceTest {
     val saved = orderNetstoneService.save(orderNetstone)
 
     assertThat(saved.deliveryLocation).isEqualTo("15 rue du Depot\n75000 Paris")
+  }
+
+  @Test
+  fun findAll_paginated_excludes_soft_deleted() {
+    val orderCodigKeep = createOrderCodig("CA-OB-PAGE-KEEP")
+    val orderCodigGone = createOrderCodig("CA-OB-PAGE-GONE")
+    val kept =
+      createOrderNetstone("CB-PAGE-KEEP", orderCodigKeep, OrderNetstone.OrderNetstoneStatus.SENT)
+    val gone =
+      createOrderNetstone("CB-PAGE-GONE", orderCodigGone, OrderNetstone.OrderNetstoneStatus.SENT)
+    orderNetstoneService.delete(gone.id!!)
+    orderNetstoneRepository.flush()
+
+    val page = orderNetstoneService.findAll(PageRequest.of(0, 100))
+    assertThat(page.content).anyMatch { it.orderNumber == kept.orderNumber }
+    assertThat(page.content).noneMatch { it.orderNumber == gone.orderNumber }
   }
 
   @Test
