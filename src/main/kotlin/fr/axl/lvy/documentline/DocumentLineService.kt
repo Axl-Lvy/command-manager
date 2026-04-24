@@ -12,6 +12,14 @@ class DocumentLineService(private val documentLineRepository: DocumentLineReposi
   fun findLines(documentType: DocumentLine.DocumentType, documentId: Long): List<DocumentLine> =
     documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(documentType, documentId)
 
+  /** Same as [findLines] but eagerly fetches the product to avoid N+1 on line.product access. */
+  @Transactional(readOnly = true)
+  fun findLinesWithProduct(
+    documentType: DocumentLine.DocumentType,
+    documentId: Long,
+  ): List<DocumentLine> =
+    documentLineRepository.findWithProductByDocumentTypeAndDocumentId(documentType, documentId)
+
   /**
    * Atomically replaces all lines of a document: deletes existing lines, then persists new ones.
    * Optionally applies a [filter] and/or overrides the VAT rate or unit price on lines.

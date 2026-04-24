@@ -224,7 +224,7 @@ class SalesCodigServiceTest {
   }
 
   @Test
-  fun syncGeneratedOrder_updates_existing_order() {
+  fun syncGeneratedOrder_does_not_overwrite_existing_order() {
     val client = testData.createClient("CLI-SA05")
     val sale = createSalesCodig("SA-SYNC-02", client)
     salesCodigRepository.flush()
@@ -241,6 +241,10 @@ class SalesCodigServiceTest {
 
     salesCodigService.syncGeneratedOrder(sale, listOf(line1))
     val firstOrderId = sale.orderCodig!!.id!!
+    // Capture field that later "sale" modifications would try to overwrite.
+    val originalNotes = "locked by procurement"
+    sale.orderCodig!!.notes = originalNotes
+    orderCodigRepository.saveAndFlush(sale.orderCodig!!)
 
     val line2 =
       testData.createDocumentLine(
@@ -249,10 +253,15 @@ class SalesCodigServiceTest {
         "Widget B",
         product = mtoProduct,
       )
+    sale.notes = "changed on sale"
 
     salesCodigService.syncGeneratedOrder(sale, listOf(line2))
 
+    // Order reference unchanged.
     assertThat(sale.orderCodig!!.id).isEqualTo(firstOrderId)
+    // Per issue #32, the sale's later edits must not overwrite the generated order.
+    val reloaded = orderCodigRepository.findById(firstOrderId).orElseThrow()
+    assertThat(reloaded.notes).isEqualTo(originalNotes)
   }
 
   @Test
@@ -541,6 +550,56 @@ class SalesCodigServiceTest {
 
     assertThat(found).isPresent
     assertThat(found.get().id).isEqualTo(sale.id)
+  }
+
+  @Test
+  fun searchWithLinkedOrder_matches_saleNumber_and_counts() {
+    val client = testData.createClient("CLI-SA-SRCH-1")
+    val withOrder = createSalesCodig("SA-SRCH-GAMMA", client)
+    createSalesCodig("SA-SRCH-DELTA", client) // standalone sale, no order
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SRCH-1")
+    val line =
+      testData.createDocumentLine(
+        DocumentLine.DocumentType.SALES_CODIG,
+        withOrder.id!!,
+        "Widget",
+        product = mtoProduct,
+      )
+    salesCodigService.syncGeneratedOrder(withOrder, listOf(line))
+    salesCodigRepository.flush()
+
+    val byGamma = salesCodigService.searchWithLinkedOrder("gamma", 0, 10).map { it.saleNumber }
+    assertThat(byGamma).contains("SA-SRCH-GAMMA").doesNotContain("SA-SRCH-DELTA")
+
+    assertThat(salesCodigService.countSearchWithLinkedOrder("gamma")).isEqualTo(1)
+    // Standalone sale without order must not be counted even with empty filter.
+    assertThat(salesCodigService.countSearchWithLinkedOrder("SA-SRCH-DELTA")).isEqualTo(0)
+  }
+
+  @Test
+  fun searchWithLinkedOrder_matches_client_name_and_paginates() {
+    val client = testData.createClient("CLI-SA-SRCH-2")
+    client.name = "Globex Corp"
+    clientService.save(client)
+    val mtoProduct = testData.createMtoProduct("PRD-SA-SRCH-2")
+    repeat(3) { index ->
+      val sale = createSalesCodig("SA-SRCH-PAGE-$index", client)
+      val line =
+        testData.createDocumentLine(
+          DocumentLine.DocumentType.SALES_CODIG,
+          sale.id!!,
+          "Widget",
+          product = mtoProduct,
+        )
+      salesCodigService.syncGeneratedOrder(sale, listOf(line))
+    }
+    salesCodigRepository.flush()
+
+    val page1 = salesCodigService.searchWithLinkedOrder("globex", 0, 2)
+    val page2 = salesCodigService.searchWithLinkedOrder("globex", 2, 2)
+    assertThat(page1).hasSize(2)
+    assertThat(page2).hasSize(1)
+    assertThat(salesCodigService.countSearchWithLinkedOrder("globex")).isEqualTo(3)
   }
 
   @Test

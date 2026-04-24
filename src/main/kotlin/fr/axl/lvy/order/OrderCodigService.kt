@@ -13,6 +13,7 @@ import java.util.Optional
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -59,6 +60,17 @@ class OrderCodigService(
   @Transactional(readOnly = true)
   fun findAll(pageable: Pageable): Page<OrderCodig> =
     orderCodigRepository.findByDeletedAtIsNull(pageable)
+
+  /** Paginated search for ComboBox lazy loading. Matches orderNumber or client name. */
+  @Transactional(readOnly = true)
+  fun search(filter: String, offset: Int, limit: Int): List<OrderCodig> =
+    orderCodigRepository.searchActive(
+      filter,
+      PageRequest.of(offset / limit.coerceAtLeast(1), limit),
+    )
+
+  @Transactional(readOnly = true)
+  fun countSearch(filter: String): Int = orderCodigRepository.countActive(filter).toInt()
 
   @Transactional(readOnly = true)
   fun findById(id: Long): Optional<OrderCodig> = orderCodigRepository.findById(id)
@@ -130,7 +142,7 @@ class OrderCodigService(
       if (originatingSale != null) {
         val saleId = originatingSale.id ?: return saved
         if (newStatus == OrderCodig.OrderCodigStatus.CONFIRMED) {
-          val lines = findLines(savedId)
+          val lines = findLinesWithProduct(savedId)
           if (lines.any { it.product?.isMtoProduct() == true }) {
             salesNetstoneService.createOrUpdateFromSalesCodig(
               originatingSale,
@@ -212,7 +224,7 @@ class OrderCodigService(
   @Transactional
   fun handleMto(order: OrderCodig, orderNetstoneNumber: String) {
     val lines =
-      documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(
+      documentLineRepository.findWithProductByDocumentTypeAndDocumentId(
         DocumentLine.DocumentType.ORDER_CODIG,
         order.id!!,
       )
@@ -254,6 +266,10 @@ class OrderCodigService(
   @Transactional(readOnly = true)
   fun findLines(orderId: Long): List<DocumentLine> =
     documentLineService.findLines(DocumentLine.DocumentType.ORDER_CODIG, orderId)
+
+  @Transactional(readOnly = true)
+  fun findLinesWithProduct(orderId: Long): List<DocumentLine> =
+    documentLineService.findLinesWithProduct(DocumentLine.DocumentType.ORDER_CODIG, orderId)
 
   /**
    * Saves the order and replaces its line items atomically. Recalculates totals and purchase price,
