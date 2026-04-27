@@ -100,6 +100,7 @@ internal class CommandNetstoneListView(
         clientService,
         salesCodigService,
         incotermService,
+        paymentTermService,
         fiscalPositionService,
         productService,
         pdfService,

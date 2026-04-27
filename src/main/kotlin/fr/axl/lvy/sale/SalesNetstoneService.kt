@@ -75,6 +75,9 @@ class SalesNetstoneService(
       sale.fiscalPosition =
         clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
     }
+    if (sale.paymentTerm == null) {
+      sale.paymentTerm = orderCodig.paymentTerm
+    }
     if (sale.currency.isBlank()) {
       sale.currency = orderCodig.currency
     }
@@ -116,6 +119,7 @@ class SalesNetstoneService(
     sale.notes = notes
     sale.fiscalPosition =
       clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
+    sale.paymentTerm = sourceOrderCodig.paymentTerm
     sale.currency = sourceOrderCodig.currency
     sale.exchangeRate = sourceOrderCodig.exchangeRate
     sale.purchasePriceExclTax =
@@ -188,7 +192,7 @@ class SalesNetstoneService(
       }
     order.orderDate = sale.saleDate
     order.expectedDeliveryDate = sale.expectedDeliveryDate
-    order.paymentTerm = clientService.findDefaultCodigSupplier().map { it.paymentTerm }.orElse(null)
+    order.paymentTerm = sale.paymentTerm
     order.fiscalPosition =
       clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
     order.incoterms = sale.incoterms

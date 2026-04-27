@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #333333; margin: 0; padding: 0; }
+    p { margin: 0; padding: 0; }
+    .header-table { width: 100%; margin-bottom: 28pt; }
+    .logo-cell { width: 58%; vertical-align: top; }
+    .logo-cell img { height: 80pt; max-width: 180pt; }
+    .addr-cell { width: 42%; vertical-align: top; font-size: 10pt; }
+    .company-name { font-size: 12pt; font-weight: bold; margin-bottom: 4pt; }
+    .parties-table { width: 100%; margin-bottom: 24pt; }
+    .left-cell { width: 58%; vertical-align: top; font-size: 10pt; }
+    .block-label { font-weight: bold; margin-bottom: 4pt; }
+    .address-block { margin-bottom: 12pt; }
+    .document-title { color: #E07028; font-size: 24pt; font-weight: bold; margin-bottom: 16pt; }
+    .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20pt; }
+    .meta-table th { color: #E07028; font-size: 9pt; font-weight: bold; text-align: left; padding: 0 8pt 3pt 0; }
+    .meta-table td { font-size: 10pt; padding: 0 8pt 0 0; vertical-align: top; }
+    .lines-table { width: 100%; border-collapse: collapse; border-top: 3pt double #333333; border-bottom: 3pt double #333333; margin-bottom: 16pt; }
+    .lines-table th { padding: 7pt 8pt; font-size: 9pt; font-weight: bold; text-align: left; }
+    .lines-table th.right, .lines-table td.right { text-align: right; }
+    .lines-table td { padding: 7pt 8pt; font-size: 10pt; vertical-align: top; }
+    .product-sub { font-size: 9pt; color: #666666; margin-top: 3pt; }
+    .totals-table { width: 220pt; margin-left: auto; border-collapse: collapse; }
+    .totals-table td { padding: 4pt 4pt; font-size: 10pt; }
+    .totals-table .amount { text-align: right; }
+    .totals-table .final-row td { border-top: 2pt solid #333333; color: #E07028; font-weight: bold; font-size: 12pt; }
+    .details-block { margin-top: 16pt; font-size: 10pt; line-height: 1.35; }
+    .detail-line { margin-bottom: 4pt; }
+    @page { margin: 18mm 18mm 22mm 18mm; @bottom-right { content: counter(page); font-size: 9pt; color: #777777; } }
+  </style>
+</head>
+<body>
+  <table class="header-table" cellspacing="0" cellpadding="0">
+    <tr>
+      <td class="logo-cell"><img th:if="${logoSrc != null}" th:src="${logoSrc}" alt=""/></td>
+      <td class="addr-cell" th:if="${ownCompany != null}">
+        <p class="company-name" th:text="${ownCompany.name}"></p>
+        <p th:each="line : ${ownCompanyAddressLines}" th:text="${line}"></p>
+        <p th:if="${ownCompany.vatNumber != null}" th:text="${'TVA: ' + ownCompany.vatNumber}"></p>
+      </td>
+    </tr>
+  </table>
+  <table class="parties-table" cellspacing="0" cellpadding="0">
+    <tr>
+      <td class="left-cell">
+        <div class="address-block">
+          <p class="company-name" th:if="${client != null}" th:text="${client.name}"></p>
+          <p th:each="line : ${clientAddressLines}" th:text="${line}"></p>
+        </div>
+      </td>
+    </tr>
+  </table>
+  <p class="document-title" th:text="'Invoice # ' + ${invoice.invoiceNumber}"></p>
+  <table class="meta-table">
+    <thead>
+      <tr>
+        <th style="width: 20%;">Invoice date :</th>
+        <th style="width: 20%;">Delivery date :</th>
+        <th style="width: 20%;">Our ref. :</th>
+        <th style="width: 20%;">Your ref. :</th>
+        <th style="width: 20%;">Incoterm :</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td th:text="${invoice.invoiceDate != null ? #temporals.format(invoice.invoiceDate, 'dd/MM/yyyy') : ''}"></td>
+        <td th:text="${sale != null and sale.expectedDeliveryDate != null ? #temporals.format(sale.expectedDeliveryDate, 'dd/MM/yyyy') : ''}"></td>
+        <td th:text="${sale != null ? sale.saleNumber : ''}"></td>
+        <td th:text="${sale != null and sale.clientReference != null ? sale.clientReference : ''}"></td>
+        <td>
+          <p th:text="${incotermText}"></p>
+          <p th:if="${incotermLocation != null and !incotermLocation.isBlank()}" th:text="${incotermLocation}"></p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <table class="lines-table">
+    <thead>
+      <tr>
+        <th style="width: 39%;">PRODUCT</th>
+        <th class="right" style="width: 15%;">Quantity</th>
+        <th class="right" style="width: 16%;">Unit price</th>
+        <th style="width: 10%;">Taxe</th>
+        <th class="right" style="width: 20%;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:each="line : ${lines}">
+        <td>
+          <p th:text="${line.displayName}"></p>
+          <p class="product-sub" th:if="${line.shortDescription != null}" th:text="${line.shortDescription}"></p>
+        </td>
+        <td class="right" th:text="${#numbers.formatDecimal(line.quantity, 1, 'WHITESPACE', 2, 'COMMA') + (line.unit != null ? ' ' + line.unit : '')}"></td>
+        <td class="right" th:text="${currencySymbol + ' ' + #numbers.formatDecimal(line.unitPriceExclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td>
+        <td th:text="${line.vatRate.signum() != 0 ? #numbers.formatDecimal(line.vatRate, 1, 'NONE', 0, 'COMMA') + '%' : ''}"></td>
+        <td class="right" th:text="${currencySymbol + ' ' + #numbers.formatDecimal(line.lineTotalExclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td>
+      </tr>
+    </tbody>
+  </table>
+  <table class="totals-table">
+    <tr><td>Total HT</td><td class="amount" th:text="${currencySymbol + ' ' + #numbers.formatDecimal(invoice.totalExclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td></tr>
+    <tr><td>TVA</td><td class="amount" th:text="${currencySymbol + ' ' + #numbers.formatDecimal(invoice.totalVat, 1, 'WHITESPACE', 2, 'COMMA')}"></td></tr>
+    <tr class="final-row"><td>TOTAL TTC</td><td class="amount" th:text="${currencySymbol + ' ' + #numbers.formatDecimal(invoice.totalInclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td></tr>
+  </table>
+  <div class="details-block">
+    <p class="detail-line" th:text="${'Payment term: ' + paymentTermLabel}"></p>
+    <div th:each="line : ${lines}">
+      <p class="detail-line"
+         th:text="${'PO: ' + customerReference
+                   + ' / '
+                   + incotermText
+                   + (incotermLocation != null and !incotermLocation.isBlank() ? ' - ' + incotermLocation : '')
+                   + (line.madeIn != null ? ' / Made in ' + line.madeIn : '')}"></p>
+      <p class="detail-line" th:text="${'HS Code: ' + (line.hsCode != null ? line.hsCode : '')}"></p>
+      <p class="detail-line" th:text="${'PC: ' + (line.clientProductCode != null ? line.clientProductCode : '')}"></p>
+    </div>
+    <p class="detail-line"
+       th:text="${(netstoneDeliveryNote != null and netstoneDeliveryNote.containerNumber != null ? netstoneDeliveryNote.containerNumber : '')
+                 + ' / Seals: '
+                 + (netstoneDeliveryNote != null and netstoneDeliveryNote.seals != null ? netstoneDeliveryNote.seals : '')
+                 + ' / LOT: '
+                 + (netstoneDeliveryNote != null and netstoneDeliveryNote.lot != null ? netstoneDeliveryNote.lot : '')}"></p>
+    <p class="detail-line" th:text="${'Fiscal Position Remark: ' + fiscalPositionRemark}"></p>
+  </div>
+</body>
+</html>

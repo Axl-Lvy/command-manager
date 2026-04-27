@@ -21,6 +21,8 @@ import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.delivery.ui.DeliveryNoteCodigFormDialog
 import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
+import fr.axl.lvy.invoice.InvoiceCodigService
+import fr.axl.lvy.invoice.ui.InvoiceCodigFormDialog
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstoneService
@@ -47,6 +49,7 @@ internal class SalesCodigListView(
   private val deliveryNoteCodigService: DeliveryNoteCodigService,
   private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
   private val orderCodigService: OrderCodigService,
+  private val invoiceCodigService: InvoiceCodigService,
   private val salesNetstoneService: SalesNetstoneService,
   private val orderNetstoneService: OrderNetstoneService,
   private val pdfService: PdfService,
@@ -74,8 +77,11 @@ internal class SalesCodigListView(
         val deliveryButton = Button("Livraison") { openDeliveryForm(sale) }
         deliveryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
         deliveryButton.isEnabled = sale.status == SalesStatus.VALIDATED
+        val invoiceButton = Button("Facture") { openInvoiceForm(sale) }
+        invoiceButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
+        invoiceButton.isEnabled = sale.orderCodig != null
 
-        HorizontalLayout(viewButton, deliveryButton).apply {
+        HorizontalLayout(viewButton, deliveryButton, invoiceButton).apply {
           isPadding = false
           isSpacing = true
         }
@@ -158,6 +164,7 @@ internal class SalesCodigListView(
         clientService,
         salesCodigService,
         incotermService,
+        paymentTermService,
         fiscalPositionService,
         productService,
         pdfService,
@@ -182,6 +189,7 @@ internal class SalesCodigListView(
         clientService,
         salesCodigService,
         incotermService,
+        paymentTermService,
         fiscalPositionService,
         productService,
         pdfService,
@@ -233,6 +241,7 @@ internal class SalesCodigListView(
         clientService,
         salesCodigService,
         incotermService,
+        paymentTermService,
         fiscalPositionService,
         productService,
         pdfService,
@@ -283,6 +292,46 @@ internal class SalesCodigListView(
         loadedSale.clientReference,
         netstoneDeliveryNote,
         deliveryNote,
+        this::refreshGrid,
+      )
+      .open()
+  }
+
+  private fun openInvoiceForm(sale: SalesCodig) {
+    val loadedSale = sale.id?.let { salesCodigService.findDetailedById(it).orElse(sale) } ?: sale
+    val orderCodig = loadedSale.orderCodig
+    if (orderCodig?.id == null) {
+      Notification.show(
+          "La facture n'est disponible que pour une vente avec commande CoDIG",
+          3000,
+          Notification.Position.BOTTOM_END,
+        )
+        .addThemeVariants(NotificationVariant.LUMO_ERROR)
+      return
+    }
+    val loadedOrder = orderCodigService.findDetailedById(orderCodig.id!!).orElse(orderCodig)
+    val invoice = invoiceCodigService.prepareForSale(loadedSale, loadedOrder)
+    val saleLines = salesCodigService.findLines(loadedSale.id!!)
+    val netstoneDeliveryNote =
+      salesNetstoneService
+        .findByOrderCodigId(orderCodig.id!!)
+        .orElse(null)
+        ?.orderNetstone
+        ?.id
+        ?.let(deliveryNoteNetstoneService::findByOrderNetstoneId)
+    val initialLines =
+      invoice.id?.let { invoiceCodigService.findLines(it) } ?: saleLines
+
+    InvoiceCodigFormDialog(
+        invoiceCodigService,
+        productService,
+        pdfService,
+        loadedSale,
+        loadedOrder,
+        invoice,
+        netstoneDeliveryNote,
+        saleLines,
+        initialLines,
         this::refreshGrid,
       )
       .open()

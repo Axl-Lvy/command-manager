@@ -34,6 +34,12 @@ class NumberSequenceService(
     return config.prefix + current.toString().padStart(config.padding, '0')
   }
 
+  @Transactional(readOnly = true)
+  fun previewNextNumber(entityType: String, prefix: String, padding: Int): String {
+    val current = repository.findById(entityType).map { it.nextVal }.orElse(1)
+    return prefix + current.toString().padStart(padding, '0')
+  }
+
   @Transactional
   fun nextNumber(entityType: String, prefix: String, padding: Int): String {
     val seq = repository.findForUpdate(entityType) ?: repository.save(NumberSequence(entityType))
@@ -54,6 +60,8 @@ class NumberSequenceService(
     const val SALES_NETSTONE = "SALES_NETSTONE"
     const val DELIVERY_CODIG = "DELIVERY_CODIG"
     const val DELIVERY_NETSTONE = "DELIVERY_NETSTONE"
+    const val INVOICE_CODIG = "INVOICE_CODIG"
+    const val INVOICE_NETSTONE = "INVOICE_NETSTONE"
 
     val CONFIGS =
       mapOf(
@@ -64,6 +72,8 @@ class NumberSequenceService(
         SALES_NETSTONE to SequenceConfig("NST_SO_", 3),
         DELIVERY_CODIG to SequenceConfig("CoD/OUT/", 3),
         DELIVERY_NETSTONE to SequenceConfig("Netst/OUT/", 3),
+        INVOICE_CODIG to SequenceConfig("CoD/INV/", 3),
+        INVOICE_NETSTONE to SequenceConfig("NST/INV/", 3),
       )
   }
 }

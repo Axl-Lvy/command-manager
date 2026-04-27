@@ -19,6 +19,8 @@ import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.delivery.ui.DeliveryNoteNetstoneFormDialog
 import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.incoterm.IncotermService
+import fr.axl.lvy.invoice.InvoiceNetstoneService
+import fr.axl.lvy.invoice.ui.InvoiceNetstoneFormDialog
 import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
@@ -38,6 +40,7 @@ internal class SalesNetstoneListView(
   private val salesNetstoneService: SalesNetstoneService,
   private val orderNetstoneService: OrderNetstoneService,
   private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
+  private val invoiceNetstoneService: InvoiceNetstoneService,
   private val clientService: ClientService,
   private val salesCodigService: SalesCodigService,
   private val incotermService: IncotermService,
@@ -62,7 +65,7 @@ internal class SalesNetstoneListView(
         if (linkedOrder == null) {
           ""
         } else {
-          "${linkedOrder.orderNumber} - ${it.salesCodig.client.name}"
+          linkedOrder.orderNumber
         }
       }
       .setHeader("Commande CoDIG liée")
@@ -78,7 +81,10 @@ internal class SalesNetstoneListView(
         val deliveryButton = Button("Livraison") { openDeliveryForm(sale) }
         deliveryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
         deliveryButton.isEnabled = sale.orderNetstone != null
-        HorizontalLayout(viewButton, deliveryButton).apply {
+        val invoiceButton = Button("Facture") { openInvoiceForm(sale) }
+        invoiceButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
+        invoiceButton.isEnabled = sale.orderNetstone != null
+        HorizontalLayout(viewButton, deliveryButton, invoiceButton).apply {
           isPadding = false
           isSpacing = true
         }
@@ -107,6 +113,7 @@ internal class SalesNetstoneListView(
         clientService,
         salesCodigService,
         incotermService,
+        paymentTermService,
         fiscalPositionService,
         productService,
         pdfService,
@@ -252,6 +259,38 @@ internal class SalesNetstoneListView(
         loadedSale.saleNumber,
         loadedSale.shippingAddress,
         deliveryNote,
+        initialLines,
+        this::refreshGrid,
+      )
+      .open()
+  }
+
+  private fun openInvoiceForm(sale: SalesNetstone) {
+    val loadedSale = sale.id?.let { salesNetstoneService.findDetailedById(it).orElse(sale) } ?: sale
+    val orderNetstone = loadedSale.orderNetstone
+    if (orderNetstone?.id == null) {
+      Notification.show(
+          "La facture n'est disponible que pour une vente avec commande Netstone",
+          3000,
+          Notification.Position.BOTTOM_END,
+        )
+        .addThemeVariants(NotificationVariant.LUMO_ERROR)
+      return
+    }
+    val loadedOrder = orderNetstoneService.findDetailedById(orderNetstone.id!!).orElse(orderNetstone)
+    val invoice = invoiceNetstoneService.prepareForSale(loadedSale, loadedOrder)
+    val saleLines = salesNetstoneService.findLines(loadedSale.id!!)
+    val initialLines =
+      invoice.id?.let { invoiceNetstoneService.findLines(it) } ?: saleLines
+
+    InvoiceNetstoneFormDialog(
+        invoiceNetstoneService,
+        productService,
+        pdfService,
+        loadedSale,
+        loadedOrder,
+        invoice,
+        saleLines,
         initialLines,
         this::refreshGrid,
       )

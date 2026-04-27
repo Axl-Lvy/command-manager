@@ -3,6 +3,7 @@ package fr.axl.lvy.sale
 import fr.axl.lvy.base.TotalizableDocument
 import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.order.OrderNetstone
+import fr.axl.lvy.paymentterm.PaymentTerm
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
@@ -37,6 +38,10 @@ class SalesNetstone(
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "fiscal_position_id")
   var fiscalPosition: FiscalPosition? = null
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "payment_term_id")
+  var paymentTerm: PaymentTerm? = null
 
   @Column(nullable = false, length = 5) var currency: String = "EUR"
 

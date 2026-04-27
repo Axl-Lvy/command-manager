@@ -15,4 +15,29 @@ interface InvoiceCodigRepository : JpaRepository<InvoiceCodig, Long> {
     """
   )
   fun findByDeletedAtIsNull(): List<InvoiceCodig>
+
+  @Query(
+    """
+      SELECT i FROM InvoiceCodig i
+      LEFT JOIN FETCH i.client
+      LEFT JOIN FETCH i.orderCodig
+      LEFT JOIN FETCH i.deliveryNote
+      LEFT JOIN FETCH i.creditNote
+      WHERE i.id = :id
+    """
+  )
+  fun findDetailedById(id: Long): InvoiceCodig?
+
+  @Query(
+    """
+      SELECT i FROM InvoiceCodig i
+      LEFT JOIN FETCH i.client
+      LEFT JOIN FETCH i.orderCodig
+      LEFT JOIN FETCH i.deliveryNote
+      LEFT JOIN FETCH i.creditNote
+      WHERE i.orderCodig.id = :orderCodigId
+        AND i.deletedAt IS NULL
+    """
+  )
+  fun findDetailedByOrderCodigId(orderCodigId: Long): InvoiceCodig?
 }

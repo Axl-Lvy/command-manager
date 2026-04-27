@@ -139,6 +139,7 @@ internal class CommandCodigListView(
         clientService,
         salesCodigService,
         incotermService,
+        paymentTermService,
         fiscalPositionService,
         productService,
         pdfService,
