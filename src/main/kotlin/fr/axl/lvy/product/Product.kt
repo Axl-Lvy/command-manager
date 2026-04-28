@@ -61,6 +61,12 @@ class Product(
 
   @Column(name = "hs_code", length = 20) var hsCode: String? = null
 
+  /** Chemical Abstracts Service identifier used for regulated chemical products. */
+  @Column(name = "cas_number", length = 50) var casNumber: String? = null
+
+  /** European Community identifier paired with the CAS number on product sheets. */
+  @Column(name = "ec_number", length = 50) var ecNumber: String? = null
+
   @Column(name = "made_in", length = 100) var madeIn: String? = null
 
   var active: Boolean = true

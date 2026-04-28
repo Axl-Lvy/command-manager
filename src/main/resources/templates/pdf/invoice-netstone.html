@@ -28,7 +28,15 @@
     .totals-table td { padding: 4pt 4pt; font-size: 10pt; }
     .totals-table .amount { text-align: right; }
     .totals-table .final-row td { border-top: 2pt solid #333333; color: #E07028; font-weight: bold; font-size: 12pt; }
-    @page { margin: 18mm 18mm 22mm 18mm; @bottom-right { content: counter(page); font-size: 9pt; color: #777777; } }
+    .footer-block {
+      padding-top: 8pt;
+      border-top: 1pt solid #333333;
+      font-size: 8.5pt;
+      line-height: 1.35;
+      text-align: center;
+      position: running(footer);
+    }
+    @page { margin: 18mm 18mm 24mm 18mm; @bottom-center { content: element(footer); } }
   </style>
 </head>
 <body>
@@ -102,5 +110,9 @@
     <tr><td>TVA</td><td class="amount" th:text="${currencySymbol + ' ' + #numbers.formatDecimal(invoice.totalVat, 1, 'WHITESPACE', 2, 'COMMA')}"></td></tr>
     <tr class="final-row"><td>TOTAL TTC</td><td class="amount" th:text="${currencySymbol + ' ' + #numbers.formatDecimal(invoice.totalInclTax, 1, 'WHITESPACE', 2, 'COMMA')}"></td></tr>
   </table>
+<div class="footer-block">
+  <p>Netstone Limited, Hong Kong</p>
+  <p>Phone: +852 3184 8150 Email: management@netstone-group.com</p>
+</div>
 </body>
 </html>

@@ -442,6 +442,10 @@ class PdfService(
     ctx.setVariable("customerReference", sale?.clientReference ?: "")
     ctx.setVariable("fiscalPositionRemark", sale?.fiscalPosition?.position ?: "")
     ctx.setVariable("netstoneDeliveryNote", netstoneDeliveryNote)
+    ctx.setVariable(
+      "noteLines",
+      invoice.notes?.lines()?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList<String>(),
+    )
 
     val html = templateEngine.process("invoice-codig", ctx)
 

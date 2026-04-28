@@ -38,9 +38,9 @@ internal class DeliveryNoteNetstoneFormDialog(
   private val saleDocumentNumber = TextField("Vente Netstone")
   private val shippingAddress = TextArea("Adresse livraison")
   private val arrivalDate = DatePicker("Date arrivée")
-  private val containerNumber = TextField("N° conteneur")
+  private val containerNumber = TextField("N° conteneur (séparés par une virgule si plusieurs)")
   private val billOfLading = TextField("BL")
-  private val lot = TextField("Lot")
+  private val lot = TextArea("Lots (séparés par une virgule si plusieurs)")
   private val seals = TextField("Scellés")
   private val observations = TextArea("Observations")
   private val lineEditor =
@@ -70,7 +70,8 @@ internal class DeliveryNoteNetstoneFormDialog(
     form.add(noteNumber, saleDocumentNumber)
     form.add(shippingAddress, 2)
     form.add(arrivalDate, containerNumber)
-    form.add(billOfLading, lot)
+    form.add(billOfLading, 2)
+    form.add(lot, 2)
     form.add(seals)
     form.add(observations, 2)
 

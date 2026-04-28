@@ -10,7 +10,7 @@ import org.hibernate.type.SqlTypes
 
 /**
  * A delivery note for goods received from a supplier (Netstone side). Linked to the originating
- * [OrderNetstone]. Tracks container, lot, and seals for import logistics.
+ * [OrderNetstone]. Tracks container, lots, and seals for import logistics.
  *
  * Status workflow: IN_TRANSIT -> ARRIVED -> INSPECTED (or INCIDENT at any stage).
  */
@@ -40,7 +40,7 @@ class DeliveryNoteNetstone(
 
   @Column(name = "bill_of_lading", length = 100) var billOfLading: String? = null
 
-  @Column(length = 50) var lot: String? = null
+  @Column(name = "lot", columnDefinition = "TEXT") var lot: String? = null
 
   @Column(length = 100) var seals: String? = null
 
