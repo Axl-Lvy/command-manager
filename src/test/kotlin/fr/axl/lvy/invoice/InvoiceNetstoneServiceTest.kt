@@ -331,6 +331,50 @@ class InvoiceNetstoneServiceTest {
   }
 
   @Test
+  fun saveWithLines_preserves_existing_billing_address() {
+    val (sale, order, _) = createSaleAndOrder("BILL1")
+    val invoice = invoiceNetstoneService.prepareForSale(sale, order)
+    invoice.invoiceDate = LocalDate.of(2026, 7, 12)
+    invoice.billingAddress = "Custom Bill Address\n75001 Paris"
+
+    val saved = invoiceNetstoneService.saveWithLines(invoice, emptyList())
+
+    assertThat(saved.billingAddress).isEqualTo("Custom Bill Address\n75001 Paris")
+  }
+
+  @Test
+  fun saveWithLines_with_external_recipient_does_not_overwrite_recipient() {
+    val (sale, order, _) = createSaleAndOrder("EXT1")
+    val externalRecipient = testData.createClient("CLI-IN-EXT", "External Bill\n8000 Brussels", "x")
+    val invoice =
+      InvoiceNetstone(
+        "",
+        InvoiceNetstone.RecipientType.PRODUCER,
+        externalRecipient,
+        LocalDate.of(2026, 7, 12),
+      )
+    invoice.orderNetstone = order
+
+    val saved = invoiceNetstoneService.saveWithLines(invoice, emptyList())
+
+    assertThat(saved.recipientType).isEqualTo(InvoiceNetstone.RecipientType.PRODUCER)
+    assertThat(saved.recipient.id).isEqualTo(externalRecipient.id)
+  }
+
+  @Test
+  fun saveWithLines_throws_when_codig_company_missing() {
+    val (sale, order, _) = createSaleAndOrder("NOCOD")
+    val invoice = invoiceNetstoneService.prepareForSale(sale, order)
+    invoice.invoiceDate = LocalDate.of(2026, 7, 12)
+    // Remove the default Codig company so the lookup throws.
+    clientService.findDefaultCodigCompany().ifPresent { clientService.delete(it.id!!) }
+
+    assertThatThrownBy { invoiceNetstoneService.saveWithLines(invoice, emptyList()) }
+      .isInstanceOf(IllegalStateException::class.java)
+      .hasMessageContaining("société Codig")
+  }
+
+  @Test
   fun findByOrderNetstoneId_excludes_soft_deleted() {
     val (_, order, _) = createSaleAndOrder("SD1")
     val codig = clientService.findDefaultCodigCompany().orElseThrow()

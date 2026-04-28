@@ -1344,6 +1344,119 @@ class PdfServiceTest {
     assertThat(text).contains("CA-PDF-INV-NET-01")
   }
 
+  /**
+   * Invoice without a linked sale → exercises the `sale == null` fallback paths in
+   * generateInvoiceCodigPdf (incoterm, incoterm location, payment term, customer reference, fiscal
+   * position remark all default to invoice fields or empty strings).
+   */
+  @Test
+  fun generateInvoiceCodigPdf_handles_invoice_without_sale() {
+    val customer =
+      clientRepository.save(
+        Client("CLI-PDF-INV-NOSALE", "Customer No Sale").apply {
+          billingAddress = "9 Bill Lane\nLyon\nFrance"
+        }
+      )
+    val orderCodig =
+      orderCodigRepository.save(OrderCodig("CA-PDF-NOSALE", customer, LocalDate.of(2026, 4, 1)))
+    val invoice =
+      invoiceCodigRepository.save(
+        InvoiceCodig("CoD_INV/2026/NS01", customer, LocalDate.of(2026, 5, 15)).apply {
+          this.orderCodig = orderCodig
+          incoterms = "FOB"
+          currency = "EUR"
+        }
+      )
+
+    val text = extractText(pdfService.generateInvoiceCodigPdf(invoice.id!!))
+
+    assertThat(text).contains("CoD_INV/2026/NS01")
+    assertThat(text).contains("FOB")
+  }
+
+  /**
+   * Invoice where the client has no billing address but the sale and invoice both carry one →
+   * exercises the deeper `?:` fallback in `clientAddressLines` and `invoicingAddressLines`.
+   */
+  @Test
+  fun generateInvoiceCodigPdf_falls_back_to_invoice_client_address() {
+    val customer = clientRepository.save(Client("CLI-PDF-INV-NOBILL", "No Billing Customer"))
+    val orderCodig =
+      orderCodigRepository.save(OrderCodig("CA-PDF-NOBILL", customer, LocalDate.of(2026, 4, 1)))
+    val invoice =
+      invoiceCodigRepository.save(
+        InvoiceCodig("CoD_INV/2026/NB01", customer, LocalDate.of(2026, 5, 15)).apply {
+          this.orderCodig = orderCodig
+          clientAddress = "Snapshot Address\n75001 Paris"
+          currency = "EUR"
+        }
+      )
+
+    val text = extractText(pdfService.generateInvoiceCodigPdf(invoice.id!!))
+
+    assertThat(text).contains("Snapshot Address")
+  }
+
+  /**
+   * Netstone invoice where the CoDIG own-company has no billing address → exercises the
+   * `clientAddressLines` and `invoicingAddressLines` fallback paths in generateInvoiceNetstonePdf.
+   */
+  @Test
+  fun generateInvoiceNetstonePdf_falls_back_when_codig_company_has_no_billing() {
+    val netstoneCompany =
+      clientService.findDefaultCodigSupplier().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-INV-NET2", "Netstone").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.NETSTONE
+          }
+        )
+      }
+    netstoneCompany.billingAddress = "10/F.\nHK"
+    clientService.save(netstoneCompany)
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-INV-COD3", "CoDIG").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = null
+    clientService.save(codigCompany)
+
+    val customer = clientRepository.save(Client("CLI-PDF-NETC", "External"))
+    val orderCodig =
+      orderCodigRepository.save(OrderCodig("CA-PDF-NETC", customer, LocalDate.of(2026, 4, 1)))
+    val orderNetstone =
+      orderNetstoneService.saveWithLines(
+        OrderNetstone("NST-PO-NETC", orderCodig).apply { orderDate = LocalDate.of(2026, 4, 2) },
+        emptyList(),
+      )
+    val invoice =
+      invoiceNetstoneRepository.save(
+        InvoiceNetstone(
+            "NST_INV/2026/FB01",
+            InvoiceNetstone.RecipientType.COMPANY_CODIG,
+            codigCompany,
+            LocalDate.of(2026, 5, 18),
+          )
+          .apply {
+            this.orderNetstone = orderNetstone
+            origin = InvoiceNetstone.Origin.ORDER_LINKED
+            billingAddress = "Invoice Bill Snapshot\n75001 Paris"
+          }
+      )
+
+    val text = extractText(pdfService.generateInvoiceNetstonePdf(invoice.id!!))
+
+    assertThat(text).contains("NST_INV/2026/FB01")
+    assertThat(text).contains("Invoice Bill Snapshot")
+  }
+
   /** Unknown invoice id → IllegalArgumentException. */
   @Test
   fun generateInvoiceCodigPdf_throws_for_unknown_invoice() {

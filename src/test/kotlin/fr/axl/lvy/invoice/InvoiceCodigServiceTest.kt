@@ -3,6 +3,7 @@ package fr.axl.lvy.invoice
 import fr.axl.lvy.TestDataFactory
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
+import fr.axl.lvy.delivery.DeliveryNoteCodigRepository
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
@@ -28,6 +29,7 @@ class InvoiceCodigServiceTest {
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
   @Autowired lateinit var salesCodigRepository: SalesCodigRepository
   @Autowired lateinit var clientService: ClientService
+  @Autowired lateinit var deliveryNoteCodigRepository: DeliveryNoteCodigRepository
   @Autowired lateinit var testData: TestDataFactory
 
   @BeforeEach
@@ -284,6 +286,71 @@ class InvoiceCodigServiceTest {
     val found = invoiceCodigService.findByOrderCodigId(order.id!!)
 
     assertThat(found?.id).isEqualTo(second.id)
+  }
+
+  @Test
+  fun saveWithLines_preserves_existing_client_snapshot_fields() {
+    val (sale, order) = createSaleAndOrder("SNAP1")
+    val invoice = invoiceCodigService.prepareForSale(sale, order)
+    invoice.invoiceDate = LocalDate.of(2026, 5, 12)
+    invoice.clientName = "Snapshot Name"
+    invoice.clientAddress = "Snapshot Address"
+    invoice.clientSiret = "99999999999999"
+    invoice.clientVatNumber = "FR99SNAP"
+
+    val saved = invoiceCodigService.saveWithLines(invoice, emptyList())
+
+    assertThat(saved.clientName).isEqualTo("Snapshot Name")
+    assertThat(saved.clientAddress).isEqualTo("Snapshot Address")
+    assertThat(saved.clientSiret).isEqualTo("99999999999999")
+    assertThat(saved.clientVatNumber).isEqualTo("FR99SNAP")
+  }
+
+  @Test
+  fun saveWithLines_falls_back_to_client_billing_when_order_has_none() {
+    val client = testData.createClient("CLI-IC-FB1", "Client Bill\n75001 Paris", "1 Ship St")
+    val order = OrderCodig("PO-IC-FB1", client, LocalDate.of(2026, 3, 1))
+    order.status = OrderCodig.OrderCodigStatus.DELIVERED
+    // Intentionally no billingAddress on the order.
+    val savedOrder = orderCodigRepository.save(order)
+
+    val invoice = InvoiceCodig("", client, LocalDate.of(2026, 5, 1))
+    invoice.orderCodig = savedOrder
+    invoice.status = InvoiceCodig.InvoiceCodigStatus.DRAFT
+
+    val saved = invoiceCodigService.saveWithLines(invoice, emptyList())
+
+    assertThat(saved.clientAddress).isEqualTo("Client Bill\n75001 Paris")
+  }
+
+  @Test
+  fun saveWithLines_uses_order_delivery_note_when_invoice_has_none() {
+    val (sale, order) = createSaleAndOrder("DN1")
+    val deliveryNote = fr.axl.lvy.delivery.DeliveryNoteCodig("DN-IC-DN1", order, order.client)
+    deliveryNoteCodigRepository.save(deliveryNote)
+    order.deliveryNote = deliveryNote
+    orderCodigRepository.saveAndFlush(order)
+
+    val invoice = invoiceCodigService.prepareForSale(sale, order)
+    invoice.invoiceDate = LocalDate.of(2026, 5, 12)
+    invoice.deliveryNote = null
+
+    val saved = invoiceCodigService.saveWithLines(invoice, emptyList())
+
+    assertThat(saved.deliveryNote?.id).isEqualTo(deliveryNote.id)
+  }
+
+  @Test
+  fun saveWithLines_does_not_demote_order_status_below_invoiced() {
+    val (sale, order) = createSaleAndOrder("DEMO1", OrderCodig.OrderCodigStatus.INVOICED)
+    val invoice = invoiceCodigService.prepareForSale(sale, order)
+    invoice.invoiceDate = LocalDate.of(2026, 5, 12)
+    invoice.status = InvoiceCodig.InvoiceCodigStatus.PAID
+
+    invoiceCodigService.saveWithLines(invoice, emptyList())
+
+    val reloaded = orderCodigRepository.findById(order.id!!).orElseThrow()
+    assertThat(reloaded.status).isEqualTo(OrderCodig.OrderCodigStatus.INVOICED)
   }
 
   @Test
