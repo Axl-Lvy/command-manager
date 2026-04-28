@@ -1,5 +1,6 @@
 package fr.axl.lvy.base
 
+import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -59,9 +60,7 @@ class NumberSequenceServiceTest {
 
   @Test
   fun nextNumber_throws_for_unknown_entity_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
-        numberSequenceService.nextNumber("NO_SUCH_TYPE")
-      }
+    Assertions.assertThatThrownBy { numberSequenceService.nextNumber("NO_SUCH_TYPE") }
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
@@ -79,9 +78,7 @@ class NumberSequenceServiceTest {
 
   @Test
   fun previewNextNumber_throws_for_unknown_entity_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
-        numberSequenceService.previewNextNumber("NO_SUCH_TYPE")
-      }
+    Assertions.assertThatThrownBy { numberSequenceService.previewNextNumber("NO_SUCH_TYPE") }
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
@@ -125,15 +122,13 @@ class NumberSequenceServiceTest {
 
   @Test
   fun nextNumberForYear_throws_for_unknown_base_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
-        numberSequenceService.nextNumberForYear("NO_SUCH_TYPE", 2026)
-      }
+    Assertions.assertThatThrownBy { numberSequenceService.nextNumberForYear("NO_SUCH_TYPE", 2026) }
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
   @Test
   fun previewNextNumberForYear_throws_for_unknown_base_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
+    Assertions.assertThatThrownBy {
         numberSequenceService.previewNextNumberForYear("NO_SUCH_TYPE", 2026)
       }
       .isInstanceOf(IllegalArgumentException::class.java)
@@ -172,7 +167,7 @@ class NumberSequenceServiceTest {
 
   @Test
   fun resetSequence_rejects_invoice_types() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
+    Assertions.assertThatThrownBy {
         numberSequenceService.resetSequence(NumberSequenceService.INVOICE_CODIG, 5)
       }
       .isInstanceOf(IllegalArgumentException::class.java)
@@ -180,7 +175,7 @@ class NumberSequenceServiceTest {
 
   @Test
   fun resetSequence_rejects_value_below_one() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
+    Assertions.assertThatThrownBy {
         numberSequenceService.resetSequence(NumberSequenceService.ORDER_CODIG, 0)
       }
       .isInstanceOf(IllegalArgumentException::class.java)
