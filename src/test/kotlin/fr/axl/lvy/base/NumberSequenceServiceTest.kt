@@ -1,5 +1,6 @@
 package fr.axl.lvy.base
 
+import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -59,9 +60,7 @@ class NumberSequenceServiceTest {
 
   @Test
   fun nextNumber_throws_for_unknown_entity_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
-        numberSequenceService.nextNumber("NO_SUCH_TYPE")
-      }
+    Assertions.assertThatThrownBy { numberSequenceService.nextNumber("NO_SUCH_TYPE") }
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
@@ -79,9 +78,7 @@ class NumberSequenceServiceTest {
 
   @Test
   fun previewNextNumber_throws_for_unknown_entity_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
-        numberSequenceService.previewNextNumber("NO_SUCH_TYPE")
-      }
+    Assertions.assertThatThrownBy { numberSequenceService.previewNextNumber("NO_SUCH_TYPE") }
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
@@ -125,16 +122,61 @@ class NumberSequenceServiceTest {
 
   @Test
   fun nextNumberForYear_throws_for_unknown_base_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
-        numberSequenceService.nextNumberForYear("NO_SUCH_TYPE", 2026)
-      }
+    Assertions.assertThatThrownBy { numberSequenceService.nextNumberForYear("NO_SUCH_TYPE", 2026) }
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
   @Test
   fun previewNextNumberForYear_throws_for_unknown_base_type() {
-    org.assertj.core.api.Assertions.assertThatThrownBy {
+    Assertions.assertThatThrownBy {
         numberSequenceService.previewNextNumberForYear("NO_SUCH_TYPE", 2026)
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  @Test
+  fun currentNextVal_returns_one_when_uninitialized() {
+    assertThat(numberSequenceService.currentNextVal(NumberSequenceService.SALES_CODIG)).isEqualTo(1)
+  }
+
+  @Test
+  fun currentNextVal_reflects_advanced_sequence() {
+    numberSequenceService.nextNumber(NumberSequenceService.SALES_CODIG)
+    numberSequenceService.nextNumber(NumberSequenceService.SALES_CODIG)
+
+    assertThat(numberSequenceService.currentNextVal(NumberSequenceService.SALES_CODIG)).isEqualTo(3)
+  }
+
+  @Test
+  fun resetSequence_changes_next_allocation() {
+    numberSequenceService.nextNumber(NumberSequenceService.ORDER_CODIG)
+
+    numberSequenceService.resetSequence(NumberSequenceService.ORDER_CODIG, 42)
+
+    assertThat(numberSequenceService.nextNumber(NumberSequenceService.ORDER_CODIG))
+      .isEqualTo("CoD_PO_042")
+  }
+
+  @Test
+  fun resetSequence_creates_row_when_missing() {
+    numberSequenceService.resetSequence(NumberSequenceService.SALES_NETSTONE, 10)
+
+    assertThat(numberSequenceService.nextNumber(NumberSequenceService.SALES_NETSTONE))
+      .isEqualTo("NST_SO_010")
+  }
+
+  @Test
+  fun resetSequence_rejects_invoice_types() {
+    Assertions.assertThatThrownBy {
+        numberSequenceService.resetSequence(NumberSequenceService.INVOICE_CODIG, 5)
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  @Test
+  fun resetSequence_rejects_value_below_one() {
+    Assertions.assertThatThrownBy {
+        numberSequenceService.resetSequence(NumberSequenceService.ORDER_CODIG, 0)
       }
       .isInstanceOf(IllegalArgumentException::class.java)
   }

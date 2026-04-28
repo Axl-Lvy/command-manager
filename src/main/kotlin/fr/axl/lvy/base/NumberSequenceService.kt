@@ -34,12 +34,6 @@ class NumberSequenceService(
     return config.prefix + current.toString().padStart(config.padding, '0')
   }
 
-  @Transactional(readOnly = true)
-  fun previewNextNumber(entityType: String, prefix: String, padding: Int): String {
-    val current = repository.findById(entityType).map { it.nextVal }.orElse(1)
-    return prefix + current.toString().padStart(padding, '0')
-  }
-
   /**
    * Year-scoped preview: derives prefix and padding from [CONFIGS] for [baseEntityType] and appends
    * the year, so the counter resets every year (e.g. INVOICE_CODIG_2026 -> "CoD_INV/2026/001").
@@ -74,6 +68,29 @@ class NumberSequenceService(
     return nextNumber(key, "${config.prefix}$year/", config.padding)
   }
 
+  /**
+   * Returns the value the next allocation will use (i.e. `nextVal`), or 1 if the sequence has not
+   * been initialized yet.
+   */
+  @Transactional(readOnly = true)
+  fun currentNextVal(entityType: String): Long {
+    require(CONFIGS.containsKey(entityType)) { "Unknown entity type: $entityType" }
+    return repository.findById(entityType).map { it.nextVal }.orElse(1L)
+  }
+
+  /**
+   * Restarts the sequence so the next allocation uses [newVal]. Restricted to non-invoice
+   * sequences: invoice numbering is year-scoped and must remain monotonic for legal reasons.
+   */
+  @Transactional
+  fun resetSequence(entityType: String, newVal: Long) {
+    require(newVal >= 1) { "Sequence value must be >= 1" }
+    require(entityType in RESETTABLE_TYPES) { "Sequence is not user-resettable: $entityType" }
+    val seq = repository.findForUpdate(entityType) ?: NumberSequence(entityType)
+    seq.nextVal = newVal
+    repository.save(seq)
+  }
+
   data class SequenceConfig(val prefix: String, val padding: Int)
 
   companion object {
@@ -99,5 +116,11 @@ class NumberSequenceService(
         INVOICE_CODIG to SequenceConfig("CoD_INV/", 3),
         INVOICE_NETSTONE to SequenceConfig("NST_INV/", 3),
       )
+
+    /**
+     * Sequences exposed to the user-facing reset UI. Excludes invoice sequences (year-scoped, legal
+     * monotonicity) and internal counters (clients, deliveries).
+     */
+    val RESETTABLE_TYPES = setOf(SALES_CODIG, SALES_NETSTONE, ORDER_CODIG, ORDER_NETSTONE)
   }
 }
