@@ -12,6 +12,10 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.fiscalposition.FiscalPosition
 import fr.axl.lvy.fiscalposition.FiscalPositionRepository
+import fr.axl.lvy.invoice.InvoiceCodig
+import fr.axl.lvy.invoice.InvoiceCodigRepository
+import fr.axl.lvy.invoice.InvoiceNetstone
+import fr.axl.lvy.invoice.InvoiceNetstoneRepository
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigRepository
 import fr.axl.lvy.order.OrderCodigService
@@ -62,6 +66,8 @@ class PdfServiceTest {
   @Autowired lateinit var salesNetstoneRepository: SalesNetstoneRepository
   @Autowired lateinit var productRepository: ProductRepository
   @Autowired lateinit var productService: ProductService
+  @Autowired lateinit var invoiceCodigRepository: InvoiceCodigRepository
+  @Autowired lateinit var invoiceNetstoneRepository: InvoiceNetstoneRepository
   @Autowired lateinit var testData: TestDataFactory
 
   private val sampleLogoData =
@@ -1136,6 +1142,222 @@ class PdfServiceTest {
     assertThat(text).contains("PO-DIRECT-123")
     assertThat(text).contains("Direct Product")
     assertThat(text).contains("10,00 kg")
+  }
+
+  /** Codig invoice PDF: renders invoice number, client, lines, totals, and PO/incoterm details. */
+  @Test
+  fun generateInvoiceCodigPdf_renders_main_fields() {
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-INV-COD", "CoDIG SAS").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = "12 rue de Paris\n75001 Paris\nFrance"
+    codigCompany.vatNumber = "FRINV001"
+    codigCompany.logoData = sampleLogoData
+    clientService.save(codigCompany)
+
+    val customer =
+      clientRepository.save(
+        Client("CLI-PDF-INV-CUS", "Invoice Customer").apply {
+          billingAddress = "9 Bill Lane\nLyon\nFrance"
+        }
+      )
+    val orderCodig =
+      orderCodigRepository.save(
+        OrderCodig("CA-PDF-INV-01", customer, LocalDate.of(2026, 4, 1)).apply {
+          incoterms = "CFR"
+          incotermLocation = "Le Havre"
+          currency = "USD"
+        }
+      )
+    salesCodigRepository.save(
+      SalesCodig("Cod-SO-INV-01", customer, LocalDate.of(2026, 4, 5)).apply {
+        this.orderCodig = orderCodig
+        clientReference = "PO-INV-CUSTOMER-001"
+        expectedDeliveryDate = LocalDate.of(2026, 5, 10)
+        incoterms = "CFR"
+        incotermLocation = "Le Havre"
+        currency = "USD"
+      }
+    )
+
+    val invoice =
+      invoiceCodigRepository.save(
+        InvoiceCodig("CoD_INV/2026/001", customer, LocalDate.of(2026, 5, 15)).apply {
+          this.orderCodig = orderCodig
+          clientName = customer.name
+          clientAddress = customer.billingAddress
+          status = InvoiceCodig.InvoiceCodigStatus.ISSUED
+          dueDate = LocalDate.of(2026, 6, 15)
+          incoterms = "CFR"
+          currency = "USD"
+        }
+      )
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-INV", "CITRIC ACID").apply {
+          label = "Citric acid mono"
+          shortDescription = "Acidulant"
+          unit = "kg"
+          hsCode = "291814"
+          madeIn = "China"
+          sellingPriceExclTax = BigDecimal("2.50")
+        }
+      )
+    val invoiceLine =
+      DocumentLine(DocumentLine.DocumentType.INVOICE_CODIG, invoice.id!!, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("100.00")
+        unit = "kg"
+        unitPriceExclTax = BigDecimal("2.50")
+        vatRate = BigDecimal("20")
+        hsCode = product.hsCode
+        madeIn = product.madeIn
+        clientProductCode = "CUST-CITRIC-01"
+        recalculate()
+      }
+    documentLineRepository.save(invoiceLine)
+    invoice.recalculateTotals(listOf(invoiceLine))
+    invoiceCodigRepository.saveAndFlush(invoice)
+
+    val text = extractText(pdfService.generateInvoiceCodigPdf(invoice.id!!))
+
+    assertThat(text).contains("Invoice # CoD_INV/2026/001")
+    assertThat(text).contains("CoDIG SAS")
+    assertThat(text).contains("Invoice Customer")
+    assertThat(text).contains("PO-INV-CUSTOMER-001")
+    assertThat(text).contains("15/05/2026")
+    assertThat(text).contains("Citric acid mono")
+    assertThat(text).contains("100,00 kg")
+    assertThat(text).contains("$ 2,50")
+    assertThat(text).contains("$ 250,00")
+    assertThat(text).contains("$ 300,00")
+    assertThat(text).contains("CFR")
+    assertThat(text).contains("Made in China")
+    assertThat(text).contains("HS Code: 291814")
+    assertThat(text).contains("PC: CUST-CITRIC-01")
+  }
+
+  /** Netstone invoice PDF: renders invoice number, recipient (CoDIG), lines, totals. */
+  @Test
+  fun generateInvoiceNetstonePdf_renders_main_fields() {
+    val netstoneCompany =
+      clientService.findDefaultCodigSupplier().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-INV-NET", "Netstone").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.NETSTONE
+          }
+        )
+      }
+    netstoneCompany.billingAddress = "10/F., Guangdong Investment Tower\nHong Kong"
+    netstoneCompany.vatNumber = "HK-INV-001"
+    netstoneCompany.logoData = sampleLogoData
+    clientService.save(netstoneCompany)
+
+    val codigCompany =
+      clientService.findDefaultCodigCompany().orElseGet {
+        clientService.save(
+          Client("CLI-PDF-INV-CO2", "CoDIG SAS").apply {
+            type = Client.ClientType.OWN_COMPANY
+            role = Client.ClientRole.OWN_COMPANY
+            visibleCompany = User.Company.CODIG
+          }
+        )
+      }
+    codigCompany.billingAddress = "12 rue de Paris\n75001 Paris\nFrance"
+    clientService.save(codigCompany)
+
+    val customer = clientRepository.save(Client("CLI-PDF-INV-CUS2", "External Customer"))
+    val orderCodig =
+      orderCodigRepository.save(
+        OrderCodig("CA-PDF-INV-NET-01", customer, LocalDate.of(2026, 4, 1)).apply {
+          incoterms = "CFR"
+          incotermLocation = "Marseille"
+          currency = "USD"
+        }
+      )
+    val orderNetstone =
+      orderNetstoneService.saveWithLines(
+        OrderNetstone("NST-PO-INV-01", orderCodig).apply {
+          orderDate = LocalDate.of(2026, 4, 2)
+          incoterms = "CFR"
+          incotermLocation = "Marseille"
+        },
+        emptyList(),
+      )
+    val invoice =
+      invoiceNetstoneRepository.save(
+        InvoiceNetstone(
+            "NST_INV/2026/001",
+            InvoiceNetstone.RecipientType.COMPANY_CODIG,
+            codigCompany,
+            LocalDate.of(2026, 5, 18),
+          )
+          .apply {
+            this.orderNetstone = orderNetstone
+            origin = InvoiceNetstone.Origin.ORDER_LINKED
+            status = InvoiceNetstone.InvoiceNetstoneStatus.VERIFIED
+            dueDate = LocalDate.of(2026, 6, 18)
+            billingAddress = codigCompany.billingAddress
+          }
+      )
+    val product =
+      productRepository.save(
+        Product("PRD-PDF-INV-NET", "ASCORBIC ACID").apply {
+          label = "Vitamin C"
+          unit = "kg"
+          purchasePriceExclTax = BigDecimal("3.75")
+        }
+      )
+    val line =
+      DocumentLine(DocumentLine.DocumentType.INVOICE_NETSTONE, invoice.id!!, product.name).apply {
+        this.product = product
+        quantity = BigDecimal("80.00")
+        unit = "kg"
+        unitPriceExclTax = BigDecimal("3.75")
+        vatRate = BigDecimal.ZERO
+        recalculate()
+      }
+    documentLineRepository.save(line)
+    invoice.recalculateTotals(listOf(line))
+    invoiceNetstoneRepository.saveAndFlush(invoice)
+
+    val text = extractText(pdfService.generateInvoiceNetstonePdf(invoice.id!!))
+
+    assertThat(text).contains("Invoice # NST_INV/2026/001")
+    assertThat(text).contains("Netstone")
+    assertThat(text).contains("CoDIG SAS")
+    assertThat(text).contains("18/05/2026")
+    assertThat(text).contains("18/06/2026")
+    assertThat(text).contains("Vitamin C")
+    assertThat(text).contains("80,00 kg")
+    assertThat(text).contains("$ 3,75")
+    assertThat(text).contains("$ 300,00")
+    assertThat(text).contains("CA-PDF-INV-NET-01")
+  }
+
+  /** Unknown invoice id → IllegalArgumentException. */
+  @Test
+  fun generateInvoiceCodigPdf_throws_for_unknown_invoice() {
+    org.assertj.core.api.Assertions.assertThatThrownBy { pdfService.generateInvoiceCodigPdf(-1L) }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  /** Unknown invoice id → IllegalArgumentException. */
+  @Test
+  fun generateInvoiceNetstonePdf_throws_for_unknown_invoice() {
+    org.assertj.core.api.Assertions.assertThatThrownBy {
+        pdfService.generateInvoiceNetstonePdf(-1L)
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
   }
 
   private fun extractText(bytes: ByteArray): String =

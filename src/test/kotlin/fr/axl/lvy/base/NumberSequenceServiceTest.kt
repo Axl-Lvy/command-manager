@@ -84,4 +84,58 @@ class NumberSequenceServiceTest {
       }
       .isInstanceOf(IllegalArgumentException::class.java)
   }
+
+  @Test
+  fun nextNumberForYear_uses_year_in_prefix_and_resets_per_year() {
+    val first2026 =
+      numberSequenceService.nextNumberForYear(NumberSequenceService.INVOICE_CODIG, 2026)
+    val second2026 =
+      numberSequenceService.nextNumberForYear(NumberSequenceService.INVOICE_CODIG, 2026)
+    val first2027 =
+      numberSequenceService.nextNumberForYear(NumberSequenceService.INVOICE_CODIG, 2027)
+
+    assertThat(first2026).isEqualTo("CoD_INV/2026/001")
+    assertThat(second2026).isEqualTo("CoD_INV/2026/002")
+    // The 2027 counter is independent — starts back at 001.
+    assertThat(first2027).isEqualTo("CoD_INV/2027/001")
+  }
+
+  @Test
+  fun nextNumberForYear_isolated_per_base_entity_type() {
+    val codig = numberSequenceService.nextNumberForYear(NumberSequenceService.INVOICE_CODIG, 2026)
+    val netstone =
+      numberSequenceService.nextNumberForYear(NumberSequenceService.INVOICE_NETSTONE, 2026)
+
+    assertThat(codig).isEqualTo("CoD_INV/2026/001")
+    assertThat(netstone).isEqualTo("NST_INV/2026/001")
+  }
+
+  @Test
+  fun previewNextNumberForYear_does_not_advance_sequence() {
+    val preview =
+      numberSequenceService.previewNextNumberForYear(NumberSequenceService.INVOICE_NETSTONE, 2026)
+    val next = numberSequenceService.nextNumberForYear(NumberSequenceService.INVOICE_NETSTONE, 2026)
+    val secondPreview =
+      numberSequenceService.previewNextNumberForYear(NumberSequenceService.INVOICE_NETSTONE, 2026)
+
+    assertThat(preview).isEqualTo("NST_INV/2026/001")
+    assertThat(next).isEqualTo(preview)
+    assertThat(secondPreview).isEqualTo("NST_INV/2026/002")
+  }
+
+  @Test
+  fun nextNumberForYear_throws_for_unknown_base_type() {
+    org.assertj.core.api.Assertions.assertThatThrownBy {
+        numberSequenceService.nextNumberForYear("NO_SUCH_TYPE", 2026)
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
+
+  @Test
+  fun previewNextNumberForYear_throws_for_unknown_base_type() {
+    org.assertj.core.api.Assertions.assertThatThrownBy {
+        numberSequenceService.previewNextNumberForYear("NO_SUCH_TYPE", 2026)
+      }
+      .isInstanceOf(IllegalArgumentException::class.java)
+  }
 }

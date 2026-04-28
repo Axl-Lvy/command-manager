@@ -12,6 +12,6 @@ import jakarta.persistence.Table
 @Entity
 @Table(name = "number_sequences")
 class NumberSequence(
-  @Id @Column(name = "entity_type", length = 20) val entityType: String,
+  @Id @Column(name = "entity_type", length = 32) val entityType: String,
   @Column(name = "next_val", nullable = false) var nextVal: Long = 1,
 )
