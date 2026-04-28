@@ -151,7 +151,8 @@ internal class InvoiceCodigFormDialog(
     billOfLading.value = netstoneDeliveryNote?.billOfLading ?: ""
     containerNumber.value = netstoneDeliveryNote?.containerNumber ?: ""
     seals.value = netstoneDeliveryNote?.seals ?: ""
-    clientAddress.value = invoice.clientAddress ?: sale.billingAddress ?: sale.client.billingAddress ?: ""
+    clientAddress.value =
+      invoice.clientAddress ?: sale.billingAddress ?: sale.client.billingAddress ?: ""
     notes.value = invoice.notes ?: ""
   }
 

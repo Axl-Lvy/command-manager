@@ -127,9 +127,7 @@ internal class InvoiceNetstoneFormDialog(
   private fun populateForm(invoice: InvoiceNetstone) {
     invoiceNumber.value =
       invoice.internalInvoiceNumber.ifBlank {
-        invoiceNetstoneService.previewNextInvoiceNumber(
-          invoice.invoiceDate
-        )
+        invoiceNetstoneService.previewNextInvoiceNumber(invoice.invoiceDate)
       }
     invoiceDate.value = invoice.invoiceDate
     status.value = invoice.status.toFormStatus()

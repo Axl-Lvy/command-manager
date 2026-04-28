@@ -107,7 +107,11 @@ class InvoiceNetstoneService(
 
     val saved = invoiceNetstoneRepository.save(invoice)
     val persistedLines =
-      documentLineService.replaceLines(DocumentLine.DocumentType.INVOICE_NETSTONE, saved.id!!, lines)
+      documentLineService.replaceLines(
+        DocumentLine.DocumentType.INVOICE_NETSTONE,
+        saved.id!!,
+        lines,
+      )
     saved.recalculateTotals(persistedLines)
     val persistedInvoice = invoiceNetstoneRepository.save(saved)
 

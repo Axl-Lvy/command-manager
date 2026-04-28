@@ -319,8 +319,7 @@ internal class SalesCodigListView(
         ?.orderNetstone
         ?.id
         ?.let(deliveryNoteNetstoneService::findByOrderNetstoneId)
-    val initialLines =
-      invoice.id?.let { invoiceCodigService.findLines(it) } ?: saleLines
+    val initialLines = invoice.id?.let { invoiceCodigService.findLines(it) } ?: saleLines
 
     InvoiceCodigFormDialog(
         invoiceCodigService,

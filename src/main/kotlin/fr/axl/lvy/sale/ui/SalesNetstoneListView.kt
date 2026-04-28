@@ -277,11 +277,11 @@ internal class SalesNetstoneListView(
         .addThemeVariants(NotificationVariant.LUMO_ERROR)
       return
     }
-    val loadedOrder = orderNetstoneService.findDetailedById(orderNetstone.id!!).orElse(orderNetstone)
+    val loadedOrder =
+      orderNetstoneService.findDetailedById(orderNetstone.id!!).orElse(orderNetstone)
     val invoice = invoiceNetstoneService.prepareForSale(loadedSale, loadedOrder)
     val saleLines = salesNetstoneService.findLines(loadedSale.id!!)
-    val initialLines =
-      invoice.id?.let { invoiceNetstoneService.findLines(it) } ?: saleLines
+    val initialLines = invoice.id?.let { invoiceNetstoneService.findLines(it) } ?: saleLines
 
     InvoiceNetstoneFormDialog(
         invoiceNetstoneService,
