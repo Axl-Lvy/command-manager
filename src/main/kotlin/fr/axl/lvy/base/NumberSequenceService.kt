@@ -34,12 +34,6 @@ class NumberSequenceService(
     return config.prefix + current.toString().padStart(config.padding, '0')
   }
 
-  @Transactional(readOnly = true)
-  fun previewNextNumber(entityType: String, prefix: String, padding: Int): String {
-    val current = repository.findById(entityType).map { it.nextVal }.orElse(1)
-    return prefix + current.toString().padStart(padding, '0')
-  }
-
   /**
    * Year-scoped preview: derives prefix and padding from [CONFIGS] for [baseEntityType] and appends
    * the year, so the counter resets every year (e.g. INVOICE_CODIG_2026 -> "CoD_INV/2026/001").
@@ -80,9 +74,8 @@ class NumberSequenceService(
    */
   @Transactional(readOnly = true)
   fun currentNextVal(entityType: String): Long {
-    if (!CONFIGS.containsKey(entityType))
-      throw IllegalArgumentException("Unknown entity type: $entityType")
-    return repository.findById(entityType).map { it.nextVal }.orElse(1)
+    require(CONFIGS.containsKey(entityType)) { "Unknown entity type: $entityType" }
+    return repository.findById(entityType).map { it.nextVal }.orElse(1L)
   }
 
   /**
