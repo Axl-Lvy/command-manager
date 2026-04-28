@@ -34,6 +34,26 @@ class NumberSequenceService(
     return config.prefix + current.toString().padStart(config.padding, '0')
   }
 
+  @Transactional(readOnly = true)
+  fun previewNextNumber(entityType: String, prefix: String, padding: Int): String {
+    val current = repository.findById(entityType).map { it.nextVal }.orElse(1)
+    return prefix + current.toString().padStart(padding, '0')
+  }
+
+  /**
+   * Year-scoped preview: derives prefix and padding from [CONFIGS] for [baseEntityType] and appends
+   * the year, so the counter resets every year (e.g. INVOICE_CODIG_2026 -> "CoD_INV/2026/001").
+   */
+  @Transactional(readOnly = true)
+  fun previewNextNumberForYear(baseEntityType: String, year: Int): String {
+    val config =
+      CONFIGS[baseEntityType]
+        ?: throw IllegalArgumentException("Unknown entity type: $baseEntityType")
+    val key = "${baseEntityType}_$year"
+    val current = repository.findById(key).map { it.nextVal }.orElse(1)
+    return "${config.prefix}$year/" + current.toString().padStart(config.padding, '0')
+  }
+
   @Transactional
   fun nextNumber(entityType: String, prefix: String, padding: Int): String {
     val seq = repository.findForUpdate(entityType) ?: repository.save(NumberSequence(entityType))
@@ -42,6 +62,16 @@ class NumberSequenceService(
     repository.save(seq)
     meterRegistry.counter("number.sequence.generated", "type", entityType).increment()
     return prefix + current.toString().padStart(padding, '0')
+  }
+
+  /** Year-scoped allocation that mirrors [previewNextNumberForYear] but locks and increments. */
+  @Transactional
+  fun nextNumberForYear(baseEntityType: String, year: Int): String {
+    val config =
+      CONFIGS[baseEntityType]
+        ?: throw IllegalArgumentException("Unknown entity type: $baseEntityType")
+    val key = "${baseEntityType}_$year"
+    return nextNumber(key, "${config.prefix}$year/", config.padding)
   }
 
   data class SequenceConfig(val prefix: String, val padding: Int)
@@ -54,6 +84,8 @@ class NumberSequenceService(
     const val SALES_NETSTONE = "SALES_NETSTONE"
     const val DELIVERY_CODIG = "DELIVERY_CODIG"
     const val DELIVERY_NETSTONE = "DELIVERY_NETSTONE"
+    const val INVOICE_CODIG = "INVOICE_CODIG"
+    const val INVOICE_NETSTONE = "INVOICE_NETSTONE"
 
     val CONFIGS =
       mapOf(
@@ -64,6 +96,8 @@ class NumberSequenceService(
         SALES_NETSTONE to SequenceConfig("NST_SO_", 3),
         DELIVERY_CODIG to SequenceConfig("CoD/OUT/", 3),
         DELIVERY_NETSTONE to SequenceConfig("Netst/OUT/", 3),
+        INVOICE_CODIG to SequenceConfig("CoD_INV/", 3),
+        INVOICE_NETSTONE to SequenceConfig("NST_INV/", 3),
       )
   }
 }

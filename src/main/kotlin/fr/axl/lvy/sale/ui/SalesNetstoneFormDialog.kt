@@ -29,6 +29,8 @@ import fr.axl.lvy.incoterm.Incoterm
 import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderNetstone
+import fr.axl.lvy.paymentterm.PaymentTerm
+import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
@@ -42,6 +44,7 @@ internal class SalesNetstoneFormDialog(
   private val clientService: ClientService,
   salesCodigService: SalesCodigService,
   incotermService: IncotermService,
+  paymentTermService: PaymentTermService,
   fiscalPositionService: FiscalPositionService,
   productService: ProductService,
   private val pdfService: PdfService,
@@ -59,6 +62,7 @@ internal class SalesNetstoneFormDialog(
   private val orderDate = DatePicker("Date vente")
   private val status = ComboBox<SalesStatus>("Statut")
   private val expectedDeliveryDate = DatePicker("Livraison prévue")
+  private val paymentTermCombo = ComboBox<PaymentTerm>("Conditions de paiement")
   private val fiscalPositionCombo = ComboBox<FiscalPosition>("Position fiscale")
   private val deliveryAddressCombo = ComboBox<ClientDeliveryAddress>("Adresse de livraison")
   private val incotermCombo = ComboBox<Incoterm>("Incoterm")
@@ -88,6 +92,8 @@ internal class SalesNetstoneFormDialog(
     }
     fiscalPositionCombo.setItems(fiscalPositionService.findAll())
     fiscalPositionCombo.setItemLabelGenerator { it.position }
+    paymentTermCombo.setItems(paymentTermService.findAll())
+    paymentTermCombo.setItemLabelGenerator { it.label }
     deliveryAddressCombo.setItemLabelGenerator { it.label }
 
     orderCodigCombo.setItems(
@@ -105,7 +111,7 @@ internal class SalesNetstoneFormDialog(
       if (linkedOrder == null) {
         it.saleNumber
       } else {
-        "${linkedOrder.orderNumber} - ${it.client.name}"
+        linkedOrder.orderNumber
       }
     }
     orderCodigCombo.addValueChangeListener { event ->
@@ -117,9 +123,9 @@ internal class SalesNetstoneFormDialog(
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
     form.add(orderNumber, orderCodigCombo)
     form.add(status, orderDate)
-    form.add(expectedDeliveryDate, fiscalPositionCombo)
-    form.add(deliveryAddressCombo, incotermCombo)
-    form.add(incotermLocation, 2)
+    form.add(expectedDeliveryDate, paymentTermCombo)
+    form.add(fiscalPositionCombo, deliveryAddressCombo)
+    form.add(incotermCombo, incotermLocation)
     form.add(notes, 2)
 
     lineEditor =
@@ -163,6 +169,7 @@ internal class SalesNetstoneFormDialog(
     } else {
       orderNumber.value = "(auto)"
       status.value = SalesStatus.DRAFT
+      paymentTermCombo.value = orderCodigCombo.value?.orderCodig?.paymentTerm
       fiscalPositionCombo.value =
         clientService.findDefaultCodigSupplier().map { it.fiscalPosition }.orElse(null)
     }
@@ -174,6 +181,7 @@ internal class SalesNetstoneFormDialog(
     orderDate.value = o.saleDate
     status.value = o.status
     expectedDeliveryDate.value = o.expectedDeliveryDate
+    paymentTermCombo.value = o.paymentTerm
     fiscalPositionCombo.value = o.fiscalPosition
     selectedCurrency = o.currency
     incotermCombo.value = allIncoterms.firstOrNull { it.name == o.incoterms }
@@ -187,6 +195,7 @@ internal class SalesNetstoneFormDialog(
   private fun applyLinkedOrderDefaults(salesCodig: SalesCodig) {
     val linkedOrder = salesCodig.orderCodig ?: return
     applyCodigDeliveryDefaults(salesCodig.shippingAddress)
+    paymentTermCombo.value = linkedOrder.paymentTerm
     incotermCombo.value = allIncoterms.firstOrNull { it.name == linkedOrder.incoterms }
     incotermLocation.value = linkedOrder.incotermLocation ?: ""
     selectedCurrency = linkedOrder.currency
@@ -224,6 +233,7 @@ internal class SalesNetstoneFormDialog(
     o.saleDate = orderDate.value
     o.status = status.value ?: SalesStatus.DRAFT
     o.expectedDeliveryDate = expectedDeliveryDate.value
+    o.paymentTerm = paymentTermCombo.value
     o.fiscalPosition = fiscalPositionCombo.value
     o.currency = selectedCurrency
     o.shippingAddress = deliveryAddressCombo.value?.address

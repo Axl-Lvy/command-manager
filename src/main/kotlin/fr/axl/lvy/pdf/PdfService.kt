@@ -7,6 +7,8 @@ import fr.axl.lvy.delivery.DeliveryNoteCodigService
 import fr.axl.lvy.delivery.DeliveryNoteNetstoneService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
+import fr.axl.lvy.invoice.InvoiceCodigService
+import fr.axl.lvy.invoice.InvoiceNetstoneService
 import fr.axl.lvy.order.OrderCodigService
 import fr.axl.lvy.order.OrderNetstoneService
 import fr.axl.lvy.product.ProductService
@@ -37,6 +39,8 @@ class PdfService(
   private val deliveryNoteNetstoneService: DeliveryNoteNetstoneService,
   private val salesCodigService: SalesCodigService,
   private val salesNetstoneService: SalesNetstoneService,
+  private val invoiceCodigService: InvoiceCodigService,
+  private val invoiceNetstoneService: InvoiceNetstoneService,
   private val productService: ProductService,
   private val documentLineRepository: DocumentLineRepository,
   private val clientService: ClientService,
@@ -384,6 +388,130 @@ class PdfService(
     return out.toByteArray()
   }
 
+  /** Generates a PDF for a Codig invoice. */
+  @Transactional(readOnly = true)
+  fun generateInvoiceCodigPdf(invoiceId: Long): ByteArray {
+    val invoice =
+      invoiceCodigService.findById(invoiceId).orElseThrow {
+        IllegalArgumentException("InvoiceCodig $invoiceId not found")
+      }
+    val lines = invoiceCodigService.findLines(invoiceId).map { PdfLine.from(it, productService) }
+    val sale = invoice.orderCodig?.id?.let { salesCodigService.findByOrderCodigId(it).orElse(null) }
+    val netstoneDeliveryNote =
+      invoice.orderCodig
+        ?.id
+        ?.let { salesNetstoneService.findByOrderCodigId(it).orElse(null) }
+        ?.orderNetstone
+        ?.id
+        ?.let(deliveryNoteNetstoneService::findByOrderNetstoneId)
+    val ownCompany =
+      clientService
+        .findDefaultCodigCompany()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+    val client = sale?.client ?: invoice.client
+
+    val ctx = Context()
+    ctx.setVariable("invoice", invoice)
+    ctx.setVariable("sale", sale)
+    ctx.setVariable("client", client)
+    ctx.setVariable("lines", lines)
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "clientAddressLines",
+      client.billingAddress?.lines()
+        ?: sale?.billingAddress?.lines()
+        ?: invoice.clientAddress?.lines()
+        ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "invoicingAddressLines",
+      invoice.clientAddress?.lines() ?: client.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+    ctx.setVariable("currencySymbol", currencySymbol(invoice.currency))
+    ctx.setVariable("incotermText", sale?.incoterms ?: invoice.incoterms ?: "")
+    ctx.setVariable("incotermLocation", sale?.incotermLocation ?: "")
+    ctx.setVariable("paymentTermLabel", sale?.paymentTerm?.label ?: "")
+    ctx.setVariable("customerReference", sale?.clientReference ?: "")
+    ctx.setVariable("fiscalPositionRemark", sale?.fiscalPosition?.position ?: "")
+    ctx.setVariable("netstoneDeliveryNote", netstoneDeliveryNote)
+
+    val html = templateEngine.process("invoice-codig", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
+  /** Generates a PDF for a Netstone invoice billed to Codig. */
+  @Transactional(readOnly = true)
+  fun generateInvoiceNetstonePdf(invoiceId: Long): ByteArray {
+    val invoice =
+      invoiceNetstoneService.findById(invoiceId).orElseThrow {
+        IllegalArgumentException("InvoiceNetstone $invoiceId not found")
+      }
+    val lines = invoiceNetstoneService.findLines(invoiceId).map { PdfLine.from(it, productService) }
+    val ownCompany =
+      clientService
+        .findDefaultCodigSupplier()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+    val codigCompany =
+      clientService
+        .findDefaultCodigCompany()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+
+    val ctx = Context()
+    ctx.setVariable("invoice", invoice)
+    ctx.setVariable("client", codigCompany)
+    ctx.setVariable("lines", lines)
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "clientAddressLines",
+      codigCompany?.billingAddress?.lines()
+        ?: invoice.billingAddress?.lines()
+        ?: emptyList<String>(),
+    )
+    ctx.setVariable(
+      "invoicingAddressLines",
+      invoice.billingAddress?.lines()
+        ?: codigCompany?.billingAddress?.lines()
+        ?: emptyList<String>(),
+    )
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+    ctx.setVariable(
+      "currencySymbol",
+      currencySymbol(invoice.orderNetstone?.orderCodig?.currency ?: "EUR"),
+    )
+    ctx.setVariable(
+      "incotermText",
+      incotermText(invoice.orderNetstone?.incoterms, invoice.orderNetstone?.incotermLocation),
+    )
+    ctx.setVariable("customerReference", invoice.orderNetstone?.orderCodig?.orderNumber ?: "")
+
+    val html = templateEngine.process("invoice-netstone", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
   private data class DeliveryPdfLine(
     val designation: String,
     val displayName: String,
@@ -447,6 +575,7 @@ class PdfService(
     val description: String?,
     val hsCode: String?,
     val madeIn: String?,
+    val clientProductCode: String?,
     val quantity: BigDecimal,
     val unit: String?,
     val unitPriceExclTax: BigDecimal,
@@ -463,6 +592,7 @@ class PdfService(
           description = line.description ?: product?.specifications,
           hsCode = line.hsCode ?: product?.hsCode,
           madeIn = line.madeIn ?: product?.madeIn,
+          clientProductCode = line.clientProductCode,
           quantity = line.quantity,
           unit = line.unit,
           unitPriceExclTax = line.unitPriceExclTax,

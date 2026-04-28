@@ -28,6 +28,7 @@ class DocumentLineEditor(
   private val clientSupplier: (() -> Client?)? = null,
   private val currencySupplier: (() -> String?)? = null,
   private val currencyUpdater: ((String) -> Unit)? = null,
+  private val unitPriceOverrideProvider: ((Product) -> BigDecimal?)? = null,
   private val usePurchasePrice: Boolean = false,
   private val lineTaxMode: LineTaxMode = LineTaxMode.DISCOUNT,
   private val defaultVatRate: BigDecimal = BigDecimal.ZERO,
@@ -214,6 +215,7 @@ class DocumentLineEditor(
     currencyUpdater?.invoke(
       if (usePurchasePrice) product.purchaseCurrency else product.sellingCurrency
     )
+    unitPriceOverrideProvider?.invoke(product)?.let { line.unitPriceExclTax = it }
     if (lineTaxMode == LineTaxMode.VAT) {
       line.vatRate = defaultVatRate
     }

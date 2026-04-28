@@ -3,6 +3,7 @@ package fr.axl.lvy.invoice
 import fr.axl.lvy.base.SoftDeletableEntity
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.delivery.DeliveryNoteCodig
+import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.order.OrderCodig
 import jakarta.persistence.*
 import jakarta.validation.constraints.NotBlank
@@ -85,6 +86,14 @@ class InvoiceCodig(
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "credit_note_id")
   var creditNote: InvoiceCodig? = null
+
+  /** Recomputes invoice totals from the current set of persisted invoice lines. */
+  fun recalculateTotals(lines: List<DocumentLine>) {
+    val totals = DocumentLine.computeTotals(lines)
+    totalExclTax = totals.exclTax
+    totalVat = totals.vat
+    totalInclTax = totals.inclTax
+  }
 
   enum class InvoiceCodigStatus {
     DRAFT,

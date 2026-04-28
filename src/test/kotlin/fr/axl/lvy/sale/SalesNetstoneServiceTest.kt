@@ -39,6 +39,7 @@ class SalesNetstoneServiceTest {
   @Autowired lateinit var orderCodigRepository: OrderCodigRepository
   @Autowired lateinit var orderNetstoneService: OrderNetstoneService
   @Autowired lateinit var orderNetstoneRepository: OrderNetstoneRepository
+  @Autowired lateinit var paymentTermRepository: fr.axl.lvy.paymentterm.PaymentTermRepository
   @Autowired lateinit var testData: TestDataFactory
 
   @BeforeEach
@@ -547,6 +548,26 @@ class SalesNetstoneServiceTest {
     assertThat(saved.incotermLocation).isEqualTo("preset-location")
     assertThat(saved.fiscalPosition?.id).isEqualTo(fiscalPosition.id)
     assertThat(saved.currency).isEqualTo("GBP")
+  }
+
+  @Test
+  fun save_preserves_existing_payment_term() {
+    val client = testData.createClient("CLI-SB-PT-PRESET")
+    val salesCodig = createSalesCodigWithOrder("SA-SB-PT-PRESET", client)
+    // Order has a different term so we can prove the sale's preset survives.
+    val orderTerm =
+      paymentTermRepository.saveAndFlush(fr.axl.lvy.paymentterm.PaymentTerm("Order term"))
+    salesCodig.orderCodig!!.paymentTerm = orderTerm
+    salesCodigRepository.saveAndFlush(salesCodig)
+
+    val presetTerm =
+      paymentTermRepository.saveAndFlush(fr.axl.lvy.paymentterm.PaymentTerm("60 jours"))
+    val sale = SalesNetstone("SB-PT-PRESET-01", salesCodig)
+    sale.paymentTerm = presetTerm
+
+    val saved = salesNetstoneService.save(sale)
+
+    assertThat(saved.paymentTerm?.id).isEqualTo(presetTerm.id)
   }
 
   @Test
