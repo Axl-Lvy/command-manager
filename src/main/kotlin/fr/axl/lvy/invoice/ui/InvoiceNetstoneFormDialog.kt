@@ -24,6 +24,11 @@ import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesNetstone
 
+/**
+ * Dialog used to create or edit an [InvoiceNetstone] from a [SalesNetstone]. The recipient is
+ * resolved from the persisted invoice rather than hardcoded so external recipients are also
+ * supported.
+ */
 internal class InvoiceNetstoneFormDialog(
   private val invoiceNetstoneService: InvoiceNetstoneService,
   private val productService: ProductService,
@@ -37,10 +42,11 @@ internal class InvoiceNetstoneFormDialog(
 ) : Dialog() {
 
   private val invoiceNumber = TextField("N° Facture interne")
+  private val supplierInvoiceNumber = TextField("N° Facture fournisseur")
   private val saleNumber = TextField("Vente Netstone")
-  private val status = ComboBox<InvoiceFormStatus>("Statut")
+  private val status = ComboBox<InvoiceNetstone.InvoiceNetstoneStatus>("Statut")
   private val invoiceDate = DatePicker("Date facture")
-  private val dueDate = DatePicker("Echeance")
+  private val dueDate = DatePicker("Échéance")
   private val clientName = TextField("Client")
   private val clientReference = TextField("Réf. client")
   private val paymentTerm = TextField("Condition de paiement")
@@ -69,7 +75,7 @@ internal class InvoiceNetstoneFormDialog(
     invoiceNumber.isReadOnly = true
     saleNumber.isReadOnly = true
     saleNumber.value = sale.saleNumber
-    status.setItems(*InvoiceFormStatus.entries.toTypedArray())
+    status.setItems(*InvoiceNetstone.InvoiceNetstoneStatus.entries.toTypedArray())
     status.setItemLabelGenerator(::statusLabel)
     clientName.isReadOnly = true
     clientReference.isReadOnly = true
@@ -87,9 +93,9 @@ internal class InvoiceNetstoneFormDialog(
 
     val form = FormLayout()
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
-    form.add(invoiceNumber, saleNumber)
-    form.add(status, invoiceDate)
-    form.add(dueDate)
+    form.add(invoiceNumber, supplierInvoiceNumber)
+    form.add(saleNumber, status)
+    form.add(invoiceDate, dueDate)
     form.add(clientName, 2)
     form.add(clientReference, paymentTerm)
     form.add(incoterm, incotermLocation)
@@ -129,10 +135,11 @@ internal class InvoiceNetstoneFormDialog(
       invoice.internalInvoiceNumber.ifBlank {
         invoiceNetstoneService.previewNextInvoiceNumber(invoice.invoiceDate)
       }
+    supplierInvoiceNumber.value = invoice.supplierInvoiceNumber ?: ""
     invoiceDate.value = invoice.invoiceDate
-    status.value = invoice.status.toFormStatus()
+    status.value = invoice.status
     dueDate.value = invoice.dueDate
-    clientName.value = "CoDIG"
+    clientName.value = invoice.recipient.name
     clientReference.value = orderNetstone.orderCodig.orderNumber
     paymentTerm.value = sale.salesCodig.paymentTerm?.label ?: ""
     incoterm.value = sale.incoterms ?: ""
@@ -144,11 +151,11 @@ internal class InvoiceNetstoneFormDialog(
   private fun save() {
     invoice.orderNetstone = orderNetstone
     invoice.recipientType = InvoiceNetstone.RecipientType.COMPANY_CODIG
-    invoice.status = status.value.toInvoiceStatus()
+    invoice.status = status.value ?: InvoiceNetstone.InvoiceNetstoneStatus.RECEIVED
     invoice.invoiceDate = invoiceDate.value ?: sale.saleDate ?: orderNetstone.orderCodig.orderDate
     invoice.dueDate = dueDate.value
     invoice.billingAddress = billingAddress.value.takeIf { it.isNotBlank() }
-    invoice.supplierInvoiceNumber = null
+    invoice.supplierInvoiceNumber = supplierInvoiceNumber.value.takeIf { it.isNotBlank() }
     invoice.notes = notes.value.takeIf { it.isNotBlank() }
 
     val saved = invoiceNetstoneService.saveWithLines(invoice, lineEditor.getLines())
@@ -159,26 +166,11 @@ internal class InvoiceNetstoneFormDialog(
     close()
   }
 
-  private fun statusLabel(status: InvoiceFormStatus): String =
+  private fun statusLabel(status: InvoiceNetstone.InvoiceNetstoneStatus): String =
     when (status) {
-      InvoiceFormStatus.DRAFT -> "Brouillon"
-      InvoiceFormStatus.VALIDATED -> "Validee"
+      InvoiceNetstone.InvoiceNetstoneStatus.RECEIVED -> "Reçue"
+      InvoiceNetstone.InvoiceNetstoneStatus.VERIFIED -> "Vérifiée"
+      InvoiceNetstone.InvoiceNetstoneStatus.PAID -> "Payée"
+      InvoiceNetstone.InvoiceNetstoneStatus.DISPUTED -> "Litige"
     }
-
-  private fun InvoiceNetstone.InvoiceNetstoneStatus.toFormStatus(): InvoiceFormStatus =
-    when (this) {
-      InvoiceNetstone.InvoiceNetstoneStatus.RECEIVED -> InvoiceFormStatus.DRAFT
-      else -> InvoiceFormStatus.VALIDATED
-    }
-
-  private fun InvoiceFormStatus?.toInvoiceStatus(): InvoiceNetstone.InvoiceNetstoneStatus =
-    when (this ?: InvoiceFormStatus.DRAFT) {
-      InvoiceFormStatus.DRAFT -> InvoiceNetstone.InvoiceNetstoneStatus.RECEIVED
-      InvoiceFormStatus.VALIDATED -> InvoiceNetstone.InvoiceNetstoneStatus.VERIFIED
-    }
-
-  private enum class InvoiceFormStatus {
-    DRAFT,
-    VALIDATED,
-  }
 }

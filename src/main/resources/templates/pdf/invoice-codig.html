@@ -107,22 +107,23 @@
   </table>
   <div class="details-block">
     <p class="detail-line" th:text="${'Payment term: ' + paymentTermLabel}"></p>
-    <div th:each="line : ${lines}">
-      <p class="detail-line"
-         th:text="${'PO: ' + customerReference
-                   + ' / '
-                   + incotermText
-                   + (incotermLocation != null and !incotermLocation.isBlank() ? ' - ' + incotermLocation : '')
-                   + (line.madeIn != null ? ' / Made in ' + line.madeIn : '')}"></p>
-      <p class="detail-line" th:text="${'HS Code: ' + (line.hsCode != null ? line.hsCode : '')}"></p>
-      <p class="detail-line" th:text="${'PC: ' + (line.clientProductCode != null ? line.clientProductCode : '')}"></p>
-    </div>
     <p class="detail-line"
-       th:text="${(netstoneDeliveryNote != null and netstoneDeliveryNote.containerNumber != null ? netstoneDeliveryNote.containerNumber : '')
+       th:text="${'PO: ' + customerReference
+                 + ' / '
+                 + incotermText
+                 + (incotermLocation != null and !incotermLocation.isBlank() ? ' - ' + incotermLocation : '')}"></p>
+    <p class="detail-line" th:each="line : ${lines}"
+       th:text="${(line.displayName != null ? line.displayName + ' — ' : '')
+                 + (line.madeIn != null ? 'Made in ' + line.madeIn : '')
+                 + (line.hsCode != null ? ' / HS Code: ' + line.hsCode : '')
+                 + (line.clientProductCode != null ? ' / PC: ' + line.clientProductCode : '')}"></p>
+    <p class="detail-line"
+       th:if="${netstoneDeliveryNote != null}"
+       th:text="${(netstoneDeliveryNote.containerNumber != null ? netstoneDeliveryNote.containerNumber : '')
                  + ' / Seals: '
-                 + (netstoneDeliveryNote != null and netstoneDeliveryNote.seals != null ? netstoneDeliveryNote.seals : '')
+                 + (netstoneDeliveryNote.seals != null ? netstoneDeliveryNote.seals : '')
                  + ' / LOT: '
-                 + (netstoneDeliveryNote != null and netstoneDeliveryNote.lot != null ? netstoneDeliveryNote.lot : '')}"></p>
+                 + (netstoneDeliveryNote.lot != null ? netstoneDeliveryNote.lot : '')}"></p>
     <p class="detail-line" th:text="${'Fiscal Position Remark: ' + fiscalPositionRemark}"></p>
   </div>
 </body>

@@ -48,7 +48,10 @@ class InvoiceNetstoneService(
   /** Returns the preview number shown before a Netstone invoice is first saved. */
   @Transactional(readOnly = true)
   fun previewNextInvoiceNumber(invoiceDate: LocalDate): String =
-    numberSequenceService.previewNextNumber(sequenceKey(invoiceDate), previewPrefix(invoiceDate), 3)
+    numberSequenceService.previewNextNumberForYear(
+      NumberSequenceService.INVOICE_NETSTONE,
+      invoiceDate.year,
+    )
 
   /** Prepares an existing invoice or a prefilled draft invoice for the given Netstone sale. */
   @Transactional(readOnly = true)
@@ -60,7 +63,7 @@ class InvoiceNetstoneService(
   private fun createDraftInvoice(sale: SalesNetstone, order: OrderNetstone): InvoiceNetstone {
     val codig =
       clientService.findDefaultCodigCompany().orElseThrow {
-        IllegalStateException("Aucune societe Codig n'est configuree")
+        IllegalStateException("Aucune société Codig n'est configurée")
       }
     return InvoiceNetstone(
         "",
@@ -84,20 +87,19 @@ class InvoiceNetstoneService(
     val isNew = invoice.internalInvoiceNumber.isBlank()
     if (isNew) {
       invoice.internalInvoiceNumber =
-        numberSequenceService.nextNumber(
-          sequenceKey(invoice.invoiceDate),
-          previewPrefix(invoice.invoiceDate),
-          3,
+        numberSequenceService.nextNumberForYear(
+          NumberSequenceService.INVOICE_NETSTONE,
+          invoice.invoiceDate.year,
         )
     }
     if (invoice.orderNetstone == null) {
-      error("La facture Netstone doit etre rattachee a une commande Netstone")
+      error("La facture Netstone doit être rattachée à une commande Netstone")
     }
     invoice.origin = InvoiceNetstone.Origin.ORDER_LINKED
     if (invoice.recipientType == InvoiceNetstone.RecipientType.COMPANY_CODIG) {
       val codig =
         clientService.findDefaultCodigCompany().orElseThrow {
-          IllegalStateException("Aucune societe Codig n'est configuree")
+          IllegalStateException("Aucune société Codig n'est configurée")
         }
       invoice.recipient = codig
       if (invoice.billingAddress.isNullOrBlank()) {
@@ -131,9 +133,4 @@ class InvoiceNetstoneService(
     }
     return persistedInvoice
   }
-
-  private fun sequenceKey(invoiceDate: LocalDate): String =
-    "${NumberSequenceService.INVOICE_NETSTONE}_${invoiceDate.year}"
-
-  private fun previewPrefix(invoiceDate: LocalDate): String = "NST_INV/${invoiceDate.year}/"
 }

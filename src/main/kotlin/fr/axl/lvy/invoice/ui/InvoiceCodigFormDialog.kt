@@ -25,6 +25,11 @@ import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 
+/**
+ * Dialog used to create or edit a [InvoiceCodig] from a [SalesCodig]. The form is read-only for the
+ * sale-derived fields (client, references, terms) and lets the user adjust invoice metadata and
+ * lines before saving.
+ */
 internal class InvoiceCodigFormDialog(
   private val invoiceCodigService: InvoiceCodigService,
   private val productService: ProductService,
@@ -40,9 +45,9 @@ internal class InvoiceCodigFormDialog(
 
   private val invoiceNumber = TextField("N° Facture")
   private val saleNumber = TextField("Vente CoDIG")
-  private val status = ComboBox<InvoiceFormStatus>("Statut")
+  private val status = ComboBox<InvoiceCodig.InvoiceCodigStatus>("Statut")
   private val invoiceDate = DatePicker("Date facture")
-  private val dueDate = DatePicker("Echeance")
+  private val dueDate = DatePicker("Échéance")
   private val clientName = TextField("Client")
   private val clientReference = TextField("Réf. client")
   private val paymentTerm = TextField("Condition de paiement")
@@ -75,7 +80,7 @@ internal class InvoiceCodigFormDialog(
     invoiceNumber.isReadOnly = true
     saleNumber.isReadOnly = true
     saleNumber.value = sale.saleNumber
-    status.setItems(*InvoiceFormStatus.entries.toTypedArray())
+    status.setItems(*InvoiceCodig.InvoiceCodigStatus.entries.toTypedArray())
     status.setItemLabelGenerator(::statusLabel)
     clientName.isReadOnly = true
     clientReference.isReadOnly = true
@@ -97,7 +102,7 @@ internal class InvoiceCodigFormDialog(
     form.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
     form.add(invoiceNumber, saleNumber)
     form.add(status, invoiceDate)
-    form.add(dueDate)
+    form.add(dueDate, 2)
     form.add(clientName, 2)
     form.add(clientReference, paymentTerm)
     form.add(fiscalPosition, incoterm)
@@ -140,7 +145,7 @@ internal class InvoiceCodigFormDialog(
         invoiceCodigService.previewNextInvoiceNumber(invoice.invoiceDate)
       }
     invoiceDate.value = invoice.invoiceDate
-    status.value = invoice.status.toFormStatus()
+    status.value = invoice.status
     dueDate.value = invoice.dueDate
     clientName.value = sale.client.name
     clientReference.value = sale.clientReference ?: ""
@@ -160,7 +165,7 @@ internal class InvoiceCodigFormDialog(
     invoice.orderCodig = orderCodig
     invoice.deliveryNote = orderCodig.deliveryNote
     invoice.client = sale.client
-    invoice.status = status.value.toInvoiceStatus()
+    invoice.status = status.value ?: InvoiceCodig.InvoiceCodigStatus.DRAFT
     invoice.invoiceDate = invoiceDate.value ?: sale.saleDate
     invoice.dueDate = dueDate.value
     invoice.clientName = sale.client.name
@@ -182,26 +187,13 @@ internal class InvoiceCodigFormDialog(
     close()
   }
 
-  private fun statusLabel(status: InvoiceFormStatus): String =
+  private fun statusLabel(status: InvoiceCodig.InvoiceCodigStatus): String =
     when (status) {
-      InvoiceFormStatus.DRAFT -> "Brouillon"
-      InvoiceFormStatus.VALIDATED -> "Validee"
+      InvoiceCodig.InvoiceCodigStatus.DRAFT -> "Brouillon"
+      InvoiceCodig.InvoiceCodigStatus.ISSUED -> "Émise"
+      InvoiceCodig.InvoiceCodigStatus.OVERDUE -> "En retard"
+      InvoiceCodig.InvoiceCodigStatus.PAID -> "Payée"
+      InvoiceCodig.InvoiceCodigStatus.CANCELLED -> "Annulée"
+      InvoiceCodig.InvoiceCodigStatus.CREDIT_NOTE -> "Avoir"
     }
-
-  private fun InvoiceCodig.InvoiceCodigStatus.toFormStatus(): InvoiceFormStatus =
-    when (this) {
-      InvoiceCodig.InvoiceCodigStatus.DRAFT -> InvoiceFormStatus.DRAFT
-      else -> InvoiceFormStatus.VALIDATED
-    }
-
-  private fun InvoiceFormStatus?.toInvoiceStatus(): InvoiceCodig.InvoiceCodigStatus =
-    when (this ?: InvoiceFormStatus.DRAFT) {
-      InvoiceFormStatus.DRAFT -> InvoiceCodig.InvoiceCodigStatus.DRAFT
-      InvoiceFormStatus.VALIDATED -> InvoiceCodig.InvoiceCodigStatus.ISSUED
-    }
-
-  private enum class InvoiceFormStatus {
-    DRAFT,
-    VALIDATED,
-  }
 }

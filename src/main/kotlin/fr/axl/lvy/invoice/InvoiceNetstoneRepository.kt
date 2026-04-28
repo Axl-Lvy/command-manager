@@ -36,7 +36,11 @@ interface InvoiceNetstoneRepository : JpaRepository<InvoiceNetstone, Long> {
       LEFT JOIN FETCH i.verifiedBy
       WHERE i.orderNetstone.id = :orderNetstoneId
         AND i.deletedAt IS NULL
+      ORDER BY i.id DESC
     """
   )
-  fun findDetailedByOrderNetstoneId(orderNetstoneId: Long): InvoiceNetstone?
+  fun findDetailedByOrderNetstoneIdOrdered(orderNetstoneId: Long): List<InvoiceNetstone>
+
+  fun findDetailedByOrderNetstoneId(orderNetstoneId: Long): InvoiceNetstone? =
+    findDetailedByOrderNetstoneIdOrdered(orderNetstoneId).firstOrNull()
 }

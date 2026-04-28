@@ -37,7 +37,11 @@ interface InvoiceCodigRepository : JpaRepository<InvoiceCodig, Long> {
       LEFT JOIN FETCH i.creditNote
       WHERE i.orderCodig.id = :orderCodigId
         AND i.deletedAt IS NULL
+      ORDER BY i.id DESC
     """
   )
-  fun findDetailedByOrderCodigId(orderCodigId: Long): InvoiceCodig?
+  fun findDetailedByOrderCodigIdOrdered(orderCodigId: Long): List<InvoiceCodig>
+
+  fun findDetailedByOrderCodigId(orderCodigId: Long): InvoiceCodig? =
+    findDetailedByOrderCodigIdOrdered(orderCodigId).firstOrNull()
 }

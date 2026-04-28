@@ -46,7 +46,10 @@ class InvoiceCodigService(
   /** Returns the preview number shown before a Codig invoice is first saved. */
   @Transactional(readOnly = true)
   fun previewNextInvoiceNumber(invoiceDate: LocalDate): String =
-    numberSequenceService.previewNextNumber(sequenceKey(invoiceDate), previewPrefix(invoiceDate), 3)
+    numberSequenceService.previewNextNumberForYear(
+      NumberSequenceService.INVOICE_CODIG,
+      invoiceDate.year,
+    )
 
   /** Prepares an existing invoice or a prefilled draft invoice for the given Codig sale. */
   @Transactional(readOnly = true)
@@ -72,12 +75,14 @@ class InvoiceCodigService(
   fun saveWithLines(invoice: InvoiceCodig, lines: List<DocumentLine>): InvoiceCodig {
     val isNew = invoice.invoiceNumber.isBlank()
     if (isNew) {
-      val invoiceDate = invoice.invoiceDate
       invoice.invoiceNumber =
-        numberSequenceService.nextNumber(sequenceKey(invoiceDate), previewPrefix(invoiceDate), 3)
+        numberSequenceService.nextNumberForYear(
+          NumberSequenceService.INVOICE_CODIG,
+          invoice.invoiceDate.year,
+        )
     }
     if (invoice.orderCodig == null) {
-      error("La facture CoDIG doit etre rattachee a une commande CoDIG")
+      error("La facture CoDIG doit être rattachée à une commande CoDIG")
     }
     if (invoice.clientName.isNullOrBlank()) {
       invoice.clientName = invoice.client.name
@@ -105,7 +110,11 @@ class InvoiceCodigService(
     if (order.invoice?.id != persistedInvoice.id) {
       order.invoice = persistedInvoice
     }
-    if (order.status != OrderCodig.OrderCodigStatus.INVOICED) {
+    // Only advance the order to INVOICED once the invoice leaves the DRAFT state.
+    if (
+      persistedInvoice.status != InvoiceCodig.InvoiceCodigStatus.DRAFT &&
+        order.status != OrderCodig.OrderCodigStatus.INVOICED
+    ) {
       order.status = OrderCodig.OrderCodigStatus.INVOICED
     }
     orderCodigRepository.save(order)
@@ -120,9 +129,4 @@ class InvoiceCodigService(
     }
     return persistedInvoice
   }
-
-  private fun sequenceKey(invoiceDate: LocalDate): String =
-    "${NumberSequenceService.INVOICE_CODIG}_${invoiceDate.year}"
-
-  private fun previewPrefix(invoiceDate: LocalDate): String = "CoD_INV/${invoiceDate.year}/"
 }
