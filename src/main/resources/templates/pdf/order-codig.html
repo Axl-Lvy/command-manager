@@ -66,14 +66,18 @@
     .note-block { margin-top: 16pt; font-size: 10pt; color: #444444; }
     .incoterm-note { font-weight: bold; margin-bottom: 4pt; }
     .note-line { margin-bottom: 3pt; }
+    .footer-block {
+      padding-top: 8pt;
+      border-top: 1pt solid #333333;
+      font-size: 8.5pt;
+      line-height: 1.35;
+      text-align: center;
+      position: running(footer);
+    }
 
     @page {
-      margin: 18mm 18mm 22mm 18mm;
-      @bottom-right {
-        content: counter(page);
-        font-size: 9pt;
-        color: #777777;
-      }
+      margin: 18mm 18mm 24mm 18mm;
+      @bottom-center { content: element(footer); }
     }
   </style>
 </head>
@@ -190,5 +194,9 @@
     </div>
   </div>
 
+  <div class="footer-block">
+    <p>CoDIG - SAS au Capital de 50 000 € - RCS Strasbourg 450090436 Code NAF 519A</p>
+    <p th:text="${'Mail: management@codig-sa.com, Phone: +33 3 88 25 65 70 - Web: http://codig-sa.com - TVA: ' + (ownCompany != null and ownCompany.vatNumber != null ? ownCompany.vatNumber : '')}"></p>
+  </div>
 </body>
 </html>

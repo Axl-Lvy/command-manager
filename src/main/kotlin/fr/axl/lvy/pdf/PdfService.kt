@@ -217,6 +217,8 @@ class PdfService(
     )
     ctx.setVariable("logoSrc", logoSrc(ownCompany))
     ctx.setVariable("incotermText", incotermText(order.incoterms, order.incotermLocation))
+    ctx.setVariable("lotInline", lotInline(note.lot))
+    ctx.setVariable("lotMultiline", lotMultiline(note.lot))
 
     val html = templateEngine.process("delivery-netstone", ctx)
 
@@ -262,6 +264,8 @@ class PdfService(
     ctx.setVariable("logoSrc", logoSrc(ownCompany))
     ctx.setVariable("incotermText", incotermText(order.incoterms, order.incotermLocation))
     ctx.setVariable("customerReference", sale?.clientReference ?: order.clientReference ?: "")
+    ctx.setVariable("lotInline", lotInline(note.lot))
+    ctx.setVariable("lotMultiline", lotMultiline(note.lot))
 
     val html = templateEngine.process("delivery-codig", ctx)
 
@@ -442,6 +446,12 @@ class PdfService(
     ctx.setVariable("customerReference", sale?.clientReference ?: "")
     ctx.setVariable("fiscalPositionRemark", sale?.fiscalPosition?.position ?: "")
     ctx.setVariable("netstoneDeliveryNote", netstoneDeliveryNote)
+    ctx.setVariable("lotInline", lotInline(netstoneDeliveryNote?.lot))
+    ctx.setVariable("lotMultiline", lotMultiline(netstoneDeliveryNote?.lot))
+    ctx.setVariable(
+      "noteLines",
+      invoice.notes?.lines()?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList<String>(),
+    )
 
     val html = templateEngine.process("invoice-codig", ctx)
 
@@ -605,6 +615,13 @@ class PdfService(
 
   private fun incotermText(incoterm: String?, location: String?): String =
     listOfNotNull(incoterm, location?.takeIf { it.isNotBlank() }).joinToString(" ")
+
+  /** Returns the lot value when it fits on a single non-blank line, else null. */
+  private fun lotInline(lot: String?): String? =
+    lot?.takeIf { it.isNotBlank() && !it.contains('\n') }
+
+  /** Returns the lot value when it spans multiple lines, else null. */
+  private fun lotMultiline(lot: String?): String? = lot?.takeIf { it.contains('\n') }
 
   private fun currencySymbol(currency: String): String =
     when (currency.uppercase()) {

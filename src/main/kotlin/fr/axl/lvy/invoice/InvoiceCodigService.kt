@@ -1,6 +1,7 @@
 package fr.axl.lvy.invoice
 
 import fr.axl.lvy.base.NumberSequenceService
+import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.order.OrderCodig
@@ -20,6 +21,7 @@ class InvoiceCodigService(
   private val orderCodigRepository: OrderCodigRepository,
   private val documentLineService: DocumentLineService,
   private val numberSequenceService: NumberSequenceService,
+  private val clientService: ClientService,
   meterRegistry: MeterRegistry,
 ) {
   private val invoicesCreatedCounter = meterRegistry.counter("invoice.codig")
@@ -53,8 +55,9 @@ class InvoiceCodigService(
 
   /** Prepares an existing invoice or a prefilled draft invoice for the given Codig sale. */
   @Transactional(readOnly = true)
-  fun prepareForSale(sale: SalesCodig, order: OrderCodig): InvoiceCodig =
-    order.id?.let(::findByOrderCodigId)
+  fun prepareForSale(sale: SalesCodig, order: OrderCodig): InvoiceCodig {
+    val ownCompanyNotes = clientService.findDefaultCodigCompany().orElse(null)?.notes
+    return order.id?.let(::findByOrderCodigId)
       ?: order.invoice
       ?: InvoiceCodig("", sale.client, sale.saleDate).apply {
         orderCodig = order
@@ -67,8 +70,9 @@ class InvoiceCodigService(
         dueDate = sale.expectedDeliveryDate
         currency = sale.currency
         incoterms = sale.incoterms
-        notes = sale.notes
+        notes = sale.notes?.takeIf { it.isNotBlank() } ?: ownCompanyNotes
       }
+  }
 
   /** Saves the invoice and replaces its lines from the current editor content. */
   @Transactional

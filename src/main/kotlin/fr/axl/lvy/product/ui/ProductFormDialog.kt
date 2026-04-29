@@ -48,6 +48,8 @@ internal class ProductFormDialog(
   private val unitOption = ComboBox<String>("Unité")
   private val customUnit = TextField("Autre unité")
   private val hsCode = TextField("Code HS")
+  private val casNumber = TextField("CAS")
+  private val ecNumber = TextField("EC")
   private val madeIn = ComboBox<String>("Origine")
   private val active = Checkbox("Actif")
   private val clientCodeRows = VerticalLayout()
@@ -97,7 +99,8 @@ internal class ProductFormDialog(
     form.add(sellingPrice, sellingCurrency)
     form.add(purchasePrice, purchaseCurrency)
     form.add(suppliers, 2)
-    form.add(hsCode, madeIn)
+    form.add(hsCode, casNumber)
+    form.add(ecNumber, madeIn)
     form.add(active)
 
     val addClientCodeButton = Button("Ajouter code client") { addClientCodeRow() }
@@ -136,6 +139,8 @@ internal class ProductFormDialog(
     suppliers.select(p.suppliers)
     applyUnitValue(p.type, p.unit)
     hsCode.value = p.hsCode ?: ""
+    casNumber.value = p.casNumber ?: ""
+    ecNumber.value = p.ecNumber ?: ""
     madeIn.value = p.madeIn
     active.value = p.active
     p.clientProductCodes.forEach { addClientCodeRow(it.client, it.code) }
@@ -181,6 +186,8 @@ internal class ProductFormDialog(
       p.purchaseCurrency = purchaseCurrency.value ?: "EUR"
       p.unit = resolveUnitValue()
       p.hsCode = if (hsCode.value.isBlank()) null else hsCode.value
+      p.casNumber = casNumber.value.takeIf { it.isNotBlank() }
+      p.ecNumber = ecNumber.value.takeIf { it.isNotBlank() }
       p.madeIn = madeIn.value
       p.replaceClientProductCodes(collectClientCodes())
       p.replaceSuppliers(suppliers.selectedItems)

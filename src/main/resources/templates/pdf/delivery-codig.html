@@ -80,14 +80,19 @@
       line-height: 1.35;
     }
     .detail-line { margin-bottom: 4pt; }
+    .multiline { white-space: pre-line; }
+    .footer-block {
+      padding-top: 8pt;
+      border-top: 1pt solid #333333;
+      font-size: 8.5pt;
+      line-height: 1.35;
+      text-align: center;
+      position: running(footer);
+    }
 
     @page {
-      margin: 18mm 18mm 22mm 18mm;
-      @bottom-right {
-        content: counter(page);
-        font-size: 9pt;
-        color: #777777;
-      }
+      margin: 18mm 18mm 24mm 18mm;
+      @bottom-center { content: element(footer); }
     }
   </style>
 </head>
@@ -175,8 +180,13 @@
        th:text="${'BL : ' + (note.billOfLading != null ? note.billOfLading : '')
                  + (note.containerNumber != null ? ' / ' + note.containerNumber : '')
                  + (note.seals != null ? ' / SEALS : ' + note.seals : '')
-                 + (note.lot != null ? ' / LOT : ' + note.lot : '')}"></p>
+                 + (lotInline != null ? ' / LOT : ' + lotInline : '')}"></p>
+    <p class="detail-line multiline" th:if="${lotMultiline != null}" th:text="${'LOTS : ' + lotMultiline}"></p>
   </div>
 
+  <div class="footer-block">
+    <p>CoDIG - SAS au Capital de 50 000 € - RCS Strasbourg 450090436 Code NAF 519A</p>
+    <p th:text="${'Mail: management@codig-sa.com, Phone: +33 3 88 25 65 70 - Web: http://codig-sa.com - TVA: ' + (ownCompany != null and ownCompany.vatNumber != null ? ownCompany.vatNumber : '')}"></p>
+  </div>
 </body>
 </html>
