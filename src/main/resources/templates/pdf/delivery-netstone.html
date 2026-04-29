@@ -187,8 +187,8 @@
        th:text="${'BL : ' + (note.billOfLading != null ? note.billOfLading : '')
                  + (note.containerNumber != null ? ' / ' + note.containerNumber : '')
                  + (note.seals != null ? ' / SEALS : ' + note.seals : '')
-                 + (note.lot != null and !#strings.contains(note.lot, '\n') ? ' / LOT : ' + note.lot : '')}"></p>
-    <p class="detail-line multiline" th:if="${note.lot != null and #strings.contains(note.lot, '\n')}" th:text="${'LOTS : ' + note.lot}"></p>
+                 + (lotInline != null ? ' / LOT : ' + lotInline : '')}"></p>
+    <p class="detail-line multiline" th:if="${lotMultiline != null}" th:text="${'LOTS : ' + lotMultiline}"></p>
   </div>
 
 <div class="footer-block">

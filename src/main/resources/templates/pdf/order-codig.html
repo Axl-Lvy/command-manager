@@ -194,9 +194,9 @@
     </div>
   </div>
 
+  <div class="footer-block">
+    <p>CoDIG - SAS au Capital de 50 000 € - RCS Strasbourg 450090436 Code NAF 519A</p>
+    <p th:text="${'Mail: management@codig-sa.com, Phone: +33 3 88 25 65 70 - Web: http://codig-sa.com - TVA: ' + (ownCompany != null and ownCompany.vatNumber != null ? ownCompany.vatNumber : '')}"></p>
+  </div>
 </body>
-<div class="footer-block">
-  <p>CoDIG - SAS au Capital de 50 000 € - RCS Strasbourg 450090436 Code NAF 519A</p>
-  <p th:text="${'Mail: management@codig-sa.com, Phone: +33 3 88 25 65 70 - Web: http://codig-sa.com - TVA: ' + (ownCompany != null and ownCompany.vatNumber != null ? ownCompany.vatNumber : '')}"></p>
-</div>
 </html>

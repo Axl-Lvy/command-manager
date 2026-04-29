@@ -131,18 +131,16 @@
        th:text="${(netstoneDeliveryNote.containerNumber != null ? netstoneDeliveryNote.containerNumber : '')
                  + ' / Seals: '
                  + (netstoneDeliveryNote.seals != null ? netstoneDeliveryNote.seals : '')
-                 + (netstoneDeliveryNote.lot != null and !#strings.contains(netstoneDeliveryNote.lot, '\n')
-                     ? ' / LOT: ' + netstoneDeliveryNote.lot
-                     : '')}"></p>
+                 + (lotInline != null ? ' / LOT: ' + lotInline : '')}"></p>
     <p class="detail-line multiline"
-       th:if="${netstoneDeliveryNote != null and netstoneDeliveryNote.lot != null and #strings.contains(netstoneDeliveryNote.lot, '\n')}"
-       th:text="${'LOTS: ' + netstoneDeliveryNote.lot}"></p>
+       th:if="${lotMultiline != null}"
+       th:text="${'LOTS: ' + lotMultiline}"></p>
     <p class="detail-line" th:text="${'Fiscal Position Remark: ' + fiscalPositionRemark}"></p>
     <p class="detail-line" th:each="line : ${noteLines}" th:text="${line}"></p>
   </div>
+  <div class="footer-block">
+    <p>CoDIG - SAS au Capital de 50 000 € - RCS Strasbourg 450090436 Code NAF 519A</p>
+    <p th:text="${'Mail: management@codig-sa.com, Phone: +33 3 88 25 65 70 - Web: http://codig-sa.com - TVA: ' + (ownCompany != null and ownCompany.vatNumber != null ? ownCompany.vatNumber : '')}"></p>
+  </div>
 </body>
-<div class="footer-block">
-  <p>CoDIG - SAS au Capital de 50 000 € - RCS Strasbourg 450090436 Code NAF 519A</p>
-  <p th:text="${'Mail: management@codig-sa.com, Phone: +33 3 88 25 65 70 - Web: http://codig-sa.com - TVA: ' + (ownCompany != null and ownCompany.vatNumber != null ? ownCompany.vatNumber : '')}"></p>
-</div>
 </html>

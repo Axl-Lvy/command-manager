@@ -70,7 +70,7 @@ class InvoiceCodigService(
         dueDate = sale.expectedDeliveryDate
         currency = sale.currency
         incoterms = sale.incoterms
-        notes = ownCompanyNotes ?: sale.notes
+        notes = sale.notes?.takeIf { it.isNotBlank() } ?: ownCompanyNotes
       }
   }
 
