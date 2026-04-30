@@ -13,10 +13,9 @@ import org.hibernate.type.SqlTypes
  * [ProductType.SERVICE]. Physical products may be flagged as [mto] (made-to-order), meaning they
  * trigger a supplier purchase order when sold.
  *
- * Pricing is stored outside the product sheet:
- * [purchasePrices] for CoDIG/Netstone purchase costs and [sellingPrices] for CoDIG client-specific
- * selling prices. The product itself keeps only stable catalog data plus per-client reference codes
- * via [clientProductCodes].
+ * Pricing is stored outside the product sheet: [purchasePrices] for CoDIG/Netstone purchase costs
+ * and [sellingPrices] for CoDIG client-specific selling prices. The product itself keeps only
+ * stable catalog data plus per-client reference codes via [clientProductCodes].
  */
 @Entity
 @Table(name = "products")
@@ -170,7 +169,9 @@ class Product(
     validEntries.forEach { entry ->
       val clientId = entry.client.id ?: return@forEach
       if (clientId !in existingClientIds) {
-        sellingPrices.add(ProductSellingPrice(this, entry.client, entry.priceExclTax, entry.currency))
+        sellingPrices.add(
+          ProductSellingPrice(this, entry.client, entry.priceExclTax, entry.currency)
+        )
       }
     }
   }

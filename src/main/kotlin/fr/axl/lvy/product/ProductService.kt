@@ -1,7 +1,7 @@
 package fr.axl.lvy.product
 
-import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.client.Client
+import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.documentline.DocumentLine
 import java.math.BigDecimal
 import java.util.Optional
@@ -110,19 +110,21 @@ class ProductService(
   @Transactional
   fun save(product: Product): Product {
     val managedClientCodes =
-      product.clientProductCodes
-        .mapNotNull { clientProductCode ->
-          clientProductCode.client.id?.let { clientId ->
-            clientRepository.getReferenceById(clientId) to clientProductCode.code
-          }
+      product.clientProductCodes.mapNotNull { clientProductCode ->
+        clientProductCode.client.id?.let { clientId ->
+          clientRepository.getReferenceById(clientId) to clientProductCode.code
         }
+      }
     product.replaceClientProductCodes(managedClientCodes)
 
-    val managedSuppliers = product.suppliers.mapNotNull { it.id?.let(clientRepository::getReferenceById) }
+    val managedSuppliers =
+      product.suppliers.mapNotNull { it.id?.let(clientRepository::getReferenceById) }
     product.replaceSuppliers(managedSuppliers)
 
     val purchasePriceEntries =
-      product.purchasePrices.map { Product.PurchasePriceEntry(it.company, it.priceExclTax, it.currency) }
+      product.purchasePrices.map {
+        Product.PurchasePriceEntry(it.company, it.priceExclTax, it.currency)
+      }
     product.replacePurchasePrices(purchasePriceEntries)
 
     val sellingPriceEntries =

@@ -12,7 +12,12 @@ import org.hibernate.type.SqlTypes
 @Table(
   name = "product_purchase_prices",
   uniqueConstraints =
-    [UniqueConstraint(name = "uk_product_purchase_price_company", columnNames = ["product_id", "company"])],
+    [
+      UniqueConstraint(
+        name = "uk_product_purchase_price_company",
+        columnNames = ["product_id", "company"],
+      )
+    ],
 )
 class ProductPurchasePrice(
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -25,6 +30,5 @@ class ProductPurchasePrice(
   @field:NotNull
   @Column(name = "price_excl_tax", nullable = false, precision = 12, scale = 2)
   var priceExclTax: BigDecimal,
-  @Column(nullable = false, length = 3)
-  var currency: String,
+  @Column(nullable = false, length = 3) var currency: String,
 ) : BaseEntity()

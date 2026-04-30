@@ -131,7 +131,9 @@ class SalesNetstoneService(
         savedSale.id!!,
         sourceLines,
         overrideUnitPrice = { line ->
-          productService.findPurchasePrice(line.product?.id, ProductPriceCompany.NETSTONE)?.priceExclTax
+          productService
+            .findPurchasePrice(line.product?.id, ProductPriceCompany.NETSTONE)
+            ?.priceExclTax
         },
         overrideDiscountPercent = BigDecimal.ZERO,
         filter = { it.product?.isMtoProduct() == true },
@@ -268,7 +270,9 @@ class SalesNetstoneService(
     numberSequenceService.nextNumber(NumberSequenceService.SALES_NETSTONE)
 
   private fun computeLineTotal(lines: List<DocumentLine>): BigDecimal =
-    lines.fold(BigDecimal.ZERO) { acc, line -> acc.add(line.unitPriceExclTax.multiply(line.quantity)) }
+    lines.fold(BigDecimal.ZERO) { acc, line ->
+      acc.add(line.unitPriceExclTax.multiply(line.quantity))
+    }
 
   private fun firstPurchaseCurrency(lines: List<DocumentLine>): String? =
     lines.firstNotNullOfOrNull { line ->

@@ -149,7 +149,12 @@ internal class SalesCodigFormDialog(
       val pdfHandler =
         DownloadHandler.fromInputStream {
           val bytes = pdfService.generateSalesCodigPdf(order.id!!)
-          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
+          DownloadResponse(
+            ByteArrayInputStream(bytes),
+            fileName,
+            "application/pdf",
+            bytes.size.toLong(),
+          )
         }
       val pdfBtn = Button("Télécharger PDF")
       val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }

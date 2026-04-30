@@ -91,7 +91,12 @@ internal class DeliveryNoteNetstoneFormDialog(
       val pdfHandler =
         DownloadHandler.fromInputStream {
           val bytes = pdfService.generateDeliveryNetstonePdf(note.id!!)
-          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
+          DownloadResponse(
+            ByteArrayInputStream(bytes),
+            fileName,
+            "application/pdf",
+            bytes.size.toLong(),
+          )
         }
       val pdfBtn = Button("Télécharger PDF")
       val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }

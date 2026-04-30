@@ -244,7 +244,9 @@ class OrderCodigService(
       newLine.copyFieldsFrom(
         line,
         overrideUnitPrice =
-          productService.findPurchasePrice(line.product?.id, ProductPriceCompany.NETSTONE)?.priceExclTax,
+          productService
+            .findPurchasePrice(line.product?.id, ProductPriceCompany.NETSTONE)
+            ?.priceExclTax,
       )
       newLine.position = line.position
       documentLineRepository.save(newLine)

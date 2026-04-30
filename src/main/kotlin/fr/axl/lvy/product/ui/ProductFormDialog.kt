@@ -300,27 +300,26 @@ internal class ProductFormDialog(
     select.value = "EUR"
   }
 
-  private fun collectPurchasePrices(): List<Product.PurchasePriceEntry> =
-    buildList {
-      codigPurchasePrice.value?.let { price ->
-        add(
-          Product.PurchasePriceEntry(
-            ProductPriceCompany.CODIG,
-            price,
-            codigPurchaseCurrency.value ?: "EUR",
-          )
+  private fun collectPurchasePrices(): List<Product.PurchasePriceEntry> = buildList {
+    codigPurchasePrice.value?.let { price ->
+      add(
+        Product.PurchasePriceEntry(
+          ProductPriceCompany.CODIG,
+          price,
+          codigPurchaseCurrency.value ?: "EUR",
         )
-      }
-      netstonePurchasePrice.value?.let { price ->
-        add(
-          Product.PurchasePriceEntry(
-            ProductPriceCompany.NETSTONE,
-            price,
-            netstonePurchaseCurrency.value ?: "EUR",
-          )
-        )
-      }
+      )
     }
+    netstonePurchasePrice.value?.let { price ->
+      add(
+        Product.PurchasePriceEntry(
+          ProductPriceCompany.NETSTONE,
+          price,
+          netstonePurchaseCurrency.value ?: "EUR",
+        )
+      )
+    }
+  }
 
   private fun addSellingPriceRow(
     client: Client? = null,

@@ -166,7 +166,9 @@ class SalesCodigService(
         savedOrder.id!!,
         saleLines,
         overrideUnitPrice = { line ->
-          productService.findPurchasePrice(line.product?.id, ProductPriceCompany.CODIG)?.priceExclTax
+          productService
+            .findPurchasePrice(line.product?.id, ProductPriceCompany.CODIG)
+            ?.priceExclTax
         },
       )
 
@@ -212,7 +214,8 @@ class SalesCodigService(
     company: ProductPriceCompany,
   ): BigDecimal =
     lines.fold(BigDecimal.ZERO) { acc, line ->
-      val price = productService.findPurchasePrice(line.product?.id, company)?.priceExclTax ?: BigDecimal.ZERO
+      val price =
+        productService.findPurchasePrice(line.product?.id, company)?.priceExclTax ?: BigDecimal.ZERO
       acc.add(price.multiply(line.quantity))
     }
 

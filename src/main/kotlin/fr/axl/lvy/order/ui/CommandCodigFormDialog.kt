@@ -145,7 +145,12 @@ internal class CommandCodigFormDialog(
       val pdfHandler =
         DownloadHandler.fromInputStream {
           val bytes = pdfService.generateOrderCodigPdf(order.id!!)
-          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
+          DownloadResponse(
+            ByteArrayInputStream(bytes),
+            fileName,
+            "application/pdf",
+            bytes.size.toLong(),
+          )
         }
       val pdfBtn = Button("Télécharger PDF")
       val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }
@@ -291,15 +296,12 @@ internal class CommandCodigFormDialog(
               onOpenLinkedSale.invoke(currentOrder)
             }
           else null,
-        openSalesNetstone =
-          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneSale != null)
-            Runnable {
-              close()
-              onOpenLinkedNetstoneSale.invoke(currentOrder)
-            }
-          else null,
+        openSalesNetstone = {
+          close()
+          onOpenLinkedNetstoneSale.invoke(currentOrder)
+        },
         openOrderNetstone =
-          if (hasLinkedNetstoneSale && onOpenLinkedNetstoneOrder != null)
+          if (onOpenLinkedNetstoneOrder != null)
             Runnable {
               close()
               onOpenLinkedNetstoneOrder.invoke(currentOrder)

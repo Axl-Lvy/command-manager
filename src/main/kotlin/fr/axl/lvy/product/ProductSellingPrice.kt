@@ -11,7 +11,12 @@ import java.math.BigDecimal
 @Table(
   name = "product_selling_prices",
   uniqueConstraints =
-    [UniqueConstraint(name = "uk_product_selling_price_client", columnNames = ["product_id", "client_id"])],
+    [
+      UniqueConstraint(
+        name = "uk_product_selling_price_client",
+        columnNames = ["product_id", "client_id"],
+      )
+    ],
 )
 class ProductSellingPrice(
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -23,6 +28,5 @@ class ProductSellingPrice(
   @field:NotNull
   @Column(name = "price_excl_tax", nullable = false, precision = 12, scale = 2)
   var priceExclTax: BigDecimal,
-  @Column(nullable = false, length = 3)
-  var currency: String,
+  @Column(nullable = false, length = 3) var currency: String,
 ) : BaseEntity()
