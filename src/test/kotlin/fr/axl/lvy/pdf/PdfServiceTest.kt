@@ -1473,6 +1473,88 @@ class PdfServiceTest {
       .isInstanceOf(IllegalArgumentException::class.java)
   }
 
+  /**
+   * A populated Packing List input renders all manually-supplied fields (header metadata, line row,
+   * and footer codes) verbatim into the PDF.
+   */
+  @Test
+  fun generatePackingListPdf_renders_all_fields() {
+    val input =
+      PdfService.PackingListInput(
+        productCode = "CO-3104",
+        productDescription = "Sodium Salt Solution",
+        poNumber = "4517331740",
+        pcCode = "10041948",
+        packingListNumber = "CoD-PC/PL/00130",
+        invoiceNumber = "COD-SAJ2025/00038",
+        batchNumber = "T7521057",
+        quantity = "20,400 KG",
+        isoTankNumber = "BLKU 257873-0",
+        origin = "Made in Thailand",
+        date = LocalDate.of(2025, 7, 15),
+        packageDescription = "1 ISO-TANK",
+        grossWeight = "20,4 MT",
+        netWeight = "20,4 MT",
+        casNumber = "5165-97-9",
+        ecNumber = "225-948-4",
+        hazardNote = "Not classified has hazardous substance",
+      )
+
+    val text = extractText(pdfService.generatePackingListPdf(input))
+
+    assertThat(text)
+      .contains("PACKING LIST")
+      .contains("CO-3104")
+      .contains("Sodium Salt Solution")
+      .contains("4517331740")
+      .contains("PC: 10041948")
+      .contains("CoD-PC/PL/00130")
+      .contains("COD-SAJ2025/00038")
+      .contains("T7521057")
+      .contains("20,400 KG")
+      .contains("BLKU 257873-0")
+      .contains("Made in Thailand")
+      .contains("07/15/2025")
+      .contains("1 ISO-TANK")
+      .contains("20,4 MT")
+      .contains("CAS # 5165-97-9")
+      .contains("EC # 225-948-4")
+      .contains("Not classified has hazardous substance")
+  }
+
+  /**
+   * A minimal Packing List input (all optional fields null/blank) still renders without error and
+   * does not produce stray "PC:", "CAS #" or "EC #" labels.
+   */
+  @Test
+  fun generatePackingListPdf_minimal_input_omits_optional_codes() {
+    val input =
+      PdfService.PackingListInput(
+        productCode = "X-1",
+        productDescription = null,
+        poNumber = "PO-001",
+        pcCode = null,
+        packingListNumber = "PL-001",
+        invoiceNumber = "INV-001",
+        batchNumber = "B1",
+        quantity = "1 KG",
+        isoTankNumber = "TK-1",
+        origin = "France",
+        date = null,
+        packageDescription = "1 BOX",
+        grossWeight = "1 KG",
+        netWeight = "1 KG",
+        casNumber = null,
+        ecNumber = null,
+        hazardNote = null,
+      )
+
+    val text = extractText(pdfService.generatePackingListPdf(input))
+
+    assertThat(text).contains("PACKING LIST").contains("X-1").contains("PO-001")
+    assertThat(text).doesNotContain("PC:").doesNotContain("CAS #").doesNotContain("EC #")
+  }
+
   private fun extractText(bytes: ByteArray): String =
     PDDocument.load(ByteArrayInputStream(bytes)).use { doc -> PDFTextStripper().getText(doc) }
 
