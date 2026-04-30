@@ -33,7 +33,6 @@ class ProductServiceTest {
     product.sellingCurrency = "USD"
     product.purchasePriceExclTax = BigDecimal("80.00")
     product.purchaseCurrency = "CNY"
-    product.priceType = "Prix départ usine"
     product.unit = "kg"
     productService.save(product)
 
@@ -48,7 +47,6 @@ class ProductServiceTest {
     assertThat(found.get().sellingPriceExclTax).isEqualByComparingTo("150.00")
     assertThat(found.get().sellingCurrency).isEqualTo("USD")
     assertThat(found.get().purchaseCurrency).isEqualTo("CNY")
-    assertThat(found.get().priceType).isEqualTo("Prix départ usine")
   }
 
   @Test
@@ -120,13 +118,6 @@ class ProductServiceTest {
 
     val found = productService.findById(product.id!!).orElseThrow()
     assertThat(found.mto).isFalse
-  }
-
-  @Test
-  fun default_price_type_is_blank() {
-    val product = Product("REF-PRICE-TYPE", "Price Type Product")
-
-    assertThat(product.priceType).isNull()
   }
 
   @Test
