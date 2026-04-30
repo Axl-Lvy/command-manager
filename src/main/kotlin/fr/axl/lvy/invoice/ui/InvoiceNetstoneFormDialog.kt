@@ -13,7 +13,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
-import com.vaadin.flow.server.StreamResource
+import com.vaadin.flow.server.streams.DownloadHandler
+import com.vaadin.flow.server.streams.DownloadResponse
 import fr.axl.lvy.base.ui.noGap
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.ui.DocumentLineEditor
@@ -23,6 +24,7 @@ import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesNetstone
+import java.io.ByteArrayInputStream
 
 /**
  * Dialog used to create or edit an [InvoiceNetstone] from a [SalesNetstone]. The recipient is
@@ -114,17 +116,19 @@ internal class InvoiceNetstoneFormDialog(
     val cancelBtn = Button("Annuler") { close() }
     val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
     if (invoice.id != null) {
-      val pdfResource =
-        StreamResource("${invoice.internalInvoiceNumber.replace("/", "_")}.pdf") {
-            pdfService.generateInvoiceNetstonePdf(invoice.id!!).inputStream()
-          }
-          .apply { cacheTime = 0 }
-      val pdfBtn = Button("Télécharger PDF")
-      val pdfLink =
-        Anchor(pdfResource, "").apply {
-          element.setAttribute("download", true)
-          add(pdfBtn)
+      val fileName = "${invoice.internalInvoiceNumber.replace("/", "_")}.pdf"
+      val pdfHandler =
+        DownloadHandler.fromInputStream {
+          val bytes = pdfService.generateInvoiceNetstonePdf(invoice.id!!)
+          DownloadResponse(
+            ByteArrayInputStream(bytes),
+            fileName,
+            "application/pdf",
+            bytes.size.toLong(),
+          )
         }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }
       footerLayout.add(pdfLink)
     }
     footer.add(footerLayout)

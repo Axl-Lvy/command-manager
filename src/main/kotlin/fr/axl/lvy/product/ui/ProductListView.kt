@@ -33,17 +33,12 @@ internal class ProductListView(
     addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
 
     grid = Grid()
+    grid.addColumn(Product::reference).setHeader("Référence").setAutoWidth(true)
     grid.addColumn(Product::name).setHeader("Nom").setFlexGrow(1)
     grid.addColumn { it.type.name }.setHeader("Type").setAutoWidth(true)
-    grid.addColumn { it.priceType ?: "" }.setHeader("Conditions prix achat").setAutoWidth(true)
-    grid
-      .addColumn { "${it.sellingPriceExclTax} ${it.sellingCurrency}" }
-      .setHeader("Prix vente HT")
-      .setAutoWidth(true)
-    grid
-      .addColumn { "${it.purchasePriceExclTax} ${it.purchaseCurrency}" }
-      .setHeader("Prix achat HT")
-      .setAutoWidth(true)
+    grid.addColumn { it.hsCode ?: "" }.setHeader("Code HS").setAutoWidth(true)
+    grid.addColumn { it.casNumber ?: "" }.setHeader("CAS").setAutoWidth(true)
+    grid.addColumn { it.ecNumber ?: "" }.setHeader("EC").setAutoWidth(true)
     grid.addColumn { if (it.active) "Actif" else "Inactif" }.setHeader("Statut").setAutoWidth(true)
     grid
       .addComponentColumn { product ->

@@ -119,10 +119,7 @@ class DocumentLine(
       return Totals(exclTax, vat, exclTax.add(vat))
     }
 
-    /**
-     * Creates a new line pre-filled with the product's selling price, HS code, origin, and
-     * client-specific code.
-     */
+    /** Creates a new line pre-filled with the product metadata used on business documents. */
     fun fromProduct(
       documentType: DocumentType,
       documentId: Long,
@@ -136,9 +133,8 @@ class DocumentLine(
       line.madeIn = product.madeIn
       line.clientProductCode = product.findClientProductCode(client)
       line.unit = product.unit
-      line.unitPriceExclTax =
-        if (usePurchasePrice) product.purchasePriceExclTax else product.sellingPriceExclTax
       line.quantity = BigDecimal.ONE
+      line.unitPriceExclTax = BigDecimal.ZERO
       line.discountPercent = BigDecimal.ZERO
       line.vatRate = BigDecimal.ZERO
       line.recalculate()

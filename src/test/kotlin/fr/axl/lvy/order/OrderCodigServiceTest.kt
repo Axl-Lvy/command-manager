@@ -10,6 +10,7 @@ import fr.axl.lvy.fiscalposition.FiscalPositionService
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermRepository
 import fr.axl.lvy.product.Product
+import fr.axl.lvy.product.ProductPriceCompany
 import fr.axl.lvy.product.ProductRepository
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigRepository
@@ -415,6 +416,9 @@ class OrderCodigServiceTest {
     mtoProduct.mto = true
     mtoProduct.sellingPriceExclTax = BigDecimal("100.00")
     mtoProduct.purchasePriceExclTax = BigDecimal("60.00")
+    mtoProduct.replacePurchasePrices(
+      listOf(Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("60.00"), "EUR"))
+    )
     productRepository.saveAndFlush(mtoProduct)
 
     val regularProduct = Product("PRD-REG", "Standard Part")

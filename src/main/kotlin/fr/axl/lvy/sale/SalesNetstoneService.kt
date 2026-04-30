@@ -6,6 +6,7 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.order.OrderNetstone
 import fr.axl.lvy.order.OrderNetstoneService
+import fr.axl.lvy.product.ProductPriceCompany
 import fr.axl.lvy.product.ProductService
 import io.micrometer.core.instrument.MeterRegistry
 import java.math.BigDecimal
@@ -122,11 +123,6 @@ class SalesNetstoneService(
     sale.paymentTerm = sourceOrderCodig.paymentTerm
     sale.currency = sourceOrderCodig.currency
     sale.exchangeRate = sourceOrderCodig.exchangeRate
-    sale.purchasePriceExclTax =
-      sourceLines.fold(BigDecimal.ZERO) { acc, line ->
-        acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
-      }
-
     val savedSale = save(sale)
 
     val generatedSaleLines =
@@ -134,10 +130,17 @@ class SalesNetstoneService(
         DocumentLine.DocumentType.SALES_NETSTONE,
         savedSale.id!!,
         sourceLines,
+        overrideUnitPrice = { line ->
+          productService
+            .findPurchasePrice(line.product?.id, ProductPriceCompany.NETSTONE)
+            ?.priceExclTax
+        },
         overrideDiscountPercent = BigDecimal.ZERO,
         filter = { it.product?.isMtoProduct() == true },
       )
 
+    firstPurchaseCurrency(generatedSaleLines)?.let { savedSale.currency = it }
+    savedSale.purchasePriceExclTax = computeLineTotal(generatedSaleLines)
     savedSale.recalculateTotals(generatedSaleLines)
     val result = salesNetstoneRepository.save(savedSale)
 
@@ -245,6 +248,7 @@ class SalesNetstoneService(
     val persistedLines =
       documentLineService.replaceLines(DocumentLine.DocumentType.SALES_NETSTONE, saved.id!!, lines)
 
+    saved.purchasePriceExclTax = computeLineTotal(persistedLines)
     saved.recalculateTotals(persistedLines)
     if (
       saved.status == SalesStatus.VALIDATED &&
@@ -264,4 +268,14 @@ class SalesNetstoneService(
 
   private fun generateNextSaleNumber(): String =
     numberSequenceService.nextNumber(NumberSequenceService.SALES_NETSTONE)
+
+  private fun computeLineTotal(lines: List<DocumentLine>): BigDecimal =
+    lines.fold(BigDecimal.ZERO) { acc, line ->
+      acc.add(line.unitPriceExclTax.multiply(line.quantity))
+    }
+
+  private fun firstPurchaseCurrency(lines: List<DocumentLine>): String? =
+    lines.firstNotNullOfOrNull { line ->
+      productService.findPurchasePrice(line.product?.id, ProductPriceCompany.NETSTONE)?.currency
+    }
 }

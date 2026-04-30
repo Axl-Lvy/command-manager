@@ -2,6 +2,7 @@ package fr.axl.lvy.product
 
 import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientRepository
+import fr.axl.lvy.documentline.DocumentLine
 import jakarta.persistence.EntityManager
 import java.math.BigDecimal
 import org.assertj.core.api.Assertions.assertThat
@@ -33,7 +34,6 @@ class ProductServiceTest {
     product.sellingCurrency = "USD"
     product.purchasePriceExclTax = BigDecimal("80.00")
     product.purchaseCurrency = "CNY"
-    product.priceType = "Prix départ usine"
     product.unit = "kg"
     productService.save(product)
 
@@ -48,7 +48,6 @@ class ProductServiceTest {
     assertThat(found.get().sellingPriceExclTax).isEqualByComparingTo("150.00")
     assertThat(found.get().sellingCurrency).isEqualTo("USD")
     assertThat(found.get().purchaseCurrency).isEqualTo("CNY")
-    assertThat(found.get().priceType).isEqualTo("Prix départ usine")
   }
 
   @Test
@@ -120,13 +119,6 @@ class ProductServiceTest {
 
     val found = productService.findById(product.id!!).orElseThrow()
     assertThat(found.mto).isFalse
-  }
-
-  @Test
-  fun default_price_type_is_blank() {
-    val product = Product("REF-PRICE-TYPE", "Price Type Product")
-
-    assertThat(product.priceType).isNull()
   }
 
   @Test
@@ -376,5 +368,247 @@ class ProductServiceTest {
     val found = productService.findDetailedById(product.id!!).orElseThrow()
     assertThat(found.findClientProductCode(found.clientProductCodes.first().client))
       .isEqualTo("DET-CLIENT-001")
+  }
+
+  private fun saveProductWithPrices(
+    ref: String,
+    purchasePrices: List<Product.PurchasePriceEntry> = emptyList(),
+    sellingPrices: List<Product.SellingPriceEntry> = emptyList(),
+  ): Product {
+    val product = Product(ref, "Product $ref")
+    product.replacePurchasePrices(purchasePrices)
+    product.replaceSellingPrices(sellingPrices)
+    productService.save(product)
+    productRepository.flush()
+    return product
+  }
+
+  @Test
+  fun save_persists_purchase_prices_per_company() {
+    val product =
+      saveProductWithPrices(
+        "REF-PP-1",
+        purchasePrices =
+          listOf(
+            Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("10.00"), "EUR"),
+            Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("12.00"), "USD"),
+          ),
+      )
+
+    assertThat(
+        productService.findPurchasePrice(product.id, ProductPriceCompany.CODIG)?.priceExclTax
+      )
+      .isEqualByComparingTo("10.00")
+    assertThat(productService.findPurchasePrice(product.id, ProductPriceCompany.NETSTONE)?.currency)
+      .isEqualTo("USD")
+  }
+
+  @Test
+  fun save_persists_selling_prices_per_client() {
+    val client = createClient("CLI-SP-1")
+    val product =
+      saveProductWithPrices(
+        "REF-SP-1",
+        sellingPrices = listOf(Product.SellingPriceEntry(client, BigDecimal("99.00"), "EUR")),
+      )
+
+    val resolved = productService.findSellingPrice(product.id, client.id!!)
+    assertThat(resolved?.priceExclTax).isEqualByComparingTo("99.00")
+    assertThat(resolved?.currency).isEqualTo("EUR")
+  }
+
+  @Test
+  fun replacePurchasePrices_updates_existing_and_adds_and_removes() {
+    val product =
+      saveProductWithPrices(
+        "REF-PP-2",
+        purchasePrices =
+          listOf(Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("10.00"), "EUR")),
+      )
+
+    val loaded = productService.findDetailedById(product.id!!).orElseThrow()
+    loaded.replacePurchasePrices(
+      listOf(
+        Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("20.00"), "USD"),
+        Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("15.00"), "EUR"),
+      )
+    )
+    productService.save(loaded)
+    productRepository.flush()
+
+    val codig = productService.findPurchasePrice(product.id, ProductPriceCompany.CODIG)
+    val netstone = productService.findPurchasePrice(product.id, ProductPriceCompany.NETSTONE)
+    assertThat(codig?.priceExclTax).isEqualByComparingTo("20.00")
+    assertThat(codig?.currency).isEqualTo("USD")
+    assertThat(netstone?.priceExclTax).isEqualByComparingTo("15.00")
+
+    val reloaded = productService.findDetailedById(product.id!!).orElseThrow()
+    reloaded.replacePurchasePrices(emptyList())
+    productService.save(reloaded)
+    productRepository.flush()
+
+    assertThat(productService.findPurchasePrice(product.id, ProductPriceCompany.CODIG)).isNull()
+    assertThat(productService.findPurchasePrice(product.id, ProductPriceCompany.NETSTONE)).isNull()
+  }
+
+  @Test
+  fun replaceSellingPrices_updates_existing_and_adds_and_removes() {
+    val clientA = createClient("CLI-SP-A")
+    val clientB = createClient("CLI-SP-B")
+    val product =
+      saveProductWithPrices(
+        "REF-SP-2",
+        sellingPrices = listOf(Product.SellingPriceEntry(clientA, BigDecimal("50.00"), "EUR")),
+      )
+
+    val loaded = productService.findDetailedById(product.id!!).orElseThrow()
+    loaded.replaceSellingPrices(
+      listOf(
+        Product.SellingPriceEntry(clientA, BigDecimal("55.00"), "USD"),
+        Product.SellingPriceEntry(clientB, BigDecimal("60.00"), "EUR"),
+      )
+    )
+    productService.save(loaded)
+    productRepository.flush()
+
+    assertThat(productService.findSellingPrice(product.id, clientA.id!!)?.priceExclTax)
+      .isEqualByComparingTo("55.00")
+    assertThat(productService.findSellingPrice(product.id, clientB.id!!)?.priceExclTax)
+      .isEqualByComparingTo("60.00")
+
+    val reloaded = productService.findDetailedById(product.id!!).orElseThrow()
+    reloaded.replaceSellingPrices(
+      listOf(Product.SellingPriceEntry(clientB, BigDecimal("60.00"), "EUR"))
+    )
+    productService.save(reloaded)
+    productRepository.flush()
+
+    assertThat(productService.findSellingPrice(product.id, clientA.id!!)).isNull()
+    assertThat(productService.findSellingPrice(product.id, clientB.id!!)).isNotNull
+  }
+
+  @Test
+  fun replaceSellingPrices_skips_clients_without_id() {
+    val clientWithoutId = Client("CLI-SP-NOID", "No-id client")
+    val product = Product("REF-SP-NOID", "Product no-id client")
+    product.replaceSellingPrices(
+      listOf(Product.SellingPriceEntry(clientWithoutId, BigDecimal("10.00"), "EUR"))
+    )
+
+    assertThat(product.sellingPrices).isEmpty()
+  }
+
+  @Test
+  fun findPurchasePrice_returns_null_for_null_product_id() {
+    assertThat(productService.findPurchasePrice(null, ProductPriceCompany.CODIG)).isNull()
+  }
+
+  @Test
+  fun findSellingPrice_returns_null_for_null_product_id() {
+    assertThat(productService.findSellingPrice(null, 1L)).isNull()
+  }
+
+  @Test
+  fun resolveUnitPrice_orderCodig_uses_codig_purchase_price() {
+    val product =
+      saveProductWithPrices(
+        "REF-RU-1",
+        purchasePrices =
+          listOf(
+            Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("11.00"), "EUR"),
+            Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("99.00"), "EUR"),
+          ),
+      )
+
+    assertThat(productService.resolveUnitPrice(DocumentLine.DocumentType.ORDER_CODIG, product))
+      .isEqualByComparingTo("11.00")
+    assertThat(productService.resolveCurrency(DocumentLine.DocumentType.ORDER_CODIG, product))
+      .isEqualTo("EUR")
+  }
+
+  @Test
+  fun resolveUnitPrice_salesCodig_uses_client_selling_price() {
+    val client = createClient("CLI-RU-2")
+    val product =
+      saveProductWithPrices(
+        "REF-RU-2",
+        sellingPrices = listOf(Product.SellingPriceEntry(client, BigDecimal("77.00"), "USD")),
+      )
+
+    assertThat(
+        productService.resolveUnitPrice(DocumentLine.DocumentType.SALES_CODIG, product, client)
+      )
+      .isEqualByComparingTo("77.00")
+    assertThat(
+        productService.resolveCurrency(DocumentLine.DocumentType.INVOICE_CODIG, product, client)
+      )
+      .isEqualTo("USD")
+  }
+
+  @Test
+  fun resolveUnitPrice_salesCodig_returns_null_without_client() {
+    val product = saveProductWithPrices("REF-RU-3")
+    assertThat(productService.resolveUnitPrice(DocumentLine.DocumentType.SALES_CODIG, product))
+      .isNull()
+    assertThat(productService.resolveCurrency(DocumentLine.DocumentType.SALES_CODIG, product))
+      .isNull()
+  }
+
+  @Test
+  fun resolveUnitPrice_netstone_documents_use_netstone_purchase_price() {
+    val product =
+      saveProductWithPrices(
+        "REF-RU-4",
+        purchasePrices =
+          listOf(
+            Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("33.00"), "USD")
+          ),
+      )
+
+    listOf(
+        DocumentLine.DocumentType.SALES_NETSTONE,
+        DocumentLine.DocumentType.ORDER_NETSTONE,
+        DocumentLine.DocumentType.INVOICE_NETSTONE,
+        DocumentLine.DocumentType.DELIVERY_NETSTONE,
+      )
+      .forEach { type ->
+        assertThat(productService.resolveUnitPrice(type, product))
+          .`as`("unitPrice for $type")
+          .isEqualByComparingTo("33.00")
+        assertThat(productService.resolveCurrency(type, product))
+          .`as`("currency for $type")
+          .isEqualTo("USD")
+      }
+  }
+
+  @Test
+  fun resolveUnitPrice_with_usePurchasePrice_overrides_to_codig_purchase() {
+    val client = createClient("CLI-RU-5")
+    val product =
+      saveProductWithPrices(
+        "REF-RU-5",
+        purchasePrices =
+          listOf(Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("44.00"), "EUR")),
+        sellingPrices = listOf(Product.SellingPriceEntry(client, BigDecimal("99.00"), "USD")),
+      )
+
+    assertThat(
+        productService.resolveUnitPrice(
+          DocumentLine.DocumentType.SALES_CODIG,
+          product,
+          client,
+          usePurchasePrice = true,
+        )
+      )
+      .isEqualByComparingTo("44.00")
+    assertThat(
+        productService.resolveCurrency(
+          DocumentLine.DocumentType.SALES_CODIG,
+          product,
+          client,
+          usePurchasePrice = true,
+        )
+      )
+      .isEqualTo("EUR")
   }
 }

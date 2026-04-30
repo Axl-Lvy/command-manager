@@ -14,6 +14,7 @@ import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.Product
+import fr.axl.lvy.product.ProductPriceCompany
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
@@ -26,6 +27,8 @@ import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
+
+private const val THE_DOW_CHEMICAL_COMPANY = "THE DOW CHEMICAL COMPANY"
 
 /**
  * Seeds a lightweight local dataset: reference tables, users, companies/clients, and products.
@@ -210,7 +213,7 @@ class DatabaseSeeder(
           billingAddress =
             "10/F., Guangdong Investment Tower\n148 Connaught Road\nCentral, Hong Kong"
         },
-        Client(name = "THE DOW CHEMICAL COMPANY").apply {
+        Client(name = THE_DOW_CHEMICAL_COMPANY).apply {
           type = Client.ClientType.COMPANY
           role = Client.ClientRole.CLIENT
           visibleCompany = User.Company.CODIG
@@ -290,7 +293,7 @@ class DatabaseSeeder(
 
     val clientsByName = clientService.findAll().associateBy { it.name }
     val dowChemical =
-      checkNotNull(clientsByName["THE DOW CHEMICAL COMPANY"]?.id).let { clientId ->
+      checkNotNull(clientsByName[THE_DOW_CHEMICAL_COMPANY]?.id).let { clientId ->
         clientService.findDetailedById(clientId).orElseThrow()
       }
     val dupont = checkNotNull(clientsByName["Dupont"])
@@ -301,34 +304,49 @@ class DatabaseSeeder(
           type = Product.ProductType.PRODUCT
           mto = true
           specifications = "AMPS 2403 MONOMER, NEA SAP R3 SPECIFICATION: 1007623"
-          sellingPriceExclTax = BigDecimal("49.99")
-          sellingCurrency = "USD"
-          purchasePriceExclTax = BigDecimal("25.00")
-          purchaseCurrency = "USD"
           unit = "Mt"
           hsCode = "9031.80"
           madeIn = "China"
           replaceClientProductCodes(listOf(dowChemical to "10041948", dupont to "DUP-CO3104-CN"))
+          replacePurchasePrices(
+            listOf(
+              Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("25.00"), "USD"),
+              Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("22.00"), "USD"),
+            )
+          )
+          replaceSellingPrices(
+            listOf(
+              Product.SellingPriceEntry(dowChemical, BigDecimal("49.99"), "USD"),
+              Product.SellingPriceEntry(dupont, BigDecimal("53.00"), "USD"),
+            )
+          )
         },
         Product(name = "CO_3104 TH").apply {
           type = Product.ProductType.PRODUCT
           mto = true
           specifications = "AMPS 2403 MONOMER, NEA SAP R3 SPECIFICATION: 1007623"
-          sellingPriceExclTax = BigDecimal("89.99")
-          sellingCurrency = "USD"
-          purchasePriceExclTax = BigDecimal("45.00")
-          purchaseCurrency = "USD"
           unit = "Mt"
           hsCode = "9031.80.234"
           madeIn = "Thailand"
           replaceClientProductCodes(listOf(dowChemical to "10041948", dupont to "DUP-CO3104-TH"))
+          replacePurchasePrices(
+            listOf(
+              Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("45.00"), "USD"),
+              Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("41.00"), "USD"),
+            )
+          )
+          replaceSellingPrices(
+            listOf(
+              Product.SellingPriceEntry(dowChemical, BigDecimal("89.99"), "USD"),
+              Product.SellingPriceEntry(dupont, BigDecimal("94.50"), "USD"),
+            )
+          )
         },
         Product(name = "Demurrage").apply {
           type = Product.ProductType.SERVICE
-          sellingPriceExclTax = BigDecimal("150.00")
-          sellingCurrency = "USD"
-          purchasePriceExclTax = BigDecimal.ZERO
-          purchaseCurrency = "USD"
+          replaceSellingPrices(
+            listOf(Product.SellingPriceEntry(dowChemical, BigDecimal("150.00"), "USD"))
+          )
         },
       )
 
@@ -346,7 +364,7 @@ class DatabaseSeeder(
     val productsByName = productService.findAll().associateBy { it.name }
 
     val dowChemical =
-      checkNotNull(clientsByName["THE DOW CHEMICAL COMPANY"]?.id).let { clientId ->
+      checkNotNull(clientsByName[THE_DOW_CHEMICAL_COMPANY]?.id).let { clientId ->
         clientService.findDetailedById(clientId).orElseThrow()
       }
     val product =
