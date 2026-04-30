@@ -177,7 +177,8 @@ class SalesCodigServiceTest {
     assertThat(order.orderNumber).startsWith("CoD_PO_")
     assertThat(order.client.id).isEqualTo(supplier.id)
     assertThat(order.subject).isEqualTo("Test Subject")
-    assertThat(order.currency).isEqualTo("USD")
+    // Purchase price currency overrides sale currency on generated order
+    assertThat(order.currency).isEqualTo("EUR")
     // incoterms comes from codigCompany.incoterm (null in this test — no incoterm configured)
     // incotermLocation comes from sale.client.deliveryPort (null in this test — no deliveryPort
     // set)

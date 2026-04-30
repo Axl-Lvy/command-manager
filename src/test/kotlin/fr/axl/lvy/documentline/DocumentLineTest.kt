@@ -65,18 +65,18 @@ class DocumentLineTest {
     val line = DocumentLine.fromProduct(DocumentLine.DocumentType.ORDER_CODIG, 1L, product, client)
 
     assertThat(line.designation).isEqualTo("Steel Beam")
-    assertThat(line.unitPriceExclTax).isEqualByComparingTo("150.00")
+    assertThat(line.unitPriceExclTax).isEqualByComparingTo("0")
     assertThat(line.unit).isEqualTo("kg")
     assertThat(line.hsCode).isEqualTo("7216.10")
     assertThat(line.madeIn).isEqualTo("France")
     assertThat(line.clientProductCode).isEqualTo("CL-BEAM-01")
     assertThat(line.quantity).isEqualByComparingTo("1")
     assertThat(line.discountPercent).isEqualByComparingTo("0")
-    assertThat(line.lineTotalExclTax).isEqualByComparingTo("150.00")
+    assertThat(line.lineTotalExclTax).isEqualByComparingTo("0")
   }
 
   @Test
-  fun fromProduct_can_use_purchase_price() {
+  fun fromProduct_initializes_unit_price_to_zero() {
     val product = Product("REF-BUY", "Purchased Product")
     product.sellingPriceExclTax = BigDecimal("150.00")
     product.purchasePriceExclTax = BigDecimal("80.00")
@@ -89,8 +89,8 @@ class DocumentLineTest {
         usePurchasePrice = true,
       )
 
-    assertThat(line.unitPriceExclTax).isEqualByComparingTo("80.00")
-    assertThat(line.lineTotalExclTax).isEqualByComparingTo("80.00")
+    assertThat(line.unitPriceExclTax).isEqualByComparingTo("0")
+    assertThat(line.lineTotalExclTax).isEqualByComparingTo("0")
   }
 
   @Test
@@ -119,8 +119,8 @@ class DocumentLineTest {
 
     assertThat(line.clientProductCode).isNull()
     assertThat(line.designation).isEqualTo("Copper Wire")
-    assertThat(line.unitPriceExclTax).isEqualByComparingTo("50.00")
-    assertThat(line.lineTotalExclTax).isEqualByComparingTo("50.00")
+    assertThat(line.unitPriceExclTax).isEqualByComparingTo("0")
+    assertThat(line.lineTotalExclTax).isEqualByComparingTo("0")
   }
 
   @Test

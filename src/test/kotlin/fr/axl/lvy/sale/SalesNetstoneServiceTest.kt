@@ -152,7 +152,8 @@ class SalesNetstoneServiceTest {
     assertThat(result.orderNetstone).isNull()
     assertThat(result.incotermLocation).isEqualTo("Le Havre")
     assertThat(result.fiscalPosition?.position).isEqualTo("Fiscalite Netstone")
-    assertThat(result.currency).isEqualTo("USD")
+    // Purchase price currency overrides sale currency on generated salesNetstone
+    assertThat(result.currency).isEqualTo("EUR")
 
     val salesNetstoneLines =
       documentLineRepository.findByDocumentTypeAndDocumentIdOrderByPosition(

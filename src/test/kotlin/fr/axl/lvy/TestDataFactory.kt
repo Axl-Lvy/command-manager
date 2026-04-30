@@ -5,6 +5,7 @@ import fr.axl.lvy.client.ClientRepository
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.product.Product
+import fr.axl.lvy.product.ProductPriceCompany
 import fr.axl.lvy.product.ProductRepository
 import java.math.BigDecimal
 import org.springframework.stereotype.Component
@@ -53,6 +54,12 @@ class TestDataFactory(
     product.mto = true
     product.sellingPriceExclTax = BigDecimal("100.00")
     product.purchasePriceExclTax = BigDecimal("60.00")
+    product.replacePurchasePrices(
+      listOf(
+        Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("60.00"), "EUR"),
+        Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("60.00"), "EUR"),
+      )
+    )
     return productRepository.saveAndFlush(product)
   }
 
@@ -62,6 +69,12 @@ class TestDataFactory(
     product.mto = false
     product.sellingPriceExclTax = BigDecimal("50.00")
     product.purchasePriceExclTax = BigDecimal("30.00")
+    product.replacePurchasePrices(
+      listOf(
+        Product.PurchasePriceEntry(ProductPriceCompany.CODIG, BigDecimal("30.00"), "EUR"),
+        Product.PurchasePriceEntry(ProductPriceCompany.NETSTONE, BigDecimal("30.00"), "EUR"),
+      )
+    )
     return productRepository.saveAndFlush(product)
   }
 }
