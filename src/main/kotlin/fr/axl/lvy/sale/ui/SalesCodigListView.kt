@@ -81,7 +81,10 @@ internal class SalesCodigListView(
         invoiceButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
         invoiceButton.isEnabled = sale.orderCodig != null
 
-        HorizontalLayout(viewButton, deliveryButton, invoiceButton).apply {
+        val packingListButton = Button("Packing List") { openPackingList(sale) }
+        packingListButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_TERTIARY)
+
+        HorizontalLayout(viewButton, deliveryButton, invoiceButton, packingListButton).apply {
           isPadding = false
           isSpacing = true
         }
@@ -295,6 +298,12 @@ internal class SalesCodigListView(
         this::refreshGrid,
       )
       .open()
+  }
+
+  private fun openPackingList(sale: SalesCodig) {
+    val loadedSale = sale.id?.let { salesCodigService.findDetailedById(it).orElse(sale) } ?: sale
+    val saleLines = loadedSale.id?.let { salesCodigService.findLines(it) } ?: emptyList()
+    PackingListDialog(pdfService, loadedSale, saleLines).open()
   }
 
   private fun openInvoiceForm(sale: SalesCodig) {
