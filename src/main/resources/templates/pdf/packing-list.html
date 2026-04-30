@@ -194,7 +194,7 @@
 <div class="footer-info">
   <p class="codes">
     <span th:if="${casNumber != null and !casNumber.isEmpty()}" th:text="'CAS # ' + ${casNumber}"></span>
-    <span th:if="${casNumber != null and !casNumber.isEmpty() and ecNumber != null and !ecNumber.isEmpty()}">&nbsp;&nbsp;</span>
+    <span th:if="${casNumber != null and !casNumber.isEmpty() and ecNumber != null and !ecNumber.isEmpty()}">&#160;&#160;</span>
     <span th:if="${ecNumber != null and !ecNumber.isEmpty()}" th:text="'EC # ' + ${ecNumber}"></span>
   </p>
   <p th:if="${hazardNote != null and !hazardNote.isEmpty()}" th:text="${hazardNote}"></p>
