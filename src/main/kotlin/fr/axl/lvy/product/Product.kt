@@ -13,8 +13,10 @@ import org.hibernate.type.SqlTypes
  * [ProductType.SERVICE]. Physical products may be flagged as [mto] (made-to-order), meaning they
  * trigger a supplier purchase order when sold.
  *
- * Each product tracks both a selling price and a purchase price (possibly in different currencies),
- * and can have per-client custom reference codes via [clientProductCodes].
+ * Pricing is stored outside the product sheet:
+ * [purchasePrices] for CoDIG/Netstone purchase costs and [sellingPrices] for CoDIG client-specific
+ * selling prices. The product itself keeps only stable catalog data plus per-client reference codes
+ * via [clientProductCodes].
  */
 @Entity
 @Table(name = "products")
@@ -38,10 +40,6 @@ class Product(
   @JdbcTypeCode(SqlTypes.VARCHAR)
   @Column(nullable = false, columnDefinition = "enum('PRODUCT','SERVICE')")
   var type: ProductType = ProductType.PRODUCT
-
-  /** Free-text field for purchase price conditions (e.g. "Prix départ usine"). */
-  @Column(name = "price_type", length = 100, columnDefinition = "varchar(100)")
-  var priceType: String? = null
 
   @Column(name = "is_mto", nullable = false) var mto: Boolean = false
 
@@ -73,6 +71,12 @@ class Product(
 
   @OneToMany(mappedBy = "product", cascade = [CascadeType.ALL], orphanRemoval = true)
   var clientProductCodes: MutableList<ProductClientCode> = mutableListOf()
+
+  @OneToMany(mappedBy = "product", cascade = [CascadeType.ALL], orphanRemoval = true)
+  var purchasePrices: MutableList<ProductPurchasePrice> = mutableListOf()
+
+  @OneToMany(mappedBy = "product", cascade = [CascadeType.ALL], orphanRemoval = true)
+  var sellingPrices: MutableList<ProductSellingPrice> = mutableListOf()
 
   @ManyToMany
   @JoinTable(
@@ -120,6 +124,57 @@ class Product(
       clientProductCodes.firstOrNull { it.client == currentClient }?.code
     }
 
+  /** Replaces the internal-company purchase prices kept on the product. */
+  fun replacePurchasePrices(entries: List<PurchasePriceEntry>) {
+    val byCompany = entries.associateBy { it.company }
+
+    val iterator = purchasePrices.iterator()
+    while (iterator.hasNext()) {
+      val current = iterator.next()
+      val desired = byCompany[current.company]
+      if (desired == null) {
+        iterator.remove()
+      } else {
+        current.priceExclTax = desired.priceExclTax
+        current.currency = desired.currency
+      }
+    }
+
+    val existingCompanies = purchasePrices.map { it.company }.toSet()
+    byCompany.forEach { (company, entry) ->
+      if (company !in existingCompanies) {
+        purchasePrices.add(ProductPurchasePrice(this, company, entry.priceExclTax, entry.currency))
+      }
+    }
+  }
+
+  /** Replaces the client-specific selling prices kept on the product. */
+  fun replaceSellingPrices(entries: List<SellingPriceEntry>) {
+    val validEntries = entries.filter { it.client.id != null }
+    val entriesByClientId = validEntries.associateBy { it.client.id!! }
+
+    val iterator = sellingPrices.iterator()
+    while (iterator.hasNext()) {
+      val current = iterator.next()
+      val desired = current.client.id?.let(entriesByClientId::get)
+      if (desired == null) {
+        iterator.remove()
+      } else {
+        current.client = desired.client
+        current.priceExclTax = desired.priceExclTax
+        current.currency = desired.currency
+      }
+    }
+
+    val existingClientIds = sellingPrices.mapNotNull { it.client.id }.toSet()
+    validEntries.forEach { entry ->
+      val clientId = entry.client.id ?: return@forEach
+      if (clientId !in existingClientIds) {
+        sellingPrices.add(ProductSellingPrice(this, entry.client, entry.priceExclTax, entry.currency))
+      }
+    }
+  }
+
   fun replaceSuppliers(clients: Collection<Client>) {
     suppliers.clear()
     suppliers.addAll(clients)
@@ -142,4 +197,16 @@ class Product(
     PRODUCT,
     SERVICE,
   }
+
+  data class PurchasePriceEntry(
+    val company: ProductPriceCompany,
+    val priceExclTax: BigDecimal,
+    val currency: String,
+  )
+
+  data class SellingPriceEntry(
+    val client: Client,
+    val priceExclTax: BigDecimal,
+    val currency: String,
+  )
 }

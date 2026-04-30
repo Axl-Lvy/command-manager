@@ -209,13 +209,16 @@ class DocumentLineEditor(
         clientSupplier?.invoke(),
         usePurchasePrice,
       )
-    // Update document-level currency to match the product's currency. When lines use mixed
-    // currencies, the last-added product's currency wins — this is intentional as CoDIG documents
-    // are single-currency.
-    currencyUpdater?.invoke(
-      if (usePurchasePrice) product.purchaseCurrency else product.sellingCurrency
-    )
-    unitPriceOverrideProvider?.invoke(product)?.let { line.unitPriceExclTax = it }
+    val client = clientSupplier?.invoke()
+    val resolvedUnitPrice =
+      unitPriceOverrideProvider?.invoke(product)
+        ?: productService.resolveUnitPrice(documentType, product, client, usePurchasePrice)
+    val resolvedCurrency =
+      productService.resolveCurrency(documentType, product, client, usePurchasePrice)
+    resolvedUnitPrice?.let { line.unitPriceExclTax = it }
+    if (resolvedCurrency != null) {
+      currencyUpdater?.invoke(resolvedCurrency)
+    }
     if (lineTaxMode == LineTaxMode.VAT) {
       line.vatRate = defaultVatRate
     }

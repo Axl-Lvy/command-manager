@@ -13,7 +13,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
-import com.vaadin.flow.server.StreamResource
+import com.vaadin.flow.server.streams.DownloadHandler
+import com.vaadin.flow.server.streams.DownloadResponse
 import fr.axl.lvy.base.ui.noGap
 import fr.axl.lvy.delivery.DeliveryNoteNetstone
 import fr.axl.lvy.documentline.DocumentLine
@@ -24,6 +25,7 @@ import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
+import java.io.ByteArrayInputStream
 
 /**
  * Dialog used to create or edit a [InvoiceCodig] from a [SalesCodig]. The form is read-only for the
@@ -123,17 +125,14 @@ internal class InvoiceCodigFormDialog(
     val cancelBtn = Button("Annuler") { close() }
     val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
     if (invoice.id != null) {
-      val pdfResource =
-        StreamResource("${invoice.invoiceNumber.replace("/", "_")}.pdf") {
-            pdfService.generateInvoiceCodigPdf(invoice.id!!).inputStream()
-          }
-          .apply { cacheTime = 0 }
-      val pdfBtn = Button("Télécharger PDF")
-      val pdfLink =
-        Anchor(pdfResource, "").apply {
-          element.setAttribute("download", true)
-          add(pdfBtn)
+      val fileName = "${invoice.invoiceNumber.replace("/", "_")}.pdf"
+      val pdfHandler =
+        DownloadHandler.fromInputStream {
+          val bytes = pdfService.generateInvoiceCodigPdf(invoice.id!!)
+          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
         }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }
       footerLayout.add(pdfLink)
     }
     footer.add(footerLayout)

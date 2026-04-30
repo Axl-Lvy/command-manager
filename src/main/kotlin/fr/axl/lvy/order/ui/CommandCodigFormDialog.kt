@@ -14,7 +14,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.BigDecimalField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
-import com.vaadin.flow.server.StreamResource
+import com.vaadin.flow.server.streams.DownloadHandler
+import com.vaadin.flow.server.streams.DownloadResponse
 import fr.axl.lvy.base.ui.DocumentFlowNavigation
 import fr.axl.lvy.base.ui.DocumentFlowNavigator
 import fr.axl.lvy.base.ui.DocumentFlowStep
@@ -33,6 +34,7 @@ import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
+import java.io.ByteArrayInputStream
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -139,17 +141,14 @@ internal class CommandCodigFormDialog(
     val cancelBtn = Button("Annuler") { close() }
     val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
     if (order?.id != null) {
-      val pdfResource =
-        StreamResource("${order.orderNumber.replace("/", "_")}.pdf") {
-            pdfService.generateOrderCodigPdf(order.id!!).inputStream()
-          }
-          .apply { cacheTime = 0 }
-      val pdfBtn = Button("Télécharger PDF")
-      val pdfLink =
-        Anchor(pdfResource, "").apply {
-          element.setAttribute("download", true)
-          add(pdfBtn)
+      val fileName = "${order.orderNumber.replace("/", "_")}.pdf"
+      val pdfHandler =
+        DownloadHandler.fromInputStream {
+          val bytes = pdfService.generateOrderCodigPdf(order.id!!)
+          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
         }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }
       footerLayout.add(pdfLink)
     }
     footer.add(footerLayout)

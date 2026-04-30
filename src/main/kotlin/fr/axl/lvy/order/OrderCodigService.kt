@@ -5,6 +5,8 @@ import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineRepository
 import fr.axl.lvy.documentline.DocumentLineService
+import fr.axl.lvy.product.ProductPriceCompany
+import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodigRepository
 import fr.axl.lvy.sale.SalesNetstoneService
 import io.micrometer.core.instrument.MeterRegistry
@@ -33,6 +35,7 @@ class OrderCodigService(
   private val salesNetstoneService: SalesNetstoneService,
   private val numberSequenceService: NumberSequenceService,
   private val clientService: ClientService,
+  private val productService: ProductService,
   private val meterRegistry: MeterRegistry,
 ) {
   // Pre-registered so they appear in Prometheus at startup with value 0.
@@ -238,7 +241,11 @@ class OrderCodigService(
     for (line in mtoLines) {
       val newLine =
         DocumentLine(DocumentLine.DocumentType.ORDER_NETSTONE, orderNetstone.id!!, line.designation)
-      newLine.copyFieldsFrom(line, overrideUnitPrice = line.product!!.purchasePriceExclTax)
+      newLine.copyFieldsFrom(
+        line,
+        overrideUnitPrice =
+          productService.findPurchasePrice(line.product?.id, ProductPriceCompany.NETSTONE)?.priceExclTax,
+      )
       newLine.position = line.position
       documentLineRepository.save(newLine)
     }
@@ -290,7 +297,7 @@ class OrderCodigService(
     saved.recalculateTotals(persistedLines)
     saved.purchasePriceExclTax =
       persistedLines.fold(BigDecimal.ZERO) { acc, line ->
-        acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
+        acc.add(line.unitPriceExclTax.multiply(line.quantity))
       }
     val persistedOrder = orderCodigRepository.save(saved)
     val orderId = persistedOrder.id ?: return persistedOrder

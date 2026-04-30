@@ -14,7 +14,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.provider.DataProvider
-import com.vaadin.flow.server.StreamResource
+import com.vaadin.flow.server.streams.DownloadHandler
+import com.vaadin.flow.server.streams.DownloadResponse
 import fr.axl.lvy.base.ui.DocumentFlowNavigation
 import fr.axl.lvy.base.ui.DocumentFlowNavigator
 import fr.axl.lvy.base.ui.DocumentFlowStep
@@ -38,6 +39,7 @@ import fr.axl.lvy.sale.SalesCodigService
 import fr.axl.lvy.sale.SalesNetstone
 import fr.axl.lvy.sale.SalesNetstoneService
 import fr.axl.lvy.sale.SalesStatus
+import java.io.ByteArrayInputStream
 
 internal class SalesNetstoneFormDialog(
   private val salesNetstoneService: SalesNetstoneService,
@@ -149,17 +151,14 @@ internal class SalesNetstoneFormDialog(
     val cancelBtn = Button("Annuler") { close() }
     val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
     if (order?.id != null) {
-      val pdfResource =
-        StreamResource("${order.saleNumber.replace("/", "_")}.pdf") {
-            pdfService.generateSalesNetstonePdf(order.id!!).inputStream()
-          }
-          .apply { cacheTime = 0 }
-      val pdfBtn = Button("Télécharger PDF")
-      val pdfLink =
-        Anchor(pdfResource, "").apply {
-          element.setAttribute("download", true)
-          add(pdfBtn)
+      val fileName = "${order.saleNumber.replace("/", "_")}.pdf"
+      val pdfHandler =
+        DownloadHandler.fromInputStream {
+          val bytes = pdfService.generateSalesNetstonePdf(order.id!!)
+          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
         }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }
       footerLayout.add(pdfLink)
     }
     footer.add(footerLayout)

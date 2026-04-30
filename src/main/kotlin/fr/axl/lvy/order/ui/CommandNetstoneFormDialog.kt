@@ -14,7 +14,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.provider.DataProvider
-import com.vaadin.flow.server.StreamResource
+import com.vaadin.flow.server.streams.DownloadHandler
+import com.vaadin.flow.server.streams.DownloadResponse
 import fr.axl.lvy.base.ui.DocumentFlowNavigation
 import fr.axl.lvy.base.ui.DocumentFlowNavigator
 import fr.axl.lvy.base.ui.DocumentFlowStep
@@ -38,6 +39,7 @@ import fr.axl.lvy.pdf.PdfService
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesNetstone
 import fr.axl.lvy.sale.SalesNetstoneService
+import java.io.ByteArrayInputStream
 import java.math.BigDecimal
 
 internal class CommandNetstoneFormDialog(
@@ -72,7 +74,6 @@ internal class CommandNetstoneFormDialog(
   private val notes = TextArea("Notes")
   private val lineEditor: DocumentLineEditor
   private val allIncoterms: List<Incoterm>
-  private var selectedCurrency: String = "EUR"
   private val visibleStatuses =
     listOf(
       OrderNetstone.OrderNetstoneStatus.SENT,
@@ -124,8 +125,6 @@ internal class CommandNetstoneFormDialog(
         productService = productService,
         documentType = DocumentLine.DocumentType.ORDER_NETSTONE,
         clientSupplier = { orderCodigCombo.value?.client },
-        currencySupplier = { selectedCurrency },
-        currencyUpdater = { selectedCurrency = it },
         lineTaxMode = DocumentLineEditor.LineTaxMode.VAT,
         defaultVatRate = BigDecimal.ZERO,
       )
@@ -141,17 +140,14 @@ internal class CommandNetstoneFormDialog(
     val cancelBtn = Button("Annuler") { close() }
     val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
     if (order?.id != null) {
-      val pdfResource =
-        StreamResource("${order.orderNumber}.pdf") {
-            pdfService.generateOrderNetstonePdf(order.id!!).inputStream()
-          }
-          .apply { cacheTime = 0 }
-      val pdfBtn = Button("Télécharger PDF")
-      val pdfLink =
-        Anchor(pdfResource, "").apply {
-          element.setAttribute("download", true)
-          add(pdfBtn)
+      val fileName = "${order.orderNumber}.pdf"
+      val pdfHandler =
+        DownloadHandler.fromInputStream {
+          val bytes = pdfService.generateOrderNetstonePdf(order.id!!)
+          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
         }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }
       footerLayout.add(pdfLink)
     }
     footer.add(footerLayout)

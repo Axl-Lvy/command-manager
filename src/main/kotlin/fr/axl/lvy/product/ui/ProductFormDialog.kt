@@ -7,6 +7,7 @@ import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.combobox.MultiSelectComboBox
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
+import com.vaadin.flow.component.html.H4
 import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.notification.NotificationVariant
 import com.vaadin.flow.component.orderedlayout.FlexComponent
@@ -20,6 +21,7 @@ import fr.axl.lvy.client.Client
 import fr.axl.lvy.client.ClientService
 import fr.axl.lvy.currency.CurrencyService
 import fr.axl.lvy.product.Product
+import fr.axl.lvy.product.ProductPriceCompany
 import fr.axl.lvy.product.ProductService
 import java.math.BigDecimal
 import org.slf4j.LoggerFactory
@@ -38,12 +40,7 @@ internal class ProductFormDialog(
   private val longDescription = TextArea("Description longue")
   private val specifications = TextArea("Spécifications")
   private val type = ComboBox<Product.ProductType>("Type")
-  private val priceType = TextField("Conditions prix achat")
   private val mto = Checkbox("Fabrication sur commande (MTO)")
-  private val sellingPrice = BigDecimalField("Prix vente HT")
-  private val sellingCurrency = Select<String>()
-  private val purchasePrice = BigDecimalField("Prix achat HT")
-  private val purchaseCurrency = Select<String>()
   private val suppliers = MultiSelectComboBox<Client>("Fournisseurs")
   private val unitOption = ComboBox<String>("Unité")
   private val customUnit = TextField("Autre unité")
@@ -53,27 +50,30 @@ internal class ProductFormDialog(
   private val madeIn = ComboBox<String>("Origine")
   private val active = Checkbox("Actif")
   private val clientCodeRows = VerticalLayout()
+  private val purchasePriceSection = FormLayout()
+  private val codigPurchasePrice = BigDecimalField("Prix achat CoDIG HT")
+  private val codigPurchaseCurrency = Select<String>()
+  private val netstonePurchasePrice = BigDecimalField("Prix achat Netstone HT")
+  private val netstonePurchaseCurrency = Select<String>()
+  private val sellingPriceRows = VerticalLayout()
   private val availableClients: List<Client> = clientService.findClients()
   private val availableSuppliers: List<Client> =
     clientService.findByRole(Client.ClientRole.PRODUCER)
   private val clientCodeEntries = mutableListOf<ClientCodeRow>()
+  private val sellingPriceEntries = mutableListOf<SellingPriceRow>()
+  private val currencyCodes = currencyService.findAll().map { it.code }
 
   init {
     setHeaderTitle(if (product == null) "Nouveau produit" else "Modifier produit")
-    setWidth("760px")
+    setWidth("920px")
 
     type.setItems(*Product.ProductType.entries.toTypedArray())
     type.setItemLabelGenerator { if (it == Product.ProductType.PRODUCT) "Produit" else "Service" }
     type.addValueChangeListener { e -> updateFieldsForType(e.value) }
-    val currencyCodes = currencyService.findAll().map { it.code }
-    sellingCurrency.label = "Devise vente"
-    sellingCurrency.setItems(currencyCodes)
-    sellingCurrency.value = "EUR"
-    purchaseCurrency.label = "Devise achat"
-    purchaseCurrency.setItems(currencyCodes)
-    purchaseCurrency.value = "EUR"
     suppliers.setItems(availableSuppliers)
     suppliers.setItemLabelGenerator { it.name }
+    configureCurrencySelect(codigPurchaseCurrency, "Devise achat CoDIG")
+    configureCurrencySelect(netstonePurchaseCurrency, "Devise achat Netstone")
 
     unitOption.setItems(UNIT_MT, UNIT_KG, UNIT_OTHER)
     customUnit.placeholder = "Saisir l'unité"
@@ -93,22 +93,40 @@ internal class ProductFormDialog(
     form.add(label, 2)
     form.add(shortDescription, 2)
     form.add(longDescription, 2)
-    form.add(priceType, mto)
+    form.add(mto, 2)
     form.add(specifications, 2)
     form.add(unitOption, customUnit)
-    form.add(sellingPrice, sellingCurrency)
-    form.add(purchasePrice, purchaseCurrency)
     form.add(suppliers, 2)
     form.add(hsCode, casNumber)
     form.add(ecNumber, madeIn)
     form.add(active)
+
+    purchasePriceSection.setResponsiveSteps(FormLayout.ResponsiveStep("0", 2))
+    purchasePriceSection.add(codigPurchasePrice, codigPurchaseCurrency)
+    purchasePriceSection.add(netstonePurchasePrice, netstonePurchaseCurrency)
 
     val addClientCodeButton = Button("Ajouter code client") { addClientCodeRow() }
     val clientCodesSection = VerticalLayout(addClientCodeButton, clientCodeRows)
     clientCodesSection.isPadding = false
     clientCodesSection.isSpacing = true
 
-    add(VerticalLayout(form, clientCodesSection).apply { isPadding = false })
+    val addSellingPriceButton = Button("Ajouter prix client") { addSellingPriceRow() }
+    val sellingPricesSection = VerticalLayout(addSellingPriceButton, sellingPriceRows)
+    sellingPricesSection.isPadding = false
+    sellingPricesSection.isSpacing = true
+
+    add(
+      VerticalLayout(
+          form,
+          H4("Prix d'achat"),
+          purchasePriceSection,
+          H4("Prix de vente CoDIG par client"),
+          sellingPricesSection,
+          H4("Codes produit client"),
+          clientCodesSection,
+        )
+        .apply { isPadding = false }
+    )
 
     val saveBtn = Button("Enregistrer") { save() }
     saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY)
@@ -120,6 +138,8 @@ internal class ProductFormDialog(
     } else {
       type.value = Product.ProductType.PRODUCT
       active.value = true
+      codigPurchaseCurrency.value = "EUR"
+      netstonePurchaseCurrency.value = "EUR"
     }
   }
 
@@ -130,12 +150,7 @@ internal class ProductFormDialog(
     longDescription.value = p.longDescription ?: ""
     specifications.value = p.specifications ?: ""
     type.value = p.type
-    priceType.value = p.priceType ?: ""
     mto.value = p.mto
-    sellingPrice.value = p.sellingPriceExclTax
-    sellingCurrency.value = p.sellingCurrency
-    purchasePrice.value = p.purchasePriceExclTax
-    purchaseCurrency.value = p.purchaseCurrency
     suppliers.select(p.suppliers)
     applyUnitValue(p.type, p.unit)
     hsCode.value = p.hsCode ?: ""
@@ -143,6 +158,19 @@ internal class ProductFormDialog(
     ecNumber.value = p.ecNumber ?: ""
     madeIn.value = p.madeIn
     active.value = p.active
+    p.purchasePrices.forEach { price ->
+      when (price.company) {
+        ProductPriceCompany.CODIG -> {
+          codigPurchasePrice.value = price.priceExclTax
+          codigPurchaseCurrency.value = price.currency
+        }
+        ProductPriceCompany.NETSTONE -> {
+          netstonePurchasePrice.value = price.priceExclTax
+          netstonePurchaseCurrency.value = price.currency
+        }
+      }
+    }
+    p.sellingPrices.forEach { addSellingPriceRow(it.client, it.priceExclTax, it.currency) }
     p.clientProductCodes.forEach { addClientCodeRow(it.client, it.code) }
     updateFieldsForType(p.type)
   }
@@ -170,6 +198,18 @@ internal class ProductFormDialog(
       return
     }
 
+    val duplicateSellingPrices =
+      collectSellingPrices().groupingBy { it.client.id }.eachCount().filterValues { it > 1 }
+    if (duplicateSellingPrices.isNotEmpty()) {
+      Notification.show(
+          "Chaque client ne peut avoir qu'un seul prix de vente",
+          3000,
+          Notification.Position.BOTTOM_END,
+        )
+        .addThemeVariants(NotificationVariant.LUMO_ERROR)
+      return
+    }
+
     try {
       val p = product ?: Product(name = name.value)
       p.name = name.value
@@ -178,12 +218,7 @@ internal class ProductFormDialog(
       p.longDescription = longDescription.value.takeIf { it.isNotBlank() }
       p.specifications = if (specifications.value.isBlank()) null else specifications.value
       p.type = type.value
-      p.priceType = priceType.value.takeIf { it.isNotBlank() }
       p.mto = type.value == Product.ProductType.PRODUCT && mto.value
-      p.sellingPriceExclTax = sellingPrice.value ?: BigDecimal.ZERO
-      p.sellingCurrency = sellingCurrency.value ?: "EUR"
-      p.purchasePriceExclTax = purchasePrice.value ?: BigDecimal.ZERO
-      p.purchaseCurrency = purchaseCurrency.value ?: "EUR"
       p.unit = resolveUnitValue()
       p.hsCode = if (hsCode.value.isBlank()) null else hsCode.value
       p.casNumber = casNumber.value.takeIf { it.isNotBlank() }
@@ -191,6 +226,8 @@ internal class ProductFormDialog(
       p.madeIn = madeIn.value
       p.replaceClientProductCodes(collectClientCodes())
       p.replaceSuppliers(suppliers.selectedItems)
+      p.replacePurchasePrices(collectPurchasePrices())
+      p.replaceSellingPrices(collectSellingPrices())
       p.active = active.value
 
       productService.save(p)
@@ -257,6 +294,79 @@ internal class ProductFormDialog(
     return null
   }
 
+  private fun configureCurrencySelect(select: Select<String>, label: String) {
+    select.label = label
+    select.setItems(currencyCodes)
+    select.value = "EUR"
+  }
+
+  private fun collectPurchasePrices(): List<Product.PurchasePriceEntry> =
+    buildList {
+      codigPurchasePrice.value?.let { price ->
+        add(
+          Product.PurchasePriceEntry(
+            ProductPriceCompany.CODIG,
+            price,
+            codigPurchaseCurrency.value ?: "EUR",
+          )
+        )
+      }
+      netstonePurchasePrice.value?.let { price ->
+        add(
+          Product.PurchasePriceEntry(
+            ProductPriceCompany.NETSTONE,
+            price,
+            netstonePurchaseCurrency.value ?: "EUR",
+          )
+        )
+      }
+    }
+
+  private fun addSellingPriceRow(
+    client: Client? = null,
+    price: BigDecimal? = null,
+    currency: String = "EUR",
+  ) {
+    val clientCombo = ComboBox<Client>("Client")
+    clientCombo.setItems(availableClients)
+    clientCombo.setItemLabelGenerator { "${it.clientCode} - ${it.name}" }
+    clientCombo.value = client
+
+    val priceField = BigDecimalField("Prix vente HT")
+    priceField.value = price
+
+    val currencySelect = Select<String>()
+    configureCurrencySelect(currencySelect, "Devise vente")
+    currencySelect.value = currency
+
+    val removeButton = Button("Supprimer")
+    removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY)
+
+    val row = HorizontalLayout(clientCombo, priceField, currencySelect, removeButton)
+    row.width = "100%"
+    row.defaultVerticalComponentAlignment = FlexComponent.Alignment.END
+    row.setFlexGrow(1.0, clientCombo)
+
+    val entry = SellingPriceRow(row, clientCombo, priceField, currencySelect)
+    sellingPriceEntries.add(entry)
+    removeButton.addClickListener {
+      sellingPriceEntries.remove(entry)
+      sellingPriceRows.remove(row)
+    }
+    sellingPriceRows.add(row)
+  }
+
+  private fun collectSellingPrices(): List<Product.SellingPriceEntry> =
+    sellingPriceEntries.mapNotNull { entry ->
+      val client = entry.clientCombo.value
+      val price = entry.priceField.value
+      if (client != null && price != null) {
+        Product.SellingPriceEntry(client, price, entry.currencySelect.value ?: "EUR")
+      } else {
+        null
+      }
+    }
+
   companion object {
     private val logger = LoggerFactory.getLogger(ProductFormDialog::class.java)
     private const val UNIT_MT = "Mt"
@@ -303,5 +413,12 @@ internal class ProductFormDialog(
     val row: HorizontalLayout,
     val clientCombo: ComboBox<Client>,
     val codeField: TextField,
+  )
+
+  private class SellingPriceRow(
+    val row: HorizontalLayout,
+    val clientCombo: ComboBox<Client>,
+    val priceField: BigDecimalField,
+    val currencySelect: Select<String>,
   )
 }

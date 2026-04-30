@@ -14,6 +14,7 @@ import fr.axl.lvy.incoterm.IncotermService
 import fr.axl.lvy.paymentterm.PaymentTerm
 import fr.axl.lvy.paymentterm.PaymentTermService
 import fr.axl.lvy.product.Product
+import fr.axl.lvy.product.ProductPriceCompany
 import fr.axl.lvy.product.ProductService
 import fr.axl.lvy.sale.SalesCodig
 import fr.axl.lvy.sale.SalesCodigService
@@ -301,34 +302,63 @@ class DatabaseSeeder(
           type = Product.ProductType.PRODUCT
           mto = true
           specifications = "AMPS 2403 MONOMER, NEA SAP R3 SPECIFICATION: 1007623"
-          sellingPriceExclTax = BigDecimal("49.99")
-          sellingCurrency = "USD"
-          purchasePriceExclTax = BigDecimal("25.00")
-          purchaseCurrency = "USD"
           unit = "Mt"
           hsCode = "9031.80"
           madeIn = "China"
           replaceClientProductCodes(listOf(dowChemical to "10041948", dupont to "DUP-CO3104-CN"))
+          replacePurchasePrices(
+            listOf(
+              Product.PurchasePriceEntry(
+                ProductPriceCompany.CODIG,
+                BigDecimal("25.00"),
+                "USD",
+              ),
+              Product.PurchasePriceEntry(
+                ProductPriceCompany.NETSTONE,
+                BigDecimal("22.00"),
+                "USD",
+              ),
+            )
+          )
+          replaceSellingPrices(
+            listOf(
+              Product.SellingPriceEntry(dowChemical, BigDecimal("49.99"), "USD"),
+              Product.SellingPriceEntry(dupont, BigDecimal("53.00"), "USD"),
+            )
+          )
         },
         Product(name = "CO_3104 TH").apply {
           type = Product.ProductType.PRODUCT
           mto = true
           specifications = "AMPS 2403 MONOMER, NEA SAP R3 SPECIFICATION: 1007623"
-          sellingPriceExclTax = BigDecimal("89.99")
-          sellingCurrency = "USD"
-          purchasePriceExclTax = BigDecimal("45.00")
-          purchaseCurrency = "USD"
           unit = "Mt"
           hsCode = "9031.80.234"
           madeIn = "Thailand"
           replaceClientProductCodes(listOf(dowChemical to "10041948", dupont to "DUP-CO3104-TH"))
+          replacePurchasePrices(
+            listOf(
+              Product.PurchasePriceEntry(
+                ProductPriceCompany.CODIG,
+                BigDecimal("45.00"),
+                "USD",
+              ),
+              Product.PurchasePriceEntry(
+                ProductPriceCompany.NETSTONE,
+                BigDecimal("41.00"),
+                "USD",
+              ),
+            )
+          )
+          replaceSellingPrices(
+            listOf(
+              Product.SellingPriceEntry(dowChemical, BigDecimal("89.99"), "USD"),
+              Product.SellingPriceEntry(dupont, BigDecimal("94.50"), "USD"),
+            )
+          )
         },
         Product(name = "Demurrage").apply {
           type = Product.ProductType.SERVICE
-          sellingPriceExclTax = BigDecimal("150.00")
-          sellingCurrency = "USD"
-          purchasePriceExclTax = BigDecimal.ZERO
-          purchaseCurrency = "USD"
+          replaceSellingPrices(listOf(Product.SellingPriceEntry(dowChemical, BigDecimal("150.00"), "USD")))
         },
       )
 

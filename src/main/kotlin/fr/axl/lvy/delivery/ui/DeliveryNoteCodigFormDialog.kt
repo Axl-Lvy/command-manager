@@ -12,12 +12,14 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
-import com.vaadin.flow.server.StreamResource
+import com.vaadin.flow.server.streams.DownloadHandler
+import com.vaadin.flow.server.streams.DownloadResponse
 import fr.axl.lvy.delivery.DeliveryNoteCodig
 import fr.axl.lvy.delivery.DeliveryNoteCodigService
 import fr.axl.lvy.delivery.DeliveryNoteNetstone
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.pdf.PdfService
+import java.io.ByteArrayInputStream
 
 internal class DeliveryNoteCodigFormDialog(
   private val deliveryNoteCodigService: DeliveryNoteCodigService,
@@ -69,17 +71,14 @@ internal class DeliveryNoteCodigFormDialog(
     val cancelBtn = Button("Annuler") { close() }
     val footerLayout = HorizontalLayout(saveBtn, cancelBtn)
     if (note?.id != null) {
-      val pdfResource =
-        StreamResource("${note.deliveryNoteNumber.replace("/", "_")}.pdf") {
-            pdfService.generateDeliveryCodigPdf(note.id!!).inputStream()
-          }
-          .apply { cacheTime = 0 }
-      val pdfBtn = Button("Télécharger PDF")
-      val pdfLink =
-        Anchor(pdfResource, "").apply {
-          element.setAttribute("download", true)
-          add(pdfBtn)
+      val fileName = "${note.deliveryNoteNumber.replace("/", "_")}.pdf"
+      val pdfHandler =
+        DownloadHandler.fromInputStream {
+          val bytes = pdfService.generateDeliveryCodigPdf(note.id!!)
+          DownloadResponse(ByteArrayInputStream(bytes), fileName, "application/pdf", bytes.size.toLong())
         }
+      val pdfBtn = Button("Télécharger PDF")
+      val pdfLink = Anchor(pdfHandler, "").apply { add(pdfBtn) }
       footerLayout.add(pdfLink)
     }
     footer.add(footerLayout)

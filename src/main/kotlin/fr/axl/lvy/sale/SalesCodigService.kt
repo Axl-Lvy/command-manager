@@ -6,6 +6,8 @@ import fr.axl.lvy.documentline.DocumentLine
 import fr.axl.lvy.documentline.DocumentLineService
 import fr.axl.lvy.order.OrderCodig
 import fr.axl.lvy.order.OrderCodigService
+import fr.axl.lvy.product.ProductPriceCompany
+import fr.axl.lvy.product.ProductService
 import io.micrometer.core.instrument.MeterRegistry
 import java.math.BigDecimal
 import java.util.Optional
@@ -30,6 +32,7 @@ class SalesCodigService(
   private val numberSequenceService: NumberSequenceService,
   private val meterRegistry: MeterRegistry,
   private val clientService: ClientService,
+  private val productService: ProductService,
 ) {
   private val salesCreatedCounter = meterRegistry.counter("sale.codig")
 
@@ -153,12 +156,18 @@ class SalesCodigService(
     order.status = OrderCodig.OrderCodigStatus.DRAFT
 
     val savedOrder = orderCodigService.save(order)
+    val purchaseCurrency = firstPurchaseCurrency(saleLines, ProductPriceCompany.CODIG)
+    if (!purchaseCurrency.isNullOrBlank()) {
+      savedOrder.currency = purchaseCurrency
+    }
     val generatedLines =
       documentLineService.replaceLines(
         DocumentLine.DocumentType.ORDER_CODIG,
         savedOrder.id!!,
         saleLines,
-        overrideUnitPrice = { it.product?.purchasePriceExclTax },
+        overrideUnitPrice = { line ->
+          productService.findPurchasePrice(line.product?.id, ProductPriceCompany.CODIG)?.priceExclTax
+        },
       )
 
     savedOrder.recalculateTotals(generatedLines)
@@ -193,14 +202,28 @@ class SalesCodigService(
     val persistedLines =
       documentLineService.replaceLines(DocumentLine.DocumentType.SALES_CODIG, saved.id!!, lines)
 
-    saved.purchasePriceExclTax =
-      persistedLines.fold(BigDecimal.ZERO) { acc, line ->
-        acc.add((line.product?.purchasePriceExclTax ?: BigDecimal.ZERO).multiply(line.quantity))
-      }
+    saved.purchasePriceExclTax = computePurchaseTotal(persistedLines, ProductPriceCompany.CODIG)
     saved.recalculateTotals(persistedLines)
     return syncGeneratedOrder(saved, persistedLines)
   }
 
+  private fun computePurchaseTotal(
+    lines: List<DocumentLine>,
+    company: ProductPriceCompany,
+  ): BigDecimal =
+    lines.fold(BigDecimal.ZERO) { acc, line ->
+      val price = productService.findPurchasePrice(line.product?.id, company)?.priceExclTax ?: BigDecimal.ZERO
+      acc.add(price.multiply(line.quantity))
+    }
+
   private fun generateNextSaleNumber(): String =
     numberSequenceService.nextNumber(NumberSequenceService.SALES_CODIG)
+
+  private fun firstPurchaseCurrency(
+    lines: List<DocumentLine>,
+    company: ProductPriceCompany,
+  ): String? =
+    lines.firstNotNullOfOrNull { line ->
+      productService.findPurchasePrice(line.product?.id, company)?.currency
+    }
 }
