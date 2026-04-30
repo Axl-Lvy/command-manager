@@ -20,6 +20,7 @@ import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.util.Base64
 import java.util.Locale
 import javax.imageio.ImageIO
@@ -391,6 +392,73 @@ class PdfService(
     PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
     return out.toByteArray()
   }
+
+  /**
+   * Generates a Packing List PDF from manually-supplied fields. Issued from a Codig sale context;
+   * the issuing CoDIG company is rendered in the header.
+   */
+  @Transactional(readOnly = true)
+  fun generatePackingListPdf(input: PackingListInput): ByteArray {
+    val ownCompany =
+      clientService
+        .findDefaultCodigCompany()
+        .flatMap { company ->
+          company.id?.let(clientService::findDetailedById) ?: java.util.Optional.of(company)
+        }
+        .orElse(null)
+
+    val ctx = Context()
+    ctx.setVariable("ownCompany", ownCompany)
+    ctx.setVariable(
+      "ownCompanyAddressLines",
+      ownCompany?.billingAddress?.lines() ?: emptyList<String>(),
+    )
+    ctx.setVariable("logoSrc", logoSrc(ownCompany))
+    ctx.setVariable("productCode", input.productCode)
+    ctx.setVariable("productDescription", input.productDescription)
+    ctx.setVariable("poNumber", input.poNumber)
+    ctx.setVariable("pcCode", input.pcCode)
+    ctx.setVariable("packingListNumber", input.packingListNumber)
+    ctx.setVariable("invoiceNumber", input.invoiceNumber)
+    ctx.setVariable("batchNumber", input.batchNumber)
+    ctx.setVariable("quantity", input.quantity)
+    ctx.setVariable("isoTankNumber", input.isoTankNumber)
+    ctx.setVariable("origin", input.origin)
+    ctx.setVariable("date", input.date)
+    ctx.setVariable("packageDescription", input.packageDescription)
+    ctx.setVariable("grossWeight", input.grossWeight)
+    ctx.setVariable("netWeight", input.netWeight)
+    ctx.setVariable("casNumber", input.casNumber)
+    ctx.setVariable("ecNumber", input.ecNumber)
+    ctx.setVariable("hazardNote", input.hazardNote)
+
+    val html = templateEngine.process("packing-list", ctx)
+
+    val out = ByteArrayOutputStream()
+    PdfRendererBuilder().withHtmlContent(html, null).toStream(out).run()
+    return out.toByteArray()
+  }
+
+  /** User-supplied fields for a Packing List PDF. */
+  data class PackingListInput(
+    val productCode: String,
+    val productDescription: String?,
+    val poNumber: String,
+    val pcCode: String?,
+    val packingListNumber: String,
+    val invoiceNumber: String,
+    val batchNumber: String,
+    val quantity: String,
+    val isoTankNumber: String,
+    val origin: String,
+    val date: LocalDate?,
+    val packageDescription: String,
+    val grossWeight: String,
+    val netWeight: String,
+    val casNumber: String?,
+    val ecNumber: String?,
+    val hazardNote: String?,
+  )
 
   /** Generates a PDF for a Codig invoice. */
   @Transactional(readOnly = true)
